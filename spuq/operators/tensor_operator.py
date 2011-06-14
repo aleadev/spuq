@@ -1,0 +1,2 @@
+class TensorOperator(LinearOperator):
+    pass

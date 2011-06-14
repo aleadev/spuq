@@ -28,7 +28,7 @@ class FullRandomField(RandomField):
 
 
 
-class Basis(object):
+class FunctionalBasis(object):
     def getGramian(self):
         # return a LinearOperator, not necessarily a matrix
         return NotImplemented
@@ -42,7 +42,7 @@ class Basis(object):
 
 class TensorProductBasis(Basis):
     def evalAt(self,vector):
-        for b in bases: 
+        # for b in bases: 
         # side question: what about tensor product bases? Is "vector" a tuple then?
         return NotImplemented
 
@@ -120,11 +120,16 @@ class Tensor(GVector):
         return str(self.x)
 
 class LinearOperator(object):
+    def range_basis(self):
+        "Returns the dimension of the range of Op"
+        return NotImplemented
     def dim_range(self):
         "Returns the dimension of the range of Op"
         return NotImplemented
     def dim_domain(self):
         "Returns the dimension of the domain of Op"
+        return NotImplemented
+    def __call__(self, arg):
         return NotImplemented
     def apply(self):
         pass
@@ -134,6 +139,12 @@ class LinearOperator(object):
         pass
     pass
 
+class ComposedOpertor(LinearOperator):
+    def __init__(op1,op2):
+        assert( op1.range_basis()==op2.domain_basis() );
+        self.op1 = op1
+        self.op2 = op2
+    
 class MatrixOperator(LinearOperator):
     "A linear operator implemented as a matrix"
     pass
