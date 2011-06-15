@@ -1,3 +1,6 @@
+class StochasticBasis:
+    pass
+
 class PolynomialBasis(StochasticBasis):
     def __init__(self):
         pass

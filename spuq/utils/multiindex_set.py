@@ -17,7 +17,6 @@ class MultiindexSet(object):
     def factorial(self):
         from scipy import factorial
         return factorial(self.arr).prod(1)
-    # mi**x, mi!, 
 
     @staticmethod
     def createCompleteOrderSet(m,p):
