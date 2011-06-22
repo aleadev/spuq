@@ -1,7 +1,37 @@
-class GPCBasis(PolynomialBasis):
-    # ideas I have
-    pass
+from spuq.bases.polynomial_basis import PolynomialBasis
 
+
+class GPCBasis(PolynomialBasis):
+    def __init__(self, I,  rvs):
+        assert( I.m==len(rvs) )
+        self.I=I
+        self.rvs=rvs
+        
+    def sample(self, n):
+        from numpy import array,  zeros,  ones, ix_
+        S=ones((self.I.count, n))
+        for i,  rv in enumerate(self.rvs):
+            theta=rv.sample(n)
+            Phi=rv.getOrthogonalPolynomials()
+            Q=zeros((self.I.p+1, n))
+            for q in xrange(self.I.p+1):
+                Q[q, :]=Phi.eval( q,  theta )
+            S=S*Q[self.I.arr[:,i], :]
+        return S
+        
+
+if __name__=="__main__":
+    from spuq.utils.multiindex_set import MultiindexSet
+    from spuq.statistics import *
+    from spuq.statistics.normal_distribution import NormalDistribution
+    from spuq.statistics.uniform_distribution import UniformDistribution
+    I=MultiindexSet.createCompleteOrderSet(2, 3)
+    print I
+    N=NormalDistribution()
+    U=UniformDistribution()
+    print N,  U
+    gpc=GPCBasis(I, [N, U])
+    gpc.sample(5)
 
 # X=U(2,5) (Y=X^2)
 # gpc=GPCBasis(MI, {Uniform()})
@@ -33,7 +63,7 @@ class GPCBasis(PolynomialBasis):
 # storage: full, sparse matrix, own sparse format?
 
 
-class MultiplicationTensor
+class MultiplicationTensor:
     def __init__(self):
         #self.M=
         pass
@@ -44,7 +74,7 @@ class MultiplicationTensor
         for i in xrange(n1):
             for j in xrange(n2):
                 for k in xrange(n3):
-                    z(i)=self.M(i, j, k)*x(j)*y(k)
+                    z[i]=self.M[i, j, k]*x[j]*y[k]
                     
 
 

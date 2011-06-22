@@ -1,7 +1,7 @@
-from polynomial_family import PolynomialFamily
+from spuq.polynomials.polynomial_family import PolynomialFamily
 import numpy
 
-class StochasticHermitePolynomial(PolynomialFamily):
+class StochasticHermitePolynomials(PolynomialFamily):
     def __init__( self ):
         self.structcoeffs = numpy.empty((0, 0, 0))
     
@@ -49,7 +49,7 @@ import unittest
 class TestHermite(unittest.TestCase):
     def test_hermite(self):
         x = 3.14159
-        h = StochasticHermitePolynomial()
+        h = StochasticHermitePolynomials()
         self.assertAlmostEquals( h.eval(3, x), x**3-3*x )
     
     
@@ -59,7 +59,7 @@ if __name__=="__main__":
     print x
     print x*x
     print x*x*x
-    H = StochasticHermitePolynomial()
+    H = StochasticHermitePolynomials()
     print H.eval(3,x).coeffs[::-1]
     # start unit test
     unittest.main()

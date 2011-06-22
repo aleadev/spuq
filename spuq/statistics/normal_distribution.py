@@ -42,7 +42,7 @@ class NormalDistribution(Distribution):
 
     def getOrthogonalPolynomials(self):
         assert( self.mu==0 and self.sigma==1 )
-        from polynomials.hermite_polynomials import StochasticHermitePolynomials
+        from spuq.polynomials.stochastic_hermite_polynomials import StochasticHermitePolynomials
         return StochasticHermitePolynomials()
         
     def sample(self,  size):

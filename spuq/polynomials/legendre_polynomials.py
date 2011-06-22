@@ -1,7 +1,7 @@
 import numpy
-from polynomial_family import PolynomialFamily
+from spuq.polynomials.polynomial_family import PolynomialFamily
 
-class LegendrePolynomial(PolynomialFamily):
+class LegendrePolynomials(PolynomialFamily):
     def __init__( self ):
         self.structcoeffs = numpy.empty((0, 0, 0))
     
@@ -38,7 +38,7 @@ import unittest
 class TestLegendre(unittest.TestCase):
     def test_legendre(self):
         x = 3.14159
-        l = LegendrePolynomial()
+        l = LegendrePolynomials()
         print l.eval(0, numpy.poly1d([1, 0]))
         print l.eval(1, numpy.poly1d([1, 0]))
         print l.eval(3, numpy.poly1d([1, 0]))

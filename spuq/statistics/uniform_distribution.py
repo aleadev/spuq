@@ -48,15 +48,15 @@ class UniformDistribution(Distribution):
         return UniformDistribution(m-d, m+d)
 
     def getOrthogonalPolynomials(self):
-        assert( self.mu==0 and self.sigma==1 )
-        from polynomials.legendre_polynomials import LegendrePolynomials
+        assert( self.a==-1.0 and self.b==1.0 )
+        from spuq.polynomials.legendre_polynomials import LegendrePolynomials
         return LegendrePolynomials()
         
     def sample(self,  size):
         from numpy.random import uniform
         return uniform( self.a,  self.b,  size )
 
-def __repr__(self):
+    def __repr__(self):
         return "U["+str(self.a)+","+str(self.b)+"]"
 
 
