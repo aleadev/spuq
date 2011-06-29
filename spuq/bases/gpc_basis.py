@@ -1,5 +1,6 @@
-from spuq.bases.polynomial_basis import PolynomialBasis
-
+#from spuq.bases.polynomial_basis import PolynomialBasis
+class PolynomialBasis: 
+    pass
 
 class GPCBasis(PolynomialBasis):
     def __init__(self, I,  rvs):
@@ -21,17 +22,17 @@ class GPCBasis(PolynomialBasis):
         
 
 if __name__=="__main__":
-    from spuq.utils.multiindex_set import MultiindexSet
-    from spuq.statistics import *
-    from spuq.statistics.normal_distribution import NormalDistribution
-    from spuq.statistics.uniform_distribution import UniformDistribution
-    I=MultiindexSet.createCompleteOrderSet(2, 3)
+    from spuq.utils.multiindex_set import *
+    I=MultiindexSet.createCompleteOrderSet(2, 4)
     print I
+
+    from spuq.statistics import *
     N=NormalDistribution()
     U=UniformDistribution()
     print N,  U
+
     gpc=GPCBasis(I, [N, U])
-    gpc.sample(5)
+    print gpc.sample(3)
 
 # X=U(2,5) (Y=X^2)
 # gpc=GPCBasis(MI, {Uniform()})

@@ -1,7 +1,8 @@
 __all__=[ 
-    "normal_distribution", 
-    "uniform_distribution"
+    "UniformDistribution",
+    "NormalDistribution"
 ]
 
-from normal_distribution import *
-from uniform_distribution import *
+from normal_distribution import NormalDistribution
+from uniform_distribution import UniformDistribution
+
