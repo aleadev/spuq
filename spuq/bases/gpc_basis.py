@@ -1,6 +1,4 @@
-#from spuq.bases.polynomial_basis import PolynomialBasis
-class PolynomialBasis: 
-    pass
+from spuq.bases.polynomial_basis import PolynomialBasis
 
 class GPCBasis(PolynomialBasis):
     def __init__(self, I,  rvs):
