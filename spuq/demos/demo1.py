@@ -7,15 +7,15 @@ code with the finished library could look like."""
 # define the first paramter to be normally distributed with mean 2 and variance 0.3
 # and expand in a pce
 param1_dist=NormalDistribution(2,0.3);
-rv1=expand_pce_1d( var1, p1 )
+rv1=expand_pce_1d( param1_dist, degree=3 )
 # rv1 is a random variable, contains the basis and the expansion coefficients
 # can get them via rv1.basis, rv1.coeffs. The coefficients rv1.coeffs should 
-# be something like [2,0.3,0,0,0,...]
+# be something like [2,0.3,0,0]
 
 # expand the second parameter into a gpc based on a 
 # uniform distribution up to order p1
 param2_dist=BetaDistribution(2,3);
-rv2=expand_gpc_1d(var2, UniformDistribution(), p2 )
+rv2=expand_gpc_1d(var2, UniformDistribution(), degree=2 )
 
 # create the full tensor product basis
 (basis,proj1,proj2)=create_full_tensor_basis( rv1.basis, rv2.basis )
