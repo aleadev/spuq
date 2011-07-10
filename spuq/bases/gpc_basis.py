@@ -27,10 +27,22 @@ if __name__=="__main__":
     from spuq.statistics import *
     N=NormalDistribution()
     U=UniformDistribution()
-    print N,  U
+    print N, U
 
-    gpc=GPCBasis(I, [N, U])
-    print gpc.sample(3)
+    gpc1=GPCBasis(I, [N, U])
+    gpc2=GPCBasis(I, [N, N])
+    print gpc1.sample(3)
+    s1=gpc1.sample(100)
+    s2=gpc2.sample(100)
+    from spuq.utils.plot.plotter import Plotter
+    Plotter.figure(1)
+    plotter.Plotter.scatterplot(I.arr[:6,:],s1)
+    Plotter.figure(2)
+    Plotter.scatterplot(I.arr[3:9,:],s2)
+    Plotter.figure(3)
+    Plotter.histplot(s1[:6,:],bins=50)
+
+
 
 # X=U(2,5) (Y=X^2)
 # gpc=GPCBasis(MI, {Uniform()})
@@ -70,13 +82,12 @@ class MultiplicationTensor:
     #def contract( self,  vector )
     def contract( self, x, y ):
         # z=array(n)
+        # TODO: maybe use ix_
         for i in xrange(n1):
             for j in xrange(n2):
                 for k in xrange(n3):
                     z[i]=self.M[i, j, k]*x[j]*y[k]
                     
-
-
 
 # one dimensional PCE or GPC of a random variable
 # X in 1d GPC base on distribution D
@@ -106,7 +117,3 @@ class MultiplicationTensor:
 
 # check whether basis is orthonormal (assert, or use different algorithm)
 # gpc basis could call normalise for non-normalised bases
-
-
-
-
