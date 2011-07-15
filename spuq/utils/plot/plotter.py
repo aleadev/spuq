@@ -7,22 +7,22 @@ class Plotter(object):
     
     @staticmethod
     def scatterplot(indices,data,grid=True):
-        m = unique(indices[:,0])
-        n = unique(indices[:,1])
-        M = len(m)
-        N = len(n)
+        x = unique(indices[:,0])
+        y = unique(indices[:,1])
+        M = len(y)
+        N = len(x)
         for ai,bi in indices:
-            mi = nonzero(m==ai)[0][0]
-            ni = nonzero(n==bi)[0][0]
-            print 'subplot: ',(ai,bi),(mi,ni),(M,N),mi*N+ni
-            subplot(M,N,mi*N+ni+1)
-            plot(data[indices[ai],:], data[indices[bi],:], 'b.')
-            if mi == M-1:
-                xlabel('x['+str(ai)+']')
-            if ni == 0:
+            xi = nonzero(x==ai)[0][0]
+            yi = nonzero(y==bi)[0][0]
+            print 'subplot: ',(ai,bi),(xi,yi),(M,N),N*(M-1)+xi+1-yi*N
+            subplot(M,N,N*(M-1)+xi+1-yi*N)
+            plot(data[ai,:], data[bi,:], 'b.')
+            if xi == 0:
                 ylabel('y['+str(bi)+']')
-            axis('equal')
-#            grid(True)
+            if yi == 0:
+                xlabel('x['+str(ai)+']')
+        axis('equal')
+#        grid(True)
         show()
 
     @staticmethod

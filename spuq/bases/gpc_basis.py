@@ -7,7 +7,7 @@ class GPCBasis(PolynomialBasis):
         self.rvs=rvs
         
     def sample(self, n):
-        from numpy import array,  zeros,  ones, ix_
+        from numpy import array,  ones
         S=ones((self.I.count, n))
         for i,  rv in enumerate(self.rvs):
             theta=rv.sample(n)
@@ -36,9 +36,9 @@ if __name__=="__main__":
     s2=gpc2.sample(100)
     from spuq.utils.plot.plotter import Plotter
     Plotter.figure(1)
-    plotter.Plotter.scatterplot(I.arr[:6,:],s1)
+    Plotter.scatterplot(I.arr[:7,:],s1)
     Plotter.figure(2)
-    Plotter.scatterplot(I.arr[3:9,:],s2)
+    Plotter.scatterplot(I.arr[8:15,:],s2)
     Plotter.figure(3)
     Plotter.histplot(s1[:6,:],bins=50)
 

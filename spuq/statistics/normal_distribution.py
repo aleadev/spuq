@@ -23,13 +23,13 @@ class NormalDistribution(Distribution):
     def var(self):
         return self.sigma**2
     
-    def skew( self ): 
+    def skew(self): 
         return 0
         
-    def kurtex( self ):
+    def kurtex(sel ):
         return 0
         
-    def median( self ): 
+    def median(self): 
         return self.mu
         
     
@@ -47,7 +47,7 @@ class NormalDistribution(Distribution):
         
     def sample(self,  size):
         from numpy.random import normal
-        return normal( self.mu,  self.sigma,  size )
+        return normal( self.mu, self.sigma, size )
 
 
     def __repr__(self):
@@ -71,20 +71,20 @@ class TestNormalDistribution(unittest.TestCase):
         self.assertEquals( self.nd2.pdf(5), exp(-1.0/2)/sqrt(18*pi) )
     def test_cdf(self):
         from scipy import inf
-        self.assertEquals( self.nd1.cdf(0),  0.5)
-        self.assertEquals( self.nd1.cdf(inf),  1)
-        self.assertEquals( self.nd1.cdf(-inf),  0)
+        self.assertEquals( self.nd1.cdf(0), 0.5)
+        self.assertEquals( self.nd1.cdf(inf), 1)
+        self.assertEquals( self.nd1.cdf(-inf), 0)
         self.assertEquals( self.nd2.cdf(2),  0.5)
-        self.assertAlmostEquals( self.nd1.cdf(1)-self.nd1.cdf(-1),  0.682689492137)
-        self.assertAlmostEquals( self.nd2.cdf(5)-self.nd2.cdf(-1),  0.682689492137)
+        self.assertAlmostEquals( self.nd1.cdf(1)-self.nd1.cdf(-1), 0.682689492137)
+        self.assertAlmostEquals( self.nd2.cdf(5)-self.nd2.cdf(-1), 0.682689492137)
     def test_sample(self):
         s=self.nd1.sample(5)
         self.assertEquals( s.shape,  (5, ) )
     def test_shift_scale(self):
-        self.assertEquals( self.nd2.shift(2).mu, 4  )
-        self.assertEquals( self.nd2.shift(2).sigma, 3  )
-        self.assertEquals( self.nd2.scale(2).mu, 2  )
-        self.assertEquals( self.nd2.scale(2).sigma, 6  )
+        self.assertEquals( self.nd2.shift(2).mu, 4 )
+        self.assertEquals( self.nd2.shift(2).sigma, 3 )
+        self.assertEquals( self.nd2.scale(2).mu, 2 )
+        self.assertEquals( self.nd2.scale(2).sigma, 6 )
         
 if __name__=="__main__":
     unittest.main()
