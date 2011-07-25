@@ -1,6 +1,6 @@
 from numpy import linalg as la
 from numpy import array, ndarray, zeros, ones, diag, arange, sqrt
-from quadrature.quad_rule_1d import Quad_Rule_1d
+from spuq.quadrature.quad_rule_1d import Quad_Rule_1d
 
 class Quad_Rule_Gauss(Quad_Rule_1d):
     """Gauss quadrature rule"""
