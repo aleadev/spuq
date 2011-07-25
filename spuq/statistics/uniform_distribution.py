@@ -9,10 +9,6 @@ class UniformDistribution(Distribution):
         return 1.0*(self.a<=x)*(x<=self.b) / (self.b-self.a)
         
     def cdf( self, x ): 
-        from numpy import min,  max
-        from numpy import piecewise
-        print "xcc:"
-        print x
         a=self.a
         b=self.b
         x=x+(x<a)*(a-x)-(x>b)*(x-b)

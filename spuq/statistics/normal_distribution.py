@@ -26,7 +26,7 @@ class NormalDistribution(Distribution):
     def skew(self): 
         return 0
         
-    def kurtex(sel ):
+    def kurtex(self):
         return 0
         
     def median(self): 
