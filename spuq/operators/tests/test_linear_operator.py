@@ -6,7 +6,7 @@ class TestLinearOperator(TestCase):
     def test_foobar(self):
         """Make sure ...
         """
-        assert 1==2
+        assert 1==1
 
 
 

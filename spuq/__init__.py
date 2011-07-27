@@ -8,14 +8,16 @@ __all__=[
          "vectors"
          ]
          
-#import statistics
+import statistics
 #from statistics import *
 
-#import operators
+import operators
 #from operators import *
 
 import utils
 #from utils import *
+
+import bases
 
 
 from numpy.testing import Tester

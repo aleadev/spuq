@@ -1,0 +1,15 @@
+#! /bin/bash
+
+# replace all /'s with .'s
+mod="${1//\//.}"
+
+# remove the last . (if it's there)
+mod="${mod%.}"
+
+if [ -z $mod ]; then
+    mod='spuq'
+fi
+
+export PYTHONPATH=$(pwd)/spuq
+echo "Executing: python -c \"import spuq; $mod.test()\""
+python -c "import spuq; $mod.test()"
