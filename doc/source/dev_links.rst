@@ -12,20 +12,30 @@ Coding references
 =================
 
 Programming resources
------------
+---------------------
 
 Python
 ~~~~~~
+
+Libraries
+~~~~~~~~~
+
+* numpy reference: http://docs.scipy.org/doc/numpy/reference/
+* numpy user guide: http://docs.scipy.org/doc/numpy/user/
+* scipy reference: http://docs.scipy.org/doc/scipy/reference/
+* numpy/scipy cookbook: http://www.scipy.org/Cookbook
+* Traits user manual: http://github.enthought.com/traits/traits_user_manual/index.html
+
 
 Version control
 ---------------
 * git resources from numpy: http://docs.scipy.org/doc/numpy/dev/gitwash/git_resources.html#git-resources
 * git cheat sheet: http://help.github.com/git-cheat-sheets/
-
+* the git book: http://book.git-scm.com/index.html
 
 
 Writing documentation
--------------
+---------------------
 
 Sphinx
 ~~~~~~

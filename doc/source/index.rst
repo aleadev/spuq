@@ -13,6 +13,7 @@ Contents:
 
    tutorial
    concepts
+   egsz/concept
    dev_links
    src/spuq/operators/linear_operator
 
