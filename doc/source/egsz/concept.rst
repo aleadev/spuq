@@ -1,5 +1,5 @@
 .. meta::
-   :http-equiv=refresh: 5
+   :http-equiv=xrefresh: 5
 
 
 ======================================================================
@@ -57,6 +57,46 @@ Specification of the random variables :math:`y_m`. Need to be defined
 on :math:`[-1,1]` with :math:`\#supp(y_m)=\infty`. Take simply uniform
 :math:`U(-1,1)`? Needs to be symmetric?
 
+Operator
+--------
+
+Continuous operator
+~~~~~~~~~~~~~~~~~~~
+
+
+.. math:: \bar{A} = -\nabla  \bar{a}(x) \cdot\nabla
+
+.. math:: \bar{\mathcal{A}} = \mathrm{Id} \otimes \bar{A}
+
+.. math:: A_m = -\nabla  a_m(x) \cdot\nabla
+
+.. math:: K_m = r(y) \mapsto r(y) y_m
+
+.. math:: \mathcal{A}_m = K_m \otimes A_m
+
+.. math:: 
+  :label: continuous_operator
+
+  \mathcal{A} = \bar{\mathcal{A}} + \sum_{m=1}^\infty
+  \mathcal{A}_m
+
+Discrete operator
+~~~~~~~~~~~~~~~~~
+
+For each :math:`\mu` we have some :math:`V_{\mu}`
+
+solution has the form 
+
+.. math:: w(y,x) = \sum_{\mu\in\Lambda} w_{\mu}(x) P_{\mu}(y)
+
+ordered basis :math:`B_{\mu}=\{b_{\mu,i}\}` of :math:`V_{\mu}`
+
+.. math:: w(y,x) = \sum_{\mu\in\Lambda} \sum_{i=1}^{\#B_{\mu}}
+   w_{\mu,i} b_{\mu,i}(x) P_{\mu}(y)
+
+for each vector :math:`w_{\mu}=[\dots w_{\mu,i} \dots]^T` of length
+:math:`\#B_{\mu}` we discretise equation :eq:`continuous_operator`
+
 Algorithms
 ==========
    
@@ -100,6 +140,19 @@ Identification of variables:
 Error estimator
 ---------------
 
+The function ``error_estimator``::
+
+  def error_estimator( w, zeta, c_eta, c_Q ):
+    
+
+
+
+Projection :math:`\Pi_\mu^\nu:V_\nu\to V_\mu` for some
+:math:`\mu,\nu\in\Lambda` can be an arbitrary map such as the
+:math:`L^2`-projection, the :math:`\mathcal{A}`-orthogonal projection
+or nodal interpolation ::
+    
+  def project(  ):
 
 
 Refinement
@@ -114,6 +167,113 @@ This should be implemented as a standard preconditioned conjugate
 gradient solver, where the special treatment necessary for the
 peculiar structure of :math:`w_N` is hidden in a generalised vector
 class that takes care of that.
+
+Meaning of the variables
+
+* :math:`\rho` = ``r`` residual
+* :math:`s` = ``s`` preconditioned residual
+* :math:`v` = ``v`` search direction
+* :math:`w` = ``w`` solution
+* :math:`\zeta` is the enery norm (w.r.t. :math:`\bar{\mathcal{A}}`)
+  of the preconditioned residual :math:`s`,
+  i.e. :math:`\|s\|^2_{\bar{\mathcal{A}}}`
+
+Algorithm::
+
+  def pcg( A, A_bar, w0, eps ):
+    # use forgetful_vector for vectors 
+    w[0] = w0
+    r[0] = f - apply(A, w[0])
+    v[0] = solve(A_bar, r[0])
+    zeta[0] = r[0].inner(s[0])
+    for i in count(1):
+      if zeta[i-1] <= eps**2:
+        return (w[i-1], zeta[i-1])
+      z[i-1] = apply(A, v[i-1])
+      alpha[i-1] = z[i-1].inner(v[i-1])
+      w[i] = w[i-1] + zeta[i-1] / alpha[i-1] * v[i-1]
+      r[i] = r[i-1] - zeta[i-1] / alpha[i-1] * z[i-1]
+      s[i] = solve(A_bar, r[i])
+      zeta[i] = r[i].inner(s[i])
+      v[i] = s[i] - zeta[i] / zeta[i-1] * v[i-1]
+
+Data structures
+===============
+
+Vectors
+-------
+
+Sketch for the generalised vector class for ``w``::
+
+  class FooVector(object):
+    #map multiindex to Vector (=coefficients + basis)
+    def __init__(self):
+      self.mi2vec = dict()
+
+    def extend( self, mi, vec ):
+      self.mi2vec[mi] = vec
+
+    def active_indices( self ):
+      return self.mi2vec.keys()
+
+    def get_vector( self, mi ):
+      return self.mi2vec[mi]
+
+    def __add__(self, other):
+      assert self.active_indices() == other.active_indices()
+      newvec = FooVector()
+      for mi in self.active_indices():
+        newvec.extend( mi, self.get_vector(mi)+other.get_vector(mi))
+      return newvec
+
+    def __mul__():
+      pass
+
+    def __sub__():
+      pass
+
+  class FEMVector(FullVector):
+    INTERPOLATE="interpolate"
+
+    def __init__(self, coeff, basis ):
+      assert isinstance( basis, FEMBasis )
+      self.FullVector.__init__(coeff, basis)
+
+    # transfer, interpolate 
+    def transfer(self, basis, type=FEMVector.INTERPOLATE)
+      assert isinstance( basis, FEMBasis )
+      newcoeff = FEMBasis.transfer( self.coeff, self.basis, basis, type )
+      return FEMVector( newcoeff, basis )
+
+  class Mesh( object ):
+    def refine( self, faces ):
+      new_dolfin_mesh = self.dolfin_mesh.refine(faces)
+      prolongate = lambda x: return dolfin.project( x, 
+        dolfin_mesh, new_dolfin_mesh )
+      restrict = lambda x: return dolfin.project( x, 
+        new_dolfin_mesh, dolfin_mesh )
+      return (Mesh( new_dolfin_mesh ), prolongate, restrict)
+
+  class FEMBasis(FunctionBasis):
+    def __init__(self, mesh):
+      self.mesh = mesh
+
+    def refine(self, faces):
+      (newmesh, prolongate, restrict)=self.mesh.refine( faces )
+      newbasis = FEMBasis( newmesh )
+      prolop = Operator( prolongate, self, newbasis )
+      restop = Operator( restrict, newbasis, self )
+      return (newbasis, prolop, restop)
+
+    @override
+    def evaluate(self, x):
+      # pass to dolfin 
+      pass
+
+    @classmethod
+    def transfer( coeff, oldbasis, newbasis, type ):
+      # let dolfin do the transfer accoring to type
+      pass      
 
 
 Questions
