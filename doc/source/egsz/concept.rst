@@ -203,78 +203,102 @@ Data structures
 Vectors
 -------
 
-Sketch for the generalised vector class for ``w``::
+Sketch for the generalised vector class for ``w`` (we call it for now
+``AdaptiveVector``, proposals for a better name are welcome) ::
 
-  class FooVector(object):
+  class AdaptiveVector(object):
     #map multiindex to Vector (=coefficients + basis)
     def __init__(self):
       self.mi2vec = dict()
-
+    
     def extend( self, mi, vec ):
       self.mi2vec[mi] = vec
-
+    
     def active_indices( self ):
       return self.mi2vec.keys()
-
+    
     def get_vector( self, mi ):
       return self.mi2vec[mi]
-
+    
     def __add__(self, other):
       assert self.active_indices() == other.active_indices()
       newvec = FooVector()
       for mi in self.active_indices():
         newvec.extend( mi, self.get_vector(mi)+other.get_vector(mi))
       return newvec
-
+    
     def __mul__():
       pass
-
+        
     def __sub__():
       pass
 
+The ``AdaptiveVector`` needs a set of /normal/ vectors which represent
+a solution on a single FEM mesh::
+
   class FEMVector(FullVector):
-    INTERPOLATE="interpolate"
+    INTERPOLATE = "interpolate"
 
     def __init__(self, coeff, basis ):
       assert isinstance( basis, FEMBasis )
       self.FullVector.__init__(coeff, basis)
-
-    # transfer, interpolate 
-    def transfer(self, basis, type=FEMVector.INTERPOLATE)
+      
+    def transfer(self, basis, type=FEMVector.INTERPOLATE):
       assert isinstance( basis, FEMBasis )
       newcoeff = FEMBasis.transfer( self.coeff, self.basis, basis, type )
       return FEMVector( newcoeff, basis )
 
-  class Mesh( object ):
-    def refine( self, faces ):
-      new_dolfin_mesh = self.dolfin_mesh.refine(faces)
-      prolongate = lambda x: return dolfin.project( x, 
-        dolfin_mesh, new_dolfin_mesh )
-      restrict = lambda x: return dolfin.project( x, 
-        new_dolfin_mesh, dolfin_mesh )
-      return (Mesh( new_dolfin_mesh ), prolongate, restrict)
+The ``FEMVector``s need a basis which should be fixed to a
+``FEMBasis`` and derivatives (which could be a Fenics or Dolfin basis
+or whatever FEM software is underlying it)::
 
   class FEMBasis(FunctionBasis):
     def __init__(self, mesh):
       self.mesh = mesh
-
+      
     def refine(self, faces):
       (newmesh, prolongate, restrict)=self.mesh.refine( faces )
       newbasis = FEMBasis( newmesh )
       prolop = Operator( prolongate, self, newbasis )
       restop = Operator( restrict, newbasis, self )
       return (newbasis, prolop, restop)
-
+      
     @override
     def evaluate(self, x):
       # pass to dolfin 
       pass
-
+      
     @classmethod
     def transfer( coeff, oldbasis, newbasis, type ):
       # let dolfin do the transfer accoring to type
       pass      
 
+The FEMBasis needs a mesh class for refinement and transfer of
+solutions from one mesh to another. This mesh shall have derived class
+that encapsulat specific Mesh classes (that come e.g. from Dolfin) ::
+
+  # in spuq.fem?
+  class FEMMesh( object ):
+    def refine( self, faces ):
+      return NotImplemented
+
+  # in spuq.adaptors.fenics
+  class FenicsMesh( FEMMesh ):
+    def __init__(self):
+      from dolfin import Mesh
+      self.fenics_mesh = Mesh()
+
+    def refine( self, faces ):
+      new_fenics_mesh = self.fenics_mesh.refine(faces)
+      prolongate = lambda x: fenics.project( x, fenics_mesh,
+                                             new_fenics_mesh ) 
+      restrict = lambda x: fenics.project( x, new_fenics_mesh, 
+                                           fenics_mesh )
+      return (Mesh( new_fenics_mesh ), prolongate, restrict)
+
+.. note: The |fenics| specific stuff should go into a specific package
+         e.g. spuq.fenics or spuq.adaptors.fenics so that we can also
+         use other FEM packages if we want 
 
 Questions
 =========
