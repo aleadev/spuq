@@ -1,7 +1,7 @@
 from numpy.random import rand, randn
 import spuq.operators
 from spuq.operators import *
-#from spuq.operators import FullLinearOperator
+from spuq.operators import FullLinearOperator
 
 A = FullLinearOperator( 1 + rand(3, 5) )
 B = FullLinearOperator( 1 + rand(7, 3) )

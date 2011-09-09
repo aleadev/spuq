@@ -1,6 +1,10 @@
 import numpy as np
 from numpy import array, ndarray, zeros, dot
 
+from spuq.bases.basis import EuclideanBasis
+from spuq.operators.full_vector import FullVector
+
+
 class LinearOperator(object):
     """Abstract base class for linear operators mapping elements from 
     some domain into the codomain
@@ -85,7 +89,6 @@ class AbstractLinearOperator(LinearOperator):
 
 class FullLinearOperator(AbstractLinearOperator):
     def __init__(self, arr, domain_basis=None, codomain_basis=None):
-        from spuq.bases.basis import EuclideanBasis
         assert( isinstance(arr, ndarray) )
         if domain_basis is None:
             domain_basis = EuclideanBasis(arr.shape[1])
