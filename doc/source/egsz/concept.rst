@@ -296,6 +296,17 @@ that encapsulat specific Mesh classes (that come e.g. from Dolfin) ::
                                            fenics_mesh )
       return (Mesh( new_fenics_mesh ), prolongate, restrict)
 
+Refinement::
+
+  b0 = FEMBasis( FEniCSMesh() )
+  coeffs = whatever()
+  v0 = FEMVector( coeffs, b )
+  faces = marking_strategy( foo )
+  (b1, prol, rest) = b0.refine( faces )
+  v1 = prol( v0 )
+  assert v1.get_basis() == b1
+  assert v1.__class__ == v2.__class__
+
 .. note: The |fenics| specific stuff should go into a specific package
          e.g. spuq.fenics or spuq.adaptors.fenics so that we can also
          use other FEM packages if we want 
