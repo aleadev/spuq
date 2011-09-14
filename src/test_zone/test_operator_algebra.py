@@ -1,19 +1,19 @@
 from numpy.random import rand, randn
-import spuq.operators
-from spuq.operators import *
-from spuq.operators import FullLinearOperator
 
-A = FullLinearOperator( 1 + rand(3, 5) )
-B = FullLinearOperator( 1 + rand(7, 3) )
-print A.domain_dim(), A.codomain_dim()
-print B.domain_dim(), B.codomain_dim()
+from spuq.linalg.vector import *
+from spuq.linalg.operator import *
 
-x = FullVector( rand( 5,1 ) )
+A = MatrixOperator( 1 + rand(3, 5) )
+B = MatrixOperator( 1 + rand(7, 3) )
+print A.domain.dim, A.codomain.dim
+print B.domain.dim, B.codomain.dim
+
+x = FlatVector( rand( 5,1 ) )
 print x
 
 # operators can be multiplied
 C = B * A
-print C.domain_dim(), C.codomain_dim()
+print C.domain.dim, C.codomain.dim
 
 # operator composition can be performed in a number of ways
 print B(A(x))

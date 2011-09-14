@@ -1,18 +1,17 @@
-__all__=[
-         "bases", 
-         "operators", 
-         "polynomials", 
-         "random_fields", 
-         "statistics", 
-         "utils", 
-         "vectors"
-         ]
-         
+__all__ = [
+    "bases",
+    "linalg",
+    "polynomials",
+    "random_fields",
+    "statistics",
+    "utils",
+    ]
+
 import statistics
 #from statistics import *
 
-import operators
-#from operators import *
+import linalg
+#from linalg import *
 
 import utils
 #from utils import *

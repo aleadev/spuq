@@ -1,147 +1,172 @@
+from abc import ABCMeta, abstractproperty, abstractmethod
+
 import numpy as np
-from numpy import array, ndarray, zeros, dot
 
-from spuq.bases.basis import EuclideanBasis
-from spuq.operators.full_vector import FullVector
-from spuq.operators.composed_operator import ComposedLinearOperator
-from spuq.operators.summed_operator import SummedLinearOperator
+from spuq.linalg.basis import Basis, EuclideanBasis
+from spuq.linalg.vector import FlatVector
 
 
-class LinearOperator(object):
-    """Abstract base class for linear operators mapping elements from 
+class Operator(object):
+    """Abstract base class for (linear) operators mapping elements from
     some domain into the codomain
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
-        return NotImplemented
-    
+        assert(isinstance(vec, Basis))
+        assert(self.domain == vec.basis)
+        return vec
+
+    @property
+    def is_linear(self):
+        "Return whether the operator is linear"
+        return True
+
+    @abstractproperty
+    def domain(self):
+        "Returns the basis of the domain"
+        pass
+
+    @abstractproperty
+    def codomain(self):
+        "Returns the basis of the codomain"
+        pass
+
+    @property
     def can_transpose(self):
-        "Return whether the operator can transpose itself"
-        return NotImplemented
+        "Return whether the operator can return its transpose"
+        return False
+
+    @property
+    def can_invert(self):
+        "Return whether the operator can return its inverse"
+        return False
 
     def transpose(self):
-        """Transpose the operator; 
+        """Transpose the operator;
         need not be implemented"""
         return NotImplemented
 
     def invert(self):
-        """Return an operator that is the inverse of this operator; 
+        """Return an operator that is the inverse of this operator;
         may not be implemented"""
         return NotImplemented
 
-
-    def domain_dim(self):
-        "Returns the dimension of the domain"
-        return self.domain_basis().dim()
-
-    def codomain_dim(self):
-        "Returns the dimension of the codomain"
-        return self.codomain_basis().dim()
-
     def as_matrix(self):
+        """Return the operator in matrix form """
         return NotImplemented
 
     def __mul__(self, other):
-        if isinstance(other, LinearOperator):
-            #return ComposedLinearOperator( operators=(other, self) )
-            return ComposedLinearOperator( other, self )
-        elif ( np.isscalar(other) ):
-            return SummedLinearOperator( operators=(self,), factors=(other,) ) 
+        """Multiply the operator with a scalar, with another operator,
+        meaning composition of the two operators, or with any other
+        object meaning operator application"""
+        if isinstance(other, Operator):
+            return ComposedOperator(other, self)
+        elif (np.isscalar(other)):
+            return SummedOperator(operators=(self,), factors=(other,))
         else:
-            return self.apply( other )
+            return self.apply(other)
 
     def __rmul__(self, other):
-        assert( np.isscalar(other) )
+        """Multiplication from the right works only if the other
+        object is a scalar"""
+        assert(np.isscalar(other))
         return self.__mul__(other)
 
     def __add__(self, other):
-        return SummedLinearOperator( operators=(self,other) )
+        """Sum two operators"""
+        return SummedOperator(operators=(self, other))
 
     def __sub__(self, other):
-        return SummedLinearOperator( operators=(self,other), factors=(1,-1) ) 
+        """Subtract two operators"""
+        return SummedOperator(operators=(self, other), factors=(1, -1))
 
     def __call__(self, arg):
-        assert( self.domain_basis() == arg.basis() )
+        """Operators have call semantics, which means """
         return self.apply(arg)
 
 
-class AbstractLinearOperator(LinearOperator):
-    """Base class for linear operators implementing some of the base
+class BaseOperator(Operator):
+    """Base class for operators implementing some of the base
     functionality
     """
-    
-    def __init__(self, domain_basis, codomain_basis):
-        self._domain_basis=domain_basis
-        self._codomain_basis=codomain_basis
 
-    def domain_basis(self):
-        "Returns the basis of the domain"
-        return self._domain_basis
-    
-    def codomain_basis(self):
-        "Returns the basis of the codomain"
-        return self._codomain_basis
+    def __init__(self, domain, codomain):
+        assert(isinstance(domain, Basis))
+        assert(isinstance(codomain, Basis))
+        self._domain = domain
+        self._codomain = codomain
 
- 
+    @property
+    def domain(self):
+        """Returns the basis of the domain"""
+        return self._domain
 
-class FullLinearOperator(AbstractLinearOperator):
-    def __init__(self, arr, domain_basis=None, codomain_basis=None):
-        assert( isinstance(arr, ndarray) )
-        if domain_basis is None:
-            domain_basis = EuclideanBasis(arr.shape[1])
-        if codomain_basis is None:
-            codomain_basis = EuclideanBasis(arr.shape[0])
-            
+    @property
+    def codomain(self):
+        """Returns the basis of the codomain"""
+        return self._codomain
+
+
+class MatrixOperator(BaseOperator):
+    def __init__(self, arr, domain=None, codomain=None):
+        assert(isinstance(arr, np.ndarray))
+        if domain is None:
+            domain = EuclideanBasis(arr.shape[1])
+        if codomain is None:
+            codomain = EuclideanBasis(arr.shape[0])
+
         self._arr = arr
-        AbstractLinearOperator.__init__(self, domain_basis, codomain_basis)
+        BaseOperator.__init__(self, domain, codomain)
 
     def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
-        return FullVector( dot(self._arr, vec.vec) )
+        assert(isinstance(vec, FlatVector))
+        assert(self.domain == vec.basis)
+        return FlatVector(np.dot(self._arr, vec.coeffs), self.codomain)
 
     def as_matrix(self):
         return np.asmatrix(self._arr)
 
     def transpose(self):
-        return FullLinearOperator( self._arr.T, 
-                                   self.codomain_basis(), 
-                                   self.domain_basis() )
-    
+        return MatrixOperator(self._arr.T,
+                            self.codomain,
+                            self.domain)
 
 
-
-    
-from spuq.operators.linear_operator import LinearOperator
-
-class ComposedLinearOperator(LinearOperator):
+class ComposedOperator(Operator):
     """Wrapper class for linear operators that are composed of other
     linear operators
     """
-    
+
     def __init__(self, op1, op2, trans=None, inv=None, invtrans=None):
-        """Takes two operators and returns the composition of those operators"""
-        assert( op1.codomain_basis() == op2.domain_basis() )
+        """Takes two operators and returns the composition of those
+        operators"""
+        assert(op1.codomain == op2.domain)
         self.op1 = op1
         self.op2 = op2
         self.trans = None
         self.inv = None
         self.invtrans = None
 
-    def domain_basis(self):
+    @property
+    def domain(self):
         "Returns the basis of the domain"
-        return self.op1.domain_basis()
+        return self.op1.domain
 
-    def codomain_basis(self):
+    @property
+    def codomain(self):
         "Returns the basis of the codomain"
-        return self.op2.codomain_basis()
+        return self.op2.codomain
 
     def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
-        r = self.op1.apply( vec )
-        r = self.op2.apply( r )
+        r = self.op1.apply(vec)
+        r = self.op2.apply(r)
         return r
-    
+
     def can_transpose(self):
         "Return whether the operator can transpose itself"
         if self.trans:
@@ -161,7 +186,7 @@ class ComposedLinearOperator(LinearOperator):
         if self.trans:
             return self.trans
         else:
-            return ComposedLinearOperator(
+            return ComposedOperator(
                 self.op2.transpose(),
                 self.op1.transpose(),
                 trans=self,
@@ -173,63 +198,62 @@ class ComposedLinearOperator(LinearOperator):
         if self.inv:
             return self.inv
         else:
-            return ComposedLinearOperator(
+            return ComposedOperator(
                 self.op2.invert(),
                 self.op1.invert(),
-                inv = self,
-                trans = self.invtrans,
-                invtrans = self.trans)
+                inv=self,
+                trans=self.invtrans,
+                invtrans=self.trans)
 
     def as_matrix(self):
         return self.op2.as_matrix() * self.op1.as_matrix()
 
-from spuq.operators.linear_operator import LinearOperator
 
-class SummedLinearOperator(LinearOperator):
+class SummedOperator(Operator):
     """Wrapper class for linear operators adding two operators
     """
-    
+
     def __init__(self, operators, factors=None, \
                      trans=None, inv=None, invtrans=None):
         """Takes two operators and returns the sum of those operators"""
-        op1=operators[0];
+        op1 = operators[0]
         for op2 in operators:
-            assert( op1.domain_basis() == op2.domain_basis() )
-            assert( op1.codomain_basis() == op2.codomain_basis() )
+            assert(op1.domain == op2.domain)
+            assert(op1.codomain == op2.codomain)
         self.operators = operators
         self.factors = factors
         self.trans = None
         self.inv = None
         self.invtrans = None
 
-    def domain_basis(self):
+    def domain(self):
         "Returns the basis of the domain"
-        return self.operators[0].domain_basis()
+        return self.operators[0].domain
 
-    def codomain_basis(self):
+    def codomain(self):
         "Returns the basis of the codomain"
-        return self.operators[0].codomain_basis()
+        return self.operators[0].codomain
 
     def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
         # TODO: implement zero vector
-        r=None
+        r = None
         for i, op in enumerate(self.operators):
-            r1 = op.apply( vec )
-            if self.factors and self.factors[i]!=1.0:
-                r1=self.factors[i]*r1
-            if r:
-                r=r+r1
+            r1 = op.apply(vec)
+            if self.factors and self.factors[i] != 1.0:
+                r1 = self.factors[i] * r1
+            if r is None:
+                r = r1
             else:
-                r=r1
+                r += r1
         return r
-    
+
     def can_transpose(self):
         "Return whether the operator can transpose itself"
         if self.trans:
             return True
         else:
-            return all( map( lambda op: op.can_transpose(), self.operators ) )
+            return all(map(lambda op: op.can_transpose(), self.operators))
 
     def is_invertible(self):
         "Return whether the operator is invertible"
@@ -240,12 +264,13 @@ class SummedLinearOperator(LinearOperator):
 
     def transpose(self):
         """Transpose the operator"""
-        # TODO: should go into AbstractLinOp, here only create_transpose
+        # TODO: should go into AbstractLinOp, here only
+        # create_transpose
         if self.trans:
             return self.trans
         else:
-            return SummedLinearOperator(
-                map( lambda op: op.transpose(), self.operators ),
+            return SummedOperator(
+                map(lambda op: op.transpose(), self.operators),
                 self.factors,
                 trans=self,
                 inv=self.invtrans,
@@ -256,35 +281,28 @@ class SummedLinearOperator(LinearOperator):
         if self.inv:
             return self.inv
         else:
-            # Cannot do this, the inverse of a sum is not the sum of the inverses
-            # throw exeception?
-            # TODO: should go if only 1 operators
+            # Cannot do this, the inverse of a sum is not the sum of
+            # the inverses throw exeception?  TODO: should go if only
+            # 1 operators
             return None
 
     def as_matrix(self):
-        return sum( map( lambda op: op.as_matrix(), self.operators ) )
-class TensorOperator(LinearOperator):
-    pass
-class MatrixOperator(LinearOperator):
-    "A linear operator implemented as a matrix"
-    pass
-    
-from spuq.operators.linear_operator import LinearOperator
-from spuq.operators.linear_operator import AbstractLinearOperator
+        return sum(map(lambda op: op.as_matrix(), self.operators))
 
-class ReindexOperator(AbstractLinearOperator):
-    def __init__( self, index_map, domain_basis, codomain_basis ):
-        AbstractLinearOperator( self, domain_basis, codomain_basis )
-        self.index_map = index_map
-        
-    def apply( ):
-        pass
 
-    def transpose():
-        pass
-
-    def invert():
-        # is size(domain_basis)==size(codomain_basis) && index_map is full
-        pass
-
-    
+# class TensorOperator(Operator):
+#     pass
+# class ReindexOperator(AbstractOperator):
+#     def __init__(self, index_map, domain, codomain):
+#         AbstractOperator(self, domain, codomain)
+#         self.index_map = index_map
+#
+#     def apply():
+#         pass
+#
+#     def transpose():
+#         pass
+#
+#     def invert():
+#         # is size(domain)==size(codomain) && index_map is full
+#         pass

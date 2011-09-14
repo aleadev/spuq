@@ -1,0 +1,4 @@
+#! /bin/bash
+
+(pep8 -rv spuq/  | less
+nosetests --verbosity=2  spuq/) 2>&1 | less

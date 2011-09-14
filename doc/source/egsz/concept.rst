@@ -300,7 +300,7 @@ Refinement::
 
   b0 = FEMBasis( FEniCSMesh() )
   coeffs = whatever()
-  v0 = FEMVector( coeffs, b )
+  v0 = FEMVector( coeffs, b0 )
   faces = marking_strategy( foo )
   (b1, prol, rest) = b0.refine( faces )
   v1 = prol( v0 )

@@ -14,7 +14,7 @@ class Basis(object):
 class EuclideanBasis(Basis):
     def __init__(self, dim):
         self._dim = dim
-        super(self, EuclideanBasis).__init__(self)
+        super(EuclideanBasis, self).__init__()
 
     @property
     def dim(self):
