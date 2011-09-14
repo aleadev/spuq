@@ -3,6 +3,8 @@ from numpy import array, ndarray, zeros, dot
 
 from spuq.bases.basis import EuclideanBasis
 from spuq.operators.full_vector import FullVector
+from spuq.operators.composed_operator import ComposedLinearOperator
+from spuq.operators.summed_operator import SummedLinearOperator
 
 
 class LinearOperator(object):
@@ -41,8 +43,6 @@ class LinearOperator(object):
         return NotImplemented
 
     def __mul__(self, other):
-        from spuq.operators.composed_operator import ComposedLinearOperator
-        from spuq.operators.summed_operator import SummedLinearOperator
         if isinstance(other, LinearOperator):
             #return ComposedLinearOperator( operators=(other, self) )
             return ComposedLinearOperator( other, self )
@@ -56,11 +56,9 @@ class LinearOperator(object):
         return self.__mul__(other)
 
     def __add__(self, other):
-        from spuq.operators.summed_operator import SummedLinearOperator
         return SummedLinearOperator( operators=(self,other) )
 
     def __sub__(self, other):
-        from spuq.operators.summed_operator import SummedLinearOperator
         return SummedLinearOperator( operators=(self,other), factors=(1,-1) ) 
 
     def __call__(self, arg):
