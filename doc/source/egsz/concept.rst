@@ -14,7 +14,8 @@ Basic guidelines for this document
 
 * all necessary formulas shall be collected, such that a complete
   workflow could be implemented from it
-* prose need not be nice
+* math formulas should all be supplemented by code sketches
+* the prose need not be nice, better complete
 
 
 Model setting
