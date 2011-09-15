@@ -10,6 +10,10 @@ __all__ = ["linear_operator",
 #from .composed_operator import *
 #from .summed_operator import *
 
-from numpy.testing import Tester
-test = Tester().test
-bench = Tester().bench
+try:
+    from numpy.testing import Tester
+    test = Tester().test
+    bench = Tester().bench
+except ImportError:
+    # silently ignore import errors here
+    pass
