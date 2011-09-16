@@ -33,10 +33,11 @@ class FunctionBasis(Basis):
         matrix)"""
         return NotImplemented
 
-    @abstractmethod
-    def eval_at(self, vector):
-        """Evaluated the basis functions at the specified points"""
-        return NotImplemented
+# NOTE: not directly supported by fenics classes - why do we need it?
+#    @abstractmethod
+#    def eval_at(self, vector):
+#        """Evaluated the basis functions at the specified points"""
+#        return NotImplemented
 
 
 

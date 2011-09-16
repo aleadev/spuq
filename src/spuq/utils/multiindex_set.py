@@ -38,6 +38,9 @@ class MultiindexSet(object):
                 return I
         arr=createMultiindexSet(m,p)
         return MultiindexSet(arr)
+
+    def __getitem__(self,i):
+        return self.arr[i]
         
     def __repr__(self):
         return "MI(m={0},p={1},arr={2})".format(self.m,self.p,self.arr)

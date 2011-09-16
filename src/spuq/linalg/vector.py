@@ -6,7 +6,7 @@ from spuq.linalg.basis import Basis, EuclideanBasis
 
 
 class Vector(object):
-    """Abstract base class for vectors"""
+    """Abstract base class for vectors which consist of a coefficient vector and an associated basis"""
     __metaclass__ = ABCMeta
 
     @abstractproperty

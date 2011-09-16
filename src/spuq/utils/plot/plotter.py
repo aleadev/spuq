@@ -1,12 +1,13 @@
-from numpy import *
-from pylab import plot, show, axis, subplot, xlabel, ylabel, grid, hist, figure
+from numpy import unique, nonzero
+from pylab import plot, show, axis, subplot, xlabel, ylabel, hist, figure
+from dolfin import plot as dplot
 
 class Plotter(object):
     def __init__(self):
         pass
     
     @staticmethod
-    def scatterplot(indices,data,grid=True):
+    def scatterplot(self,indices,data,grid=True):
         x = unique(indices[:,0])
         y = unique(indices[:,1])
         M = len(y)
@@ -32,6 +33,24 @@ class Plotter(object):
         for i in range(M-1):
             subplot(M,N,i+1)
             hist(data[i,:], bins=bins, normed=normed, weights=weights, cumulative=cumulative, bottom=bottom, histtype=histtype)
+
+    @staticmethod
+    def meshplot(mesh, plottitle=None):
+        from spuq.fem.fenics.fenics_mesh import FEniCSMesh
+        from dolfin import Mesh
+        assert(isinstance(mesh,FEniCSMesh) or isinstance(mesh,Mesh))
+        if isinstance(mesh,FEniCSMesh):
+            mesh = mesh.mesh()
+        dplot(mesh, title=plottitle)
+    
+    @staticmethod
+    def vectorplot(vec, plottitle=None):
+        from spuq.fem.fenics.fenics_vector import FEniCSVector
+        from dolfin import Function
+        assert(isinstance(vec,FEniCSVector) or isinstance(vec,Function))
+        if isinstance(vec,FEniCSVector):
+            vec = vec.F()
+        dplot(vec, title=plottitle)
 
     @staticmethod
     def figure(num=1):

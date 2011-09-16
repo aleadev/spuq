@@ -121,11 +121,14 @@ class MatrixOperator(BaseOperator):
         self._arr = arr
         BaseOperator.__init__(self, domain, codomain)
 
-    def apply(self, vec):
+    def apply(self, vec, outer=False):
         "Apply operator to vec which should be in the domain of op"
         assert(isinstance(vec, FlatVector))
         assert(self.domain == vec.basis)
-        return FlatVector(np.dot(self._arr, vec.coeffs), self.codomain)
+        if ~outer:
+            return FlatVector(np.dot(self._arr, vec.coeffs), self.codomain)
+        else:
+            return FlatVector(np.outer(self._arr, vec.coeffs), self.codomain)
 
     def as_matrix(self):
         return np.asmatrix(self._arr)
