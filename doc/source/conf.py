@@ -104,6 +104,7 @@ else:
     html_theme = 'sphinxdoc'
     #html_style = 'default.css'
 
+html_testing=1
 
 
 # Theme options are theme-specific and customize the look and feel of a theme
