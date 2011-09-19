@@ -1,7 +1,8 @@
 from spuq.fem.fem_vector import FEMVector
 # TODO: eliminate circular inclusion (by importing spuq.fem.fenics module/package instead)
-#from spuq.fem.fenics.fenics_basis import FEniCSBasis
-from dolfin import Function, FunctionSpace, FunctionSpaceFromCpp, Expression
+from spuq.fem.fenics.fenics_basis import FEniCSBasis
+from dolfin import Function, FunctionSpaceBase, GenericVector
+from dolfin.cpp import GenericFunction
 from numpy import array
 
 class FEniCSVector(FEMVector):
@@ -11,43 +12,36 @@ class FEniCSVector(FEMVector):
         '''initialise with coefficient vector and FEMBasis'''
         if basis is not None:
             assert(function is None)
-#            assert(isinstance(basis,FEniCSBasis))
-# TODO: assume FEniCSBasis for now - FunctionSpace should be supported as well
-            self._basis = basis
-            self._coeffs = coeffs
-            if not (isinstance(basis, FunctionSpace) or isinstance(basis, FunctionSpaceFromCpp)):    # TODO: check for FEniCSBasis instead!
-                basis = basis.basis
-            self._F = Function(basis, coeffs)
+            assert(isinstance(coeffs, GenericVector))
+            if isinstance(basis, GenericFunction):
+                basis = FEniCSBasis(functionspace=basis.function_space())
+            elif isinstance(basis, FunctionSpaceBase):
+                basis = FEniCSBasis(functionspace=basis)
+            assert(isinstance(basis,FEniCSBasis))
+            self.__basis = basis
+            self.__coeffs = coeffs
+            self.__F = Function(basis.functionspace, coeffs)
         else:
             assert(function is not None)
-            assert(isinstance(function, Function))
-            self._basis = function.function_space()
-            self._coeffs = function.vector()
-            self._F = function
+            assert(isinstance(function, GenericFunction))
+            self.__basis = FEniCSBasis(functionspace=function.function_space())
+            self.__coeffs = function.vector()
+            self.__F = function
 
     @property        
     def basis(self):
-        return self._basis
+        return self.__basis
     
     @property
     def coeffs(self):
-        return self._coeffs
-
-    @coeffs.setter
-    def coeffs(self, val):
-        self._coeffs = val
-        self._F = Function(self._basis, self._coeffs)
+        return self.__coeffs
     
     @property
     def F(self):
-        return self._F
-    
-    @F.setter
-    def F(self, val):
-        self._F = val
+        return self.__F
     
     def evaluate(self, x):
         val = array([])
-        self._F.eval(val, x)
+        self.__F.eval(val, x)
         return val
     

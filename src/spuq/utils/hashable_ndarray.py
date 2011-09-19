@@ -11,12 +11,13 @@ class hashable_ndarray(ndarray):
     def __init__(self, values):
         self.__hash = int(sha1(self).hexdigest(), 16)
 
-        def __eq__(self, other):
-            return all(ndarray.__eq__(self, other))
+    def __eq__(self, other):
+        return all(ndarray.__eq__(self, other))
 
-        def __hash__(self):
-            return self.__hash
+    def __hash__(self):
+        return self.__hash
 
-        def __setitem__(self, key, value):
-            raise Exception('hashable arrays are read-only')
+#    def __setitem__(self, key, value):
+#        raise Exception('hashable arrays are read-only')
+
         
