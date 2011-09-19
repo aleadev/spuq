@@ -96,15 +96,13 @@ pygments_style = 'sphinx'
 # a list of builtin themes.
 #html_theme = 'default'
 #html_theme = 'sphinxdoc'
-#on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-#if on_rtd:
-#    html_theme = 'rtd_amend'
-#else:
-#    html_theme = 'sphinxdoc'
-#
-#html_theme = 'default'
-html_theme = 'sphinxdoc'
-
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+    html_theme = 'default'
+    html_style = 'rtd_amend'
+else:
+    html_theme = 'sphinxdoc'
+    #html_style = 'default.css'
 
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -135,7 +133,6 @@ html_theme = 'sphinxdoc'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['../source/_static']
-#html_style = 'default.css'
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
