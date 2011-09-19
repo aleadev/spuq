@@ -1,4 +1,4 @@
-@import{rtd.css}
+@import url("rtd.css");
 
 .section p img.math {
     margin: 0em 0em;
