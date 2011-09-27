@@ -96,7 +96,31 @@ ordered basis :math:`B_{\mu}=\{b_{\mu,i}\}` of :math:`V_{\mu}`
    w_{\mu,i} b_{\mu,i}(x) P_{\mu}(y)
 
 for each vector :math:`w_{\mu}=[\dots w_{\mu,i} \dots]^T` of length
-:math:`\#B_{\mu}` we discretise equation :eq:`continuous_operator`
+:math:`\#B_{\mu}` we discretise equation :eq:`continuous_operator`.
+
+
+Evaluation of the discrete operator :math:`A_m`::
+
+  A = MultiOperator( a, rvs )
+  P = PDE()
+  def MultiOperator.apply( w ):
+      beta = rvs.get_orthogonal_poly().monic_coeffs
+      v = MultiVector()
+      delta = w.active_set()
+      for mu in delta:
+          A0 = P.assemble( a[0], w[mu].basis )
+          v[mu] = A0 * w[mu] 
+          for m in xrange(1,100):
+              Am = P.assemble( a[m], w[mu].basis )
+              mu1 = mu.add( (m,1) )
+              if mu1 in Delta:
+                  v[mu] += Am * beta(m, mu[m] + 1) * w[mu1].basis.project(w[mu].basis.mesh,INTERPOLATE)
+              mu2 = mu.add( (m,-1) )
+              if mu2 in Delta:
+                  v[mu] += Am * beta(m, mu[m]) * w[mu2].basis.project(w[mu].basis.mesh,INTERPOLATE)
+      return v
+
+
 
 Algorithms
 ==========
@@ -138,26 +162,115 @@ Identification of variables:
 .. note:: we rename :math:`\xi` to :math:`\eta`; further the error
   estimator returns also the local error, not only the global one
 
+
 Error estimator
 ---------------
+
+Definitions
+~~~~~~~~~~~
+
+The residual error estimator follows from a partial integration of the residual
+
+.. math:: \langle r_\mu(w_N),v\rangle = \int_D f\delta_{\mu 0} - \sigma_\mu(w_N)\cdot\nabla v\;dx,\quad v\in H^1_0(\Omega),
+
+for some given approximation :math:`w_N\in\mathcal{V}_N`.
+
+The flux :math:`\sigma_\mu` for :math:`\mu\in\Lambda`  is defined by
+
+.. math:: \sigma_\mu(w_N) := \bar{a}\nabla w_{N,\mu} + \sum_{m=1}^\infty a_m\nabla(\beta^m_{\mu_m+1}\Pi^{\mu+\epsilon_m}_\mu w_{N,\mu+\epsilon_m} + \beta^m_{\mu_m}\Pi^{\mu-\epsilon_m}_\mu w_{N,\mu-\epsilon_m}).
+
+We have to evaluate the volume and edge contributions in elements :math:`T\in\mathcal{T}_\mu` and on edges :math:`S\in\mathcal{S}_\mu` of the error estimator,
+
+.. math:: \eta_{\mu,T}(w_N) &:= h_T||\bar{a}^{-1/2}(f\delta_{\mu 0} + \nabla\cdot\sigma_\mu(w_N))||_{L^2(T)}\\
+          \eta_{\mu,S} (w_N) &:= h_S^{1/2} ||\bar{a}^{-1/2} [\sigma_\mu(w_N)]_S ||_{L^2(S)}
+
+These sum up to the total error estimator
+
+.. math:: \eta_\mu(w_N) := \left( \sum_{T\in\mathcal{T}_\mu} \eta_{\mu,T}(w_N)^2 + \sum_{S\in\mathcal{S}_\mu} \eta_{\mu,S}(w_N)^2 \right)^{1/2}.
+
+
+Note that for conforming piecewise affine approximations (i.e. continuous linear elements) the divergence of :math:`\sigma_\mu` simplifies to
+
+.. math:: \nabla\cdot\sigma_\mu(w_N) = \nabla\bar{a}\cdot\nabla w_{N,\mu} + \sum_{m=1}^\infty \nabla a_m\cdot\nabla( \beta^m_{\mu_m+1}\Pi^{\mu+\epsilon_m}_\mu w_{N,\mu+\epsilon_m} + \beta^m_{\mu_m}\Pi^{\mu-\epsilon_m}_\mu w_{N,\mu-\epsilon_m} ).
+
+
+
+Algorithm for the evaluation of :math:`\sigma_\mu`::
+
+  w = MultiVector()
+  m = MultiIndex( (...) )
+  T0 = IntialMesh()
+  w[m] = FenicsVector(T0)
+  # sigma_mu
+  # a = (Function, Function, Function, ... )
+  newDelta = extend(Delta)
+  for mu in newDelta:
+      sigma_x = a[0]( w[mu].mesh.nodes ) * w[mu].dx() 
+      for m in xrange(1,100):
+          mu1 = mu.add( (m,1) )
+          if mu1 in Delta:
+              sigma_x += a[m]( w[mu].mesh.nodes ) * beta(m, mu[m]+1) *\
+                          w[mu1].project( w[mu].mesh ).dx()
+          mu2 = mu.add( (m,-1) )
+          if mu2 in Delta:
+              sigma_x += a[m]( w[mu].mesh.nodes ) * beta(m, mu[m]) *\
+                          w[mu2].project( w[mu].mesh ).dx()
+
 
 The function ``error_estimator``::
 
   def error_estimator( w, zeta, c_eta, c_Q ):
     
 
-
-
 Projection :math:`\Pi_\mu^\nu:V_\nu\to V_\mu` for some
 :math:`\mu,\nu\in\Lambda` can be an arbitrary map such as the
 :math:`L^2`-projection, the :math:`\mathcal{A}`-orthogonal projection
-or nodal interpolation ::
-    
-  def project(  ):
+or nodal interpolation.
 
 
 Refinement
 ----------
+
+The marking/refinement procedure is three-fold:
+
+#. (for active indices :math:`\mu\in\Lambda`) evaluation of the residual error estimator :math:`\hat{\eta}_{\mu,S}(w_N)` and edge marking of respective FEM meshes :math:`\mathcal{T}_\mu`
+#. (for active indices and their *neighbourhood*) estimation of the projection errors and marking of respective FEM meshes
+#. activation of new indices based on the projection estimation of 2.
+
+
+FEM residuals
+~~~~~~~~~~~~~
+
+We employ an edge-based Dörfler marking strategy for all edges :math:`S\in\mathcal{S}_\mu` with the edge indicator
+
+.. math::
+   \hat{\eta}_{\mu,S} := \left( \eta_{\mu,S}(w_N)^2 + \frac{1}{d+1} \sum_{T:\ S\in\mathcal{S}_\mu \cap \partial T} \eta_{\mu,T}(w_N)^2 \right)^{1/2}
+
+such that, for some parameter :math:`0<\vartheta_\eta<1`, a set
+
+.. math::
+   \hat{\mathcal{S}}_\mu \subset \bigcup_{\mu\in\Lambda} \{\mu\}\times\mathcal{S}_\mu
+
+of small cardinality is obtained for which holds
+
+.. math::
+   \sum_{(\mu,S)\in\hat{\mathcal{S}}_\mu} \hat{\eta}_{\mu,S}^2 \geq \vartheta_\eta^2 \sum_{\mu\in\Lambda} \eta_\mu(w_N)^2.
+
+Let :math:`\mathcal{T}_N:=\bigcup_{\mu\in\Lambda}\{\mu\}\times\mathcal{T}_\mu` encode the set of all elements of all meshes paired with the respective multiindex :math:`\mu`, i.e. for all element :math:`T\in\mathcal{T}_\mu` for any :math:`\mu\in\Lambda` there is a tuple :math:`(\mu,T)\in\mathcal{T}_N`.
+
+Let :math:`\mathcal{T}_\eta\subset\mathcal{T}_N` be the subset of elements which have at least one edge in :math:`\hat{\mathcal{S}}_\mu` and mark these elements for refinement.
+
+
+Projection errors
+~~~~~~~~~~~~~~~~~
+
+TODO
+
+
+Activation of new indices
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+TODO
 
 
 
@@ -166,8 +279,8 @@ PCG
 
 This should be implemented as a standard preconditioned conjugate
 gradient solver, where the special treatment necessary for the
-peculiar structure of :math:`w_N` is hidden in a generalised vector
-class that takes care of that.
+specific structure of :math:`w_N` is hidden in a generalised vector
+class (``FEMVector``) that takes care of that.
 
 Meaning of the variables
 
@@ -204,10 +317,9 @@ Data structures
 Vectors
 -------
 
-Sketch for the generalised vector class for ``w`` (we call it for now
-``AdaptiveVector``, proposals for a better name are welcome) ::
+Sketch for the generalised vector class for ``w`` which we call ``MultiVector``::
 
-  class AdaptiveVector(object):
+  class MultiVector(object):
     #map multiindex to Vector (=coefficients + basis)
     def __init__(self):
       self.mi2vec = dict()
@@ -234,7 +346,7 @@ Sketch for the generalised vector class for ``w`` (we call it for now
     def __sub__():
       pass
 
-The ``AdaptiveVector`` needs a set of /normal/ vectors which represent
+The ``MultiVector`` needs a set of *normal* vectors which represent
 a solution on a single FEM mesh::
 
   class FEMVector(FullVector):
@@ -244,13 +356,13 @@ a solution on a single FEM mesh::
       assert isinstance( basis, FEMBasis )
       self.FullVector.__init__(coeff, basis)
       
-    def transfer(self, basis, type=FEMVector.INTERPOLATE):
+    def project(self, basis, type=FEMVector.INTERPOLATE):
       assert isinstance( basis, FEMBasis )
-      newcoeff = FEMBasis.transfer( self.coeff, self.basis, basis, type )
+      newcoeff = FEMBasis.project( self.coeff, self.basis, basis, type )
       return FEMVector( newcoeff, basis )
 
 The ``FEMVector``s need a basis which should be fixed to a
-``FEMBasis`` and derivatives (which could be a Fenics or Dolfin basis
+``FEMBasis`` and derivatives (which could be a |fenics| or dolfin basis
 or whatever FEM software is underlying it)::
 
   class FEMBasis(FunctionBasis):
@@ -270,7 +382,7 @@ or whatever FEM software is underlying it)::
       pass
       
     @classmethod
-    def transfer( coeff, oldbasis, newbasis, type ):
+    def project( coeff, oldbasis, newbasis, type ):
       # let dolfin do the transfer accoring to type
       pass      
 
@@ -315,8 +427,6 @@ Refinement::
 Questions
 =========
 
-* Is :math:`\Lambda` adaptively enlarged? Probably yes; we let it
-  denote the set of *active* multiindices.
 * What kind of requirements are there for the 
   projectors :math:`\Pi_\mu^\nu`?
 
