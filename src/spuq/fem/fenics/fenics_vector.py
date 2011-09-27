@@ -3,7 +3,7 @@ from spuq.fem.fem_vector import FEMVector
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from dolfin import Function, FunctionSpaceBase, GenericVector
 from dolfin.cpp import GenericFunction
-from numpy import array
+from numpy import array, empty
 
 class FEniCSVector(FEMVector):
     '''wrapper for FEniCS/dolfin Function'''
@@ -40,8 +40,9 @@ class FEniCSVector(FEMVector):
     def F(self):
         return self.__F
     
+    @override
     def evaluate(self, x):
-        val = array([])
+        val = empty([0,0])
         self.__F.eval(val, x)
         return val
     
