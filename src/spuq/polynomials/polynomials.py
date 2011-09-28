@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 import numpy as np
-from scipy import factorial
+import scipy
 
+import spuq.polynomials._polynomials as _p
 
 class PolynomialFamily(object):
     """abstract base for polynomials"""
@@ -12,14 +13,25 @@ class PolynomialFamily(object):
         self.structcoeffs = np.empty((0, 0, 0))
 
     @abstractmethod
-    def eval(self, n,  x):
-        """evaluate polynomial of degree n at points x"""
+    def recurrence_coefficients(self, n):
         return NotImplemented
 
     @abstractmethod
     def get_structure_coefficient(self, a, b, c):
         """return specific structure coefficient"""
         return NotImplemented
+
+    def eval(self, n,  x):
+        """Evaluate polynomial of degree n at points x"""
+        if n == 0:
+            # ensure return value has the right format
+            return 0 * x + 1
+        else:
+            h1, h0 = 1, 0
+            for i in xrange(0, n):
+                (a, b, c) = self.recurrence_coefficients(i)
+                h1, h0 = (a + b * x) * h1 - c * h0, h1
+            return h1
 
     def get_coefficients(self, n):
         """return coefficients of polynomial"""
@@ -50,23 +62,6 @@ class OrthogonalPolynomialFamily(PolynomialFamily):
         """return True if polynomials are normalised"""
         return False
 
-    def get_measure(self):
-        """Return the measure underlying the scalar product"""
-        return NotImplemented
-
-
-class Measure(object):
-    __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def support(self):
-        """Return an interval containing the support"""
-        pass
-
-    @abstractproperty
-    def is_discrete(self):
-        pass
-
 
 class NormalisedPolynomialFamily(OrthogonalPolynomialFamily):
     """Wrapper that transforms an unnormalised family of orthogonal
@@ -74,6 +69,16 @@ class NormalisedPolynomialFamily(OrthogonalPolynomialFamily):
 
     def __init__(self, family):
         self._family = family
+        self.recurrence_coefficients = \
+            _p.normalise_rc(_family.recurrence_coefficients)
+
+    def norm(self, n):
+        """Return the norm of the `n`-th polynomial."""
+        return 1.0
+
+    def is_normalised(self):
+        """Return True if polynomials are normalised."""
+        return True
 
 
 def normalise(family):
@@ -83,23 +88,11 @@ def normalise(family):
 class LegendrePolynomials(OrthogonalPolynomialFamily):
 
     def recurrence_coefficients(self, n):
-        pass
+        return _p.rc_legendre(n)
 
-    def eval(self, n,  x):
-        if n == 0:
-            return 0 * x + 1        # ensure return value has the right format
-        elif n == 1:
-            return x
-        else:
-            h0 = 1
-            h1 = x
-            for i in xrange(2, n + 1):
-                h1, h0 = (2 * i - 1.0) * x * h1 / i - (i - 1.0) * h0 / i, h1
-            return h1
-
-    def norm(self, n):
+    def norm(self, n, sqrt=True):
         """returns norm of polynomial"""
-        return NotImplemented
+        return _p.sqnorm_legendre(n)
 
     def get_structure_coefficient(self, a, b, c):
         return NotImplemented
@@ -107,21 +100,12 @@ class LegendrePolynomials(OrthogonalPolynomialFamily):
 
 class StochasticHermitePolynomials(OrthogonalPolynomialFamily):
 
-    def eval(self, n,  x):
-        if n == 0:
-            return 0 * x + 1        # ensure return value has the right format
-        elif n == 1:
-            return x
-        else:
-            h0 = 1
-            h1 = x
-            for i in xrange(2, n + 1):
-                h1, h0 = x * h1 - (i - 1) * h0, h1
-            return h1
+    def recurrence_coefficients(self, n):
+        return _p.rc_stoch_hermite(n)
 
     def norm(self, n):
         """returns norm of polynomial"""
-        return NotImplemented
+        return _p.sqnorm_stoch_hermite(n)
 
     def get_structure_coefficient(self, a, b, c):
         n = max((a, b, c))
@@ -130,8 +114,9 @@ class StochasticHermitePolynomials(OrthogonalPolynomialFamily):
             c = 0
         else:
             s /= 2
-            c = (factorial(s - a) * factorial(s - b) * factorial(s - c) /
-                 (factorial(a) * factorial(b) * factorial(c)))
+            fac = scipy.factorial
+            c = (fac(s - a) * fac(s - b) * fac(s - c) /
+                 (fac(a) * fac(b) * fac(c)))
 
 
 
