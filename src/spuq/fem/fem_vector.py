@@ -3,8 +3,6 @@ from spuq.linalg.vector import FlatVector
 
 class FEMVector(FlatVector):
     '''ABC FEM vector which contains a coefficient vector and a discrete basis.'''
-
-    __metaclass__ = abc.ABCMeta
     
 #    def __init__(self, coeff, basis):
 #        assert isinstance(basis, FEMBasis)
@@ -18,12 +16,3 @@ class FEMVector(FlatVector):
 #        assert isinstance(basis, FEMBasis)
 #        newcoeff = FEMBasis.project(self.coeff, self.basis, basis, ptype, inverse)
 #        return FEMVector(newcoeff, basis)
-
-    @abc.abstractproperty
-    def basis(self):
-        return NotImplemented
-    
-    @abc.abstractproperty
-    def coeffs(self):
-        return NotImplemented
-    

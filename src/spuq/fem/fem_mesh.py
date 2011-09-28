@@ -7,23 +7,23 @@ class FEMMesh(object):
     
     def num_cells(self):
         '''return number cells'''
-        return self.mesh().num_cells()
+        return self.mesh.num_cells()
     
     def num_edges(self):
         '''return number edges'''
-        return self.mesh().num_edges()
+        return self.mesh.num_edges()
     
     def num_vertices(self):
         '''return number vertices'''
-        return self.mesh().num_vertices()
+        return self.mesh.num_vertices()
     
     def cells(self):
         '''return cells'''
-        return self.mesh().cells()
+        return self.mesh.cells()
     
     def coordinates(self):
         '''return vertex coordinates'''
-        return self.mesh().coordinates()
+        return self.mesh.coordinates()
     
     @abstractmethod
     def refine(self, cells=None):
@@ -32,9 +32,5 @@ class FEMMesh(object):
     
     @abstractproperty
     def mesh(self):
-        return NotImplemented
-    
-    @mesh.setter
-    def mesh(self, newmesh):
         return NotImplemented
     

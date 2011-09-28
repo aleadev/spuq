@@ -1,6 +1,5 @@
 from numpy import unique, nonzero
 from pylab import plot, show, axis, subplot, xlabel, ylabel, hist, figure
-from dolfin import plot as dplot
 
 class Plotter(object):
     def __init__(self):
@@ -35,22 +34,28 @@ class Plotter(object):
             hist(data[i,:], bins=bins, normed=normed, weights=weights, cumulative=cumulative, bottom=bottom, histtype=histtype)
 
     @staticmethod
-    def meshplot(mesh, plottitle=None):
+    def meshplot(mesh, plottitle='mesh'):
         from spuq.fem.fenics.fenics_mesh import FEniCSMesh
         from dolfin import Mesh
+        from dolfin import plot as dplot
+        from dolfin.common.plotting import interactive
         assert(isinstance(mesh,FEniCSMesh) or isinstance(mesh,Mesh))
         if isinstance(mesh,FEniCSMesh):
-            mesh = mesh.mesh()
+            mesh = mesh.mesh
         dplot(mesh, title=plottitle)
+        interactive()
     
     @staticmethod
-    def vectorplot(vec, plottitle=None):
+    def vectorplot(vec, plottitle='vector'):
         from spuq.fem.fenics.fenics_vector import FEniCSVector
         from dolfin import Function
+        from dolfin import plot as dplot
+        from dolfin.common.plotting import interactive
         assert(isinstance(vec,FEniCSVector) or isinstance(vec,Function))
         if isinstance(vec,FEniCSVector):
-            vec = vec.F()
+            vec = vec.F
         dplot(vec, title=plottitle)
+        interactive()
 
     @staticmethod
     def figure(num=1):

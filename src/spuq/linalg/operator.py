@@ -96,18 +96,18 @@ class BaseOperator(Operator):
     def __init__(self, domain, codomain):
         assert(isinstance(domain, Basis))
         assert(isinstance(codomain, Basis))
-        self._domain = domain
-        self._codomain = codomain
+        self.__domain = domain
+        self.__codomain = codomain
 
     @property
     def domain(self):
         """Returns the basis of the domain"""
-        return self._domain
+        return self.__domain
 
     @property
     def codomain(self):
         """Returns the basis of the codomain"""
-        return self._codomain
+        return self.__codomain
 
 
 class MatrixOperator(BaseOperator):
@@ -118,23 +118,20 @@ class MatrixOperator(BaseOperator):
         if codomain is None:
             codomain = EuclideanBasis(arr.shape[0])
 
-        self._arr = arr
+        self.__arr = arr
         BaseOperator.__init__(self, domain, codomain)
 
-    def apply(self, vec, outer=False):
+    def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
         assert(isinstance(vec, FlatVector))
         assert(self.domain == vec.basis)
-        if ~outer:
-            return FlatVector(np.dot(self._arr, vec.coeffs), self.codomain)
-        else:
-            return FlatVector(np.outer(self._arr, vec.coeffs), self.codomain)
+        return FlatVector(np.dot(self.__arr, vec.coeffs), self.codomain)
 
     def as_matrix(self):
-        return np.asmatrix(self._arr)
+        return np.asmatrix(self.__arr)
 
     def transpose(self):
-        return MatrixOperator(self._arr.T,
+        return MatrixOperator(self.__arr.T,
                             self.codomain,
                             self.domain)
 
