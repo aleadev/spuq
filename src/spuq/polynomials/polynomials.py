@@ -23,15 +23,7 @@ class PolynomialFamily(object):
 
     def eval(self, n,  x):
         """Evaluate polynomial of degree n at points x"""
-        if n == 0:
-            # ensure return value has the right format
-            return 0 * x + 1
-        else:
-            h1, h0 = 1, 0
-            for i in xrange(0, n):
-                (a, b, c) = self.recurrence_coefficients(i)
-                h1, h0 = (a + b * x) * h1 - c * h0, h1
-            return h1
+        return _p.compute_poly(self.recurrence_coefficients, n, x)[-1]
 
     def get_coefficients(self, n):
         """return coefficients of polynomial"""
@@ -50,9 +42,6 @@ class PolynomialFamily(object):
                             self.get_structure_coefficient(a, b, c)
         return self.structcoeffs[0:n, 0:n, 0:n]
 
-
-class OrthogonalPolynomialFamily(PolynomialFamily):
-    """Base class for """
     @abstractmethod
     def norm(self, n):
         """returns norm of polynomial"""
@@ -63,7 +52,7 @@ class OrthogonalPolynomialFamily(PolynomialFamily):
         return False
 
 
-class NormalisedPolynomialFamily(OrthogonalPolynomialFamily):
+class NormalisedPolynomialFamily(PolynomialFamily):
     """Wrapper that transforms an unnormalised family of orthogonal
     polynomials into normalised ones"""
 
@@ -85,7 +74,7 @@ def normalise(family):
     return NormalisedPolynomialFamily(family)
 
 
-class LegendrePolynomials(OrthogonalPolynomialFamily):
+class LegendrePolynomials(PolynomialFamily):
 
     def recurrence_coefficients(self, n):
         return _p.rc_legendre(n)
@@ -98,7 +87,7 @@ class LegendrePolynomials(OrthogonalPolynomialFamily):
         return NotImplemented
 
 
-class StochasticHermitePolynomials(OrthogonalPolynomialFamily):
+class StochasticHermitePolynomials(PolynomialFamily):
 
     def recurrence_coefficients(self, n):
         return _p.rc_stoch_hermite(n)
@@ -108,15 +97,7 @@ class StochasticHermitePolynomials(OrthogonalPolynomialFamily):
         return _p.sqnorm_stoch_hermite(n)
 
     def get_structure_coefficient(self, a, b, c):
-        n = max((a, b, c))
-        s = a + b + c
-        if bool(s % 2) or a <= b + c or b <= a + c or c <= a + b:
-            c = 0
-        else:
-            s /= 2
-            fac = scipy.factorial
-            c = (fac(s - a) * fac(s - b) * fac(s - c) /
-                 (fac(a) * fac(b) * fac(c)))
+        return _p.stc_stoch_hermite(a, b, c)
 
 
 

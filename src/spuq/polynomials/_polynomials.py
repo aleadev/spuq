@@ -69,7 +69,8 @@ Stoch. Hermite He_n(x), [ - inf, inf], w(x) = 1, (sqrt(2 * pi)n!), (1, 0, 1, n)
 import numpy as np
 import scipy as sp
 
-
+_0 = lambda x: 0 * x
+_1 = lambda x: 0 * x + 1
 
 def rc4_to_rc3(rc4_func):
     def rc3_func(n):
@@ -79,11 +80,11 @@ def rc4_to_rc3(rc4_func):
     return rc3_func
 
 
-def rc_orth_to_rc3(rc_orth_func):
+def rc_norm_to_rc3(rc_norm_func):
     def rc3_func(n):
         print n
-        (alpha0, beta0) = rc_orth_func(n)
-        (alpha1, beta1) = rc_orth_func(n + 1)
+        (alpha0, beta0) = rc_norm_func(n)
+        (alpha1, beta1) = rc_norm_func(n + 1)
         a = -float(alpha0) / float(beta1)
         b = 1.0 / float(beta1)
         c = float(beta0) / float(beta1)
@@ -120,12 +121,62 @@ def sqnorm_from_rc(rc_func, n):
 
 
 def compute_poly(rc_func, n, x):
-    f = [0 * x, 0 * x + 1]
+    f = [_0(x), _1(x)]
     for i in xrange(n):
         (a, b, c) = rc_func(float(i))
         fn = (a + x * b) * f[i + 1] - c * f[i]
         f.append(fn)
     return f[1:]
+
+
+def compute_poly2(rc_func, n, x):
+    if n == 0:
+        # ensure return value has the right format (e.g. if x is a
+        # vector, ndarray or poly1d)
+        return _1(x)
+    else:
+        h1, h0 = 1, 0
+        for i in xrange(0, n):
+            (a, b, c) = rc_func(i)
+            h1, h0 = (a + b * x) * h1 - c * h0, h1
+        return h1
+
+
+def eval_clenshaw(rc_func, coeffs, x):
+    """Evaluate the polynomial using Clenshaw's algorithm"""
+    q1 = q2 = _0(x)
+    n = len(coeffs)-1
+    for k in reversed(xrange(n+1)):
+        (ak, bk, ck) = rc_func(k)
+        (ak2, bk2, ck2) = rc_func(k+1)
+        q0 = coeffs[k] + (ak + bk * x) * q1 - ck2 * q2
+        q1, q2 = q0, q1
+    return q0
+
+
+def eval_forsythe(rc_func, coeffs, x):
+    """Evaluate the polynomial using Forsythe's algorithm"""
+    n = len(coeffs)-1
+
+    t0 = _1(x)
+    f0 = coeffs[0]
+    if n<1:
+        return f0
+    (a0, b0, c0) = rc_func(0)
+    t1 = a0 + b0 * x
+    f1 = f2 = f0 + coeffs[1] * t1
+
+    for k in xrange(1, n):
+        (ak, bk, ck) = rc_func(k)
+        t2 = (ak + bk * x) * t1 - ck * t0
+        f2 = f1 + coeffs[k+1] * t2
+        t0, t1, f1 = t1, t2, f2
+    return f2
+
+# Monomials
+def rc_monomials(n):
+    return (0.0, 1.0, 0.0)
+    
 
 # Stochatic Hermite polynomials
 def rc_stoch_hermite(n):
@@ -143,6 +194,17 @@ def sqnorm_stoch_hermite(n):
     """AS page 782 (s.t. h0 == 1)"""
     return sp.factorial(n)
 
+def stc_stoch_hermite(a, b, c):
+    n = max((a, b, c))
+    s = a + b + c
+    if bool(s % 2) or a <= b + c or b <= a + c or c <= a + b:
+        c = 0
+    else:
+        s /= 2
+        fac = scipy.factorial
+        c = (fac(s - a) * fac(s - b) * fac(s - c) /
+             (fac(a) * fac(b) * fac(c)))
+
 # Legendre polynomials
 
 @rc4_to_rc3
@@ -151,7 +213,7 @@ def rc_legendre(n):
     return (n + 1.0, 0.0, 2.0 * n + 1.0, float(n))
 
 
-def rc_orth_legendre(n):
+def rc_norm_legendre(n):
     """ """
     if n > 0:
         beta = 1.0 / np.sqrt(4.0 - 1.0 / float(n) ** 2)
@@ -173,8 +235,8 @@ def sqnorm_legendre(n):
 
 def testit():
     x = np.poly1d([1, 0])
-    rc3_orth_legendre = rc_orth_to_rc3(rc_orth_legendre)
-    P1 = compute_poly(rc3_orth_legendre, 5, x)
+    rc3_norm_legendre = rc_norm_to_rc3(rc_norm_legendre)
+    P1 = compute_poly(rc3_norm_legendre, 5, x)
     P2 = compute_poly(rc_legendre, 5, x)
     for i in range(5):
         print sqnorm_legendre(i), sqnorm_legendre(i) ** 0.5
@@ -200,7 +262,7 @@ def foo():
         t = rc_legendre(i)
         print (t[0] * h1 / h2, t[1] * h1 / h2, t[2] * h0 / h2)
         print (t[0] * h2 / h1, t[1] * h2 / h1, t[2] * h2 / h0)
-        print rc_orth_legendre(i)
+        print rc_norm_legendre(i)
         print
 
 #testit()

@@ -25,6 +25,11 @@ class TestRecurrences(TestCase):
         assert_array_equal(P[3].coeffs, np.array([1, 0, - 3, 0]))
         assert_array_equal(P[4].coeffs, np.array([1, 0, - 6, 0, 3]))
 
+    def test_monomials(self):
+        x = np.poly1d([1, 0])
+        P = compute_poly(rc_monomials, 5, x)
+        assert_array_equal(P[4], x**4)
+
     def test_sqnorm_from_rc(self):
         assert_array_almost_equal(sqnorm_legendre(0), 1)
         h1 = [sqnorm_from_rc(rc_legendre, i) for i in range(7)]
@@ -38,8 +43,8 @@ class TestRecurrences(TestCase):
 
     def test_rc3_to_orth(self):
         x = np.poly1d([1, 0])
-        rc3_orth_legendre = rc_orth_to_rc3(rc_orth_legendre)
-        P1 = compute_poly(rc3_orth_legendre, 4, x)
+        rc3_norm_legendre = rc_norm_to_rc3(rc_norm_legendre)
+        P1 = compute_poly(rc3_norm_legendre, 4, x)
         P2 = compute_poly(rc_legendre, 4, x)
         hs = [sqnorm_legendre(i) ** 0.5 for i in range(5)]
 
@@ -50,7 +55,7 @@ class TestRecurrences(TestCase):
         assert_array_almost_equal(P1[4] * hs[4], P2[4])
 
     def test_normalise_rc(self):
-        rc_1 = rc_orth_to_rc3(rc_orth_legendre)
+        rc_1 = rc_norm_to_rc3(rc_norm_legendre)
         rc_2 = normalise_rc(rc_legendre)
         rc_3 = normalise_rc(rc_legendre, sqnorm_legendre)
 
@@ -62,5 +67,52 @@ class TestRecurrences(TestCase):
         assert_array_almost_equal(rc_1(2), rc_3(2))
         assert_array_almost_equal(rc_1(3), rc_3(3))
         assert_array_almost_equal(rc_1(4), rc_3(4))
+
+    def test_eval_clenshaw(self):
+        rc = rc_monomials
+        x = np.poly1d([1, 0])
+        assert_array_equal(eval_clenshaw(rc, [2], x), 2)
+        assert_array_equal(eval_clenshaw(rc, [2, 3, 0.5], x), 
+                           2 + 3 * x + 0.5 * x ** 2)
+        assert_array_equal(eval_clenshaw(rc, [2, 3, 0.5, 4], x), 
+                           2 + 3 * x + 0.5 * x ** 2 + 4 * x**3)
+
+        from operator import add, mul
+        from itertools import imap
+        inner = lambda p, q: reduce(add, imap(mul, p, q))
+
+        rc = rc_legendre
+        x = np.poly1d([1, 0])
+        p = compute_poly(rc, 4, x)
+        assert_array_equal(eval_clenshaw(rc, [3], x), inner(p, [3]))
+        assert_array_equal(eval_clenshaw(rc, [3, 5], x), inner(p, [3, 5]))
+        assert_array_equal(eval_clenshaw(rc, [3, 5, 7], x), inner(p, [3, 5, 7]))
+        assert_array_equal(eval_clenshaw(rc, [3, 5, 7, 9], x), 
+                           inner(p, [3, 5, 7, 9]))
+
+    def test_eval_forsythe(self):
+        rc = rc_monomials
+        x = np.poly1d([1, 0])
+        assert_array_equal(eval_forsythe(rc, [2], x), 2)
+        assert_array_equal(eval_forsythe(rc, [2, 3, 0.5], x), 
+                           2 + 3 * x + 0.5 * x ** 2)
+        assert_array_equal(eval_forsythe(rc, [2, 3, 0.5, 4], x), 
+                           2 + 3 * x + 0.5 * x ** 2 + 4 * x**3)
+
+        from operator import add, mul
+        from itertools import imap
+        inner = lambda p, q: reduce(add, imap(mul, p, q))
+
+        rc = rc_legendre
+        x = np.poly1d([1, 0])
+        p = compute_poly(rc, 4, x)
+        assert_array_equal(eval_forsythe(rc, [3], x), inner(p, [3]))
+        assert_array_equal(eval_forsythe(rc, [3, 5], x), inner(p, [3, 5]))
+        assert_array_equal(eval_forsythe(rc, [3, 5, 7], x), inner(p, [3, 5, 7]))
+        assert_array_equal(eval_forsythe(rc, [3, 5, 7, 9], x), 
+                           inner(p, [3, 5, 7, 9]))
+
+#        assert_array_equal(eval_clenshaw(rc, [2, 3, 0.5], x), 
+#                           2 * p[0] + 3 * p[1] + 0.5 * p[2])
 
 
