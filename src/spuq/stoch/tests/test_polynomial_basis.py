@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import *
 
-from spuq.bases.polynomial_basis import *
+from spuq.stoch.polynomial_basis import *
 
 class TestPolynomialBasis(TestCase):
     

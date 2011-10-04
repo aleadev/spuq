@@ -1,51 +1,83 @@
+from abc import *
+
 class Distribution(object):
-    def pdf( self, x ): 
+    """Base class for probability distributions"""
+    __metaclass__ = ABCMeta
+    
+    @abstractmethod
+    def pdf( self, x ):
+        """Return the probability distribution function at x"""
         return NotImplemented
+    
+    @abstractmethod
     def cdf( self, x ): 
+        """Return the cumulative distribution function at x"""
         return NotImplemented
+
+    @abstractmethod
     def invcdf( self, x ): 
+        """Return the cumulative distribution function at x"""
         return NotImplemented
     
+    @abstractproperty
     def mean( self ): 
+        """The mean of the distribution"""
         return NotImplemented
+    
+    @abstractproperty
     def var( self ): 
+        """The variance of the distribution"""
         return NotImplemented
+
+    @abstractproperty
     def skew( self ): 
+        """The skewness of the distribution"""
         return NotImplemented
-    def excess( self ): 
+    
+    @abstractproperty
+    def kurt( self ): 
+        """The kurtosis excess of the distribution"""
         return NotImplemented
-        
+    
+    @abstractproperty
     def median( self ): 
+        """The median of the distribution"""
         return NotImplemented
     
-    def getOrthogonalPolynomials(self):
+    @abstractproperty
+    def orth_polys(self):
+        """The median of the distribution"""
         return NotImplemented
-        
+    
+    @abstractmethod
     def sample(self, size):
+        """Sample from the distribution"""
         return NotImplemented
-class ShiftedDistribution(ProbabilityDistribution):
-    def __init__(self,dist,delta):
+
+
+class ShiftedDistribution(Distribution):
+
+    def __init__(self, dist, delta):
         self.dist=dist
         self.delta=delta
+
     def mean(self):
         return dist.mean()+delta
-    def var(self):
-        return dist.var()
+
+
     def __repr__(self):
         return self.dist.__repr__()+"+"+str(self.delta)
+
+    def __getattr__( self, name ):
+        return getattr( self.__subject, name )  
+
     
-class ShiftedDistribution(ProbabilityDistribution):
-    def __init__(self,dist,delta):
-        self.dist=dist
-        self.delta=delta
-    def mean(self):
-        return dist.mean()+delta
-    def var(self):
-        return dist.var()
-    def __repr__(self):
-        return self.dist.__repr__()+"+"+str(self.delta)
     
-from distribution import Distribution
+class ScipyDistribution(Distribution):
+    dist = scipy.stats.norm
+    pdf = dist.pdf
+    invcdf = dist.ppf
+    
 
 class UniformDistribution(Distribution):
     def __init__(self,a=-1,b=1):
@@ -65,7 +97,6 @@ class UniformDistribution(Distribution):
     def invcdf( self, x ): 
         pass
 
-
     def mean( self ): 
         return 0.5*(self.a+self.b)
     
@@ -80,7 +111,6 @@ class UniformDistribution(Distribution):
         
     def median( self ): 
         return 0.5*(self.a+self.b)
-
 
     def shift(self, delta):
         return UniformDistribution(self.a+delta, self.b+delta)
@@ -103,47 +133,6 @@ class UniformDistribution(Distribution):
         return "U["+str(self.a)+","+str(self.b)+"]"
 
 
-
-import unittest
-class TestUniformDistribution(unittest.TestCase):
-    def setUp(self):
-        from uniform_distribution import UniformDistribution
-        self.ud1=UniformDistribution()
-        self.ud2=UniformDistribution(2, 6)
-    def test_mean(self):
-        self.assertEquals( self.ud1.mean(), 0 )
-        self.assertEquals( self.ud2.mean(), 4 )
-    def test_var(self):
-        self.assertEquals( self.ud1.var(), 1.0/3.0 )
-        self.assertEquals( self.ud2.var(), 4.0/3.0 )
-    def test_pdf(self):
-        from numpy import exp, sqrt, pi
-        self.assertEquals( self.ud1.pdf(0.5), 0.5 )
-        self.assertEquals( self.ud2.pdf(1.8), 0 )
-        self.assertEquals( self.ud2.pdf(6.2), 0 )
-    def test_cdf(self):
-        from scipy import inf
-        self.assertEquals( self.ud1.cdf(0),  0.5)
-        #self.assertEquals( self.ud1.cdf(inf),  1)
-        #self.assertEquals( self.ud1.cdf(-inf),  0)
-        self.assertEquals( self.ud1.cdf(1000),  1)
-        self.assertEquals( self.ud1.cdf(-1000),  0)
-        self.assertEquals( self.ud2.cdf(3),  0.25)
-    def test_sample(self):
-        s=self.ud1.sample(5)
-        self.assertEquals( s.shape,  (5, ) )
-    def test_shift_scale(self):
-        d=self.ud2
-        self.assertEquals( d.shift(2).mean(), d.mean()+2  )
-        self.assertEquals( d.shift(2).var(), d.var() )
-        self.assertEquals( d.scale(2).mean(), d.mean()  )
-        self.assertEquals( d.scale(2).var(), d.var()*4 )
-            
-
-if __name__=="__main__":
-        unittest.main()
-from distribution import Distribution
-
 class NormalDistribution(Distribution):
     def __init__(self,  mu=0,  sigma=1 ):
         self.mu=1.0*mu
@@ -160,7 +149,6 @@ class NormalDistribution(Distribution):
     def invcdf(self, x):
         return NotImplemented
 
-
     def mean(self):
         return self.mu
         
@@ -175,14 +163,12 @@ class NormalDistribution(Distribution):
         
     def median(self): 
         return self.mu
-        
     
     def shift(self, delta):
         return NormalDistribution(self.mu+delta, self.sigma)
         
     def scale(self, scale):
         return NormalDistribution(self.mu, self.sigma*scale)
-
 
     def getOrthogonalPolynomials(self):
         assert( self.mu==0 and self.sigma==1 )
@@ -193,42 +179,5 @@ class NormalDistribution(Distribution):
         from numpy.random import normal
         return normal( self.mu, self.sigma, size )
 
-
     def __repr__(self):
         return "N["+str(self.mu)+","+str(self.sigma)+"**2]"
-
-
-import unittest
-class TestNormalDistribution(unittest.TestCase):
-    def setUp(self):
-        self.nd1=NormalDistribution()
-        self.nd2=NormalDistribution(2, 3)
-    def test_mean(self):
-        self.assertEquals( self.nd1.mean(), 0 )
-        self.assertEquals( self.nd2.mean(), 2 )
-    def test_var(self):
-        self.assertEquals( self.nd1.var(), 1 )
-        self.assertEquals( self.nd2.var(), 9 )
-    def test_pdf(self):
-        from numpy import exp, sqrt, pi
-        self.assertEquals( self.nd1.pdf(2), exp(-2)/sqrt(2*pi) )
-        self.assertEquals( self.nd2.pdf(5), exp(-1.0/2)/sqrt(18*pi) )
-    def test_cdf(self):
-        from scipy import inf
-        self.assertEquals( self.nd1.cdf(0), 0.5)
-        self.assertEquals( self.nd1.cdf(inf), 1)
-        self.assertEquals( self.nd1.cdf(-inf), 0)
-        self.assertEquals( self.nd2.cdf(2),  0.5)
-        self.assertAlmostEquals( self.nd1.cdf(1)-self.nd1.cdf(-1), 0.682689492137)
-        self.assertAlmostEquals( self.nd2.cdf(5)-self.nd2.cdf(-1), 0.682689492137)
-    def test_sample(self):
-        s=self.nd1.sample(5)
-        self.assertEquals( s.shape,  (5, ) )
-    def test_shift_scale(self):
-        self.assertEquals( self.nd2.shift(2).mu, 4 )
-        self.assertEquals( self.nd2.shift(2).sigma, 3 )
-        self.assertEquals( self.nd2.scale(2).mu, 2 )
-        self.assertEquals( self.nd2.scale(2).sigma, 6 )
-        
-if __name__=="__main__":
-    unittest.main()

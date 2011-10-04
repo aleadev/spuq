@@ -1,7 +1,7 @@
 import numpy as np
-from numpy.testing import *
 
-from spuq.polynomials.polynomials import *
+from spuq.utils.testing import *
+from spuq.polyquad.polynomials import *
 
 
 class TestPolynomials(TestCase):
@@ -11,15 +11,15 @@ class TestPolynomials(TestCase):
 
         x = 3.14159
         p = LegendrePolynomials()
-        self.assertEquals(p.eval(0, x), 1)
-        self.assertEquals(p.eval(3, x), 2.5 * x ** 3 - 1.5 * x)
+        assert_equal(p.eval(0, x), 1)
+        assert_equal(p.eval(3, x), 2.5 * x ** 3 - 1.5 * x)
 
     def test_hermite(self):
         """Make sure the Hermite polynomials work."""
         x = 3.14159
         p = StochasticHermitePolynomials()
-        self.assertEquals(p.eval(0, x), 1)
-        self.assertAlmostEquals(p.eval(3, x), x ** 3 - 3 * x)
+        assert_equal(p.eval(0, x), 1)
+        assert_almost_equal(p.eval(3, x), x ** 3 - 3 * x)
 
     def test_eval_array(self):
         """Make sure the eval functions works for arrays."""
@@ -35,6 +35,6 @@ class TestPolynomials(TestCase):
         p = LegendrePolynomials()
         x = np.poly1d([1, 0])
         x2 = np.poly1d([1, 0, 0])
-        self.assertEquals(p.eval(0, x2), np.poly1d([1]))
-        self.assertEquals(p.eval(1, x2), x ** 2)
-        self.assertEquals(p.eval(3, x2), 2.5 * x ** 6 - 1.5 * x ** 2)
+        assert_equal(p.eval(0, x2), np.poly1d([1]))
+        assert_equal(p.eval(1, x2), x ** 2)
+        assert_equal(p.eval(3, x2), 2.5 * x ** 6 - 1.5 * x ** 2)
