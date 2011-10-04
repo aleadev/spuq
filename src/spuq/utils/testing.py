@@ -6,10 +6,12 @@ from numpy.testing import *
 class _TestCase(TestCase):
     def __init__(self, method=None):
         if method is None:
-            self._testMethodName = "None"
-        else:
-            super(_TestCase, self).__init__(method)
+            method = "dummy"
+        super(_TestCase, self).__init__(method)
     
+    def dummy(self):
+        pass
+
 del TestCase.assertEquals
 del TestCase.failIf
 del TestCase.failIfAlmostEqual

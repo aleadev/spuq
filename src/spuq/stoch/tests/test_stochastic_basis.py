@@ -1,13 +1,13 @@
 import numpy as np
 from numpy.testing import *
 
-from spuq.stoch.polynomial_basis import *
+from spuq.stoch.stochastic_basis import *
+
 
 class TestPolynomialBasis(TestCase):
-    
+
     def test_foo(self):
         pass
-    
 
 
 if __name__ == "__main__":

@@ -8,16 +8,16 @@ coefficients. The one used in (Abramowitz & Stegun, p. 782) is
 
 .. math:: a_{1n} p_{n + 1} = (a_{2n} + x a_{3n})p_n - a_{4n} p_{n - 1}
 
-It is common to divide both sides by :math:`a_{1n}` in which case the 
+It is common to divide both sides by :math:`a_{1n}` in which case the
 following recurrence results
 
 .. math:: p_{n + 1}(x) = (a_n + x b_n) p_n(x) - c_n p_{n - 1}(x)
 
-where 
+where
 
 .. math::  a_n = a_{2n}/a_{1n}, b_n = a_{3n}/a_{1n}, c_n = a_{4n}/a_{1n}
 
-.. note:: Note that in many publications the role of :math:`a_n` 
+.. note:: Note that in many publications the role of :math:`a_n`
           and :math:`b_n` is interchanged.
 
 The square of the norm :math:`h_n` of the polynomials is given by
@@ -40,15 +40,21 @@ The normalised polynomials can be computed via
 For the normalised polynomials we need only two coefficients where we
 stick to the definition in Gittelson (which is probably from Gautschi)
 
-.. math:: \beta_n \hat{p}_n(x) = (x-\alpha_{n-1}) \hat{p}_{n-1}(x) - \beta_{n-1} \hat{p}_{n-2}(x)
+.. math::
 
-or 
+   \beta_n \hat{p}_n(x) = (x-\alpha_{n-1}) \hat{p}_{n-1}(x) -
+   \beta_{n-1} \hat{p}_{n-2}(x)
 
-.. math:: \beta_{n+1} \hat{p}_{n+1}(x) = (x-\alpha_{n}) \hat{p}_{n}(x) - \beta_{n} \hat{p}_{n-1}(x)
+or
+
+.. math::
+
+   \beta_{n+1} \hat{p}_{n+1}(x) = (x-\alpha_{n}) \hat{p}_{n}(x) -
+   \beta_{n} \hat{p}_{n-1}(x)
 
 from which the three term recurrence can be computed via
 
-.. math:: 
+.. math::
     a_n &= -\alpha_n / \beta_{n+1}, \\
     b_n &= 1 / \beta_{n+1}, \\
     c_n &= \beta_n / \beta_{n+1}
@@ -72,6 +78,7 @@ import scipy as sp
 _0 = lambda x: 0 * x
 _1 = lambda x: 0 * x + 1
 
+
 def rc4_to_rc3(rc4_func):
     def rc3_func(n):
         (a1, a2, a3, a4) = rc4_func(n)
@@ -91,9 +98,11 @@ def rc_norm_to_rc3(rc_norm_func):
         return (a, b, c)
     return rc3_func
 
+
 def normalise_rc(rc_func, sqnorm_func=None):
     if sqnorm_func is None:
         sqnorm_func = lambda n: sqnorm_from_rc(rc_func, n)
+
     def rc_norm_func(n):
         (a, b, c) = rc_func(n)
         h2 = sqnorm_func(n + 1) ** 0.5
@@ -101,6 +110,7 @@ def normalise_rc(rc_func, sqnorm_func=None):
         h0 = sqnorm_func(n - 1) ** 0.5
         return (a * h1 / h2, b * h1 / h2, c * h0 / h2)
     return rc_norm_func
+
 
 def sqnorm_from_rc(rc_func, n):
     """Compute norm from recurrence.
@@ -145,10 +155,10 @@ def compute_poly2(rc_func, n, x):
 def eval_clenshaw(rc_func, coeffs, x):
     """Evaluate the polynomial using Clenshaw's algorithm"""
     q1 = q2 = _0(x)
-    n = len(coeffs)-1
-    for k in reversed(xrange(n+1)):
+    n = len(coeffs) - 1
+    for k in reversed(xrange(n + 1)):
         (ak, bk, ck) = rc_func(k)
-        (ak2, bk2, ck2) = rc_func(k+1)
+        (ak2, bk2, ck2) = rc_func(k + 1)
         q0 = coeffs[k] + (ak + bk * x) * q1 - ck2 * q2
         q1, q2 = q0, q1
     return q0
@@ -156,11 +166,11 @@ def eval_clenshaw(rc_func, coeffs, x):
 
 def eval_forsythe(rc_func, coeffs, x):
     """Evaluate the polynomial using Forsythe's algorithm"""
-    n = len(coeffs)-1
+    n = len(coeffs) - 1
 
     t0 = _1(x)
     f0 = coeffs[0]
-    if n<1:
+    if n < 1:
         return f0
     (a0, b0, c0) = rc_func(0)
     t1 = a0 + b0 * x
@@ -169,14 +179,15 @@ def eval_forsythe(rc_func, coeffs, x):
     for k in xrange(1, n):
         (ak, bk, ck) = rc_func(k)
         t2 = (ak + bk * x) * t1 - ck * t0
-        f2 = f1 + coeffs[k+1] * t2
+        f2 = f1 + coeffs[k + 1] * t2
         t0, t1, f1 = t1, t2, f2
     return f2
+
 
 # Monomials
 def rc_monomials(n):
     return (0.0, 1.0, 0.0)
-    
+
 
 # Stochatic Hermite polynomials
 def rc_stoch_hermite(n):
@@ -194,6 +205,7 @@ def sqnorm_stoch_hermite(n):
     """AS page 782 (s.t. h0 == 1)"""
     return sp.factorial(n)
 
+
 def stc_stoch_hermite(a, b, c):
     n = max((a, b, c))
     s = a + b + c
@@ -205,8 +217,8 @@ def stc_stoch_hermite(a, b, c):
         c = (fac(s - a) * fac(s - b) * fac(s - c) /
              (fac(a) * fac(b) * fac(c)))
 
-# Legendre polynomials
 
+# Legendre polynomials
 @rc4_to_rc3
 def rc_legendre(n):
     """AS page 782 """
@@ -267,4 +279,3 @@ def foo():
 
 #testit()
 #raise ValueError()
-
