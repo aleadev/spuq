@@ -1,9 +1,7 @@
 import numpy as np
-import scipy as sp
 
-from numpy.testing import *
-
-from spuq.polynomials._polynomials import *
+from spuq.utils.testing import *
+from spuq.polyquad._polynomials import *
 
 
 class TestRecurrences(TestCase):
@@ -111,8 +109,5 @@ class TestRecurrences(TestCase):
         assert_array_equal(eval_forsythe(rc, [3, 5, 7], x), inner(p, [3, 5, 7]))
         assert_array_equal(eval_forsythe(rc, [3, 5, 7, 9], x), 
                            inner(p, [3, 5, 7, 9]))
-
-#        assert_array_equal(eval_clenshaw(rc, [2, 3, 0.5], x), 
-#                           2 * p[0] + 3 * p[1] + 0.5 * p[2])
 
 

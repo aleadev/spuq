@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 import scipy
 
-import spuq.polynomials._polynomials as _p
+import spuq.polyquad._polynomials as _p
 
 class PolynomialFamily(object):
     """abstract base for polynomials"""

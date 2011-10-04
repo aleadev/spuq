@@ -1,22 +1,21 @@
 __all__ = [
-    "bases",
     "linalg",
-    "polynomials",
-    "random_fields",
-    "statistics",
+    "fem",
+    "polyquad",
+    "stoch",
     "utils",
     ]
 
-import statistics
+#import statistics
 #from statistics import *
 
-import linalg
+#import linalg
 #from linalg import *
 
-import utils
+#import utils
 #from utils import *
 
-import bases
+#import bases
 
 
 try:
