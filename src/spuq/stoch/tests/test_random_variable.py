@@ -6,11 +6,24 @@ from spuq.utils.testing import *
 from spuq.stoch.random_variable import *
 
 
-class TestRandomVariables(TestCase):
-
-    def test_base(self):
-        assert_equal(1, 1)
-
+def _test_rv_coherence(rv):
+    m = rv.mean
+    v = rv.var
+    # make sure variance is positive
+    assert_true(v > 0)
+    # make sure cdf and invcdf match
+    assert_approx_equal(rv.invcdf(rv.cdf(m)), m)
+    assert_approx_equal(rv.invcdf(rv.cdf(m + v)), m + v)
+    assert_approx_equal(rv.invcdf(rv.cdf(m - v)), m - v)
+    # make sure pdf and cdf match (using central difference
+    # approximation, therefore check only 4 significant digits)
+    eps = 1e-9
+    for x in [m, m-v, m+v]:
+        assert_approx_equal(rv.cdf(x + eps * v) - rv.cdf(x - eps * v), 
+                            2 * eps * v * rv.pdf(x),
+                            significant=4)
+    # make sure median, cdf and invcdf match
+    assert_approx_equal(rv.cdf(rv.median), 0.5)
 
 class TestUniformRV(TestCase):
 
@@ -50,6 +63,10 @@ class TestUniformRV(TestCase):
         assert_equal(d.scale(2).mean, d.mean)
         assert_equal(d.scale(2).var, d.var * 4)
 
+    def test_coherence(self):
+        _test_rv_coherence(self.ud1)
+        _test_rv_coherence(self.ud2)
+
 
 class TestNormalRV(TestCase):
 
@@ -86,6 +103,11 @@ class TestNormalRV(TestCase):
         assert_equal(self.nd2.shift(2).sigma, 3)
         assert_equal(self.nd2.scale(2).mu, 2)
         assert_equal(self.nd2.scale(2).sigma, 6)
+
+    def test_coherence(self):
+        _test_rv_coherence(self.nd1)
+        _test_rv_coherence(self.nd2)
+
 
 if __name__ == "__main__":
     run_module_suite()

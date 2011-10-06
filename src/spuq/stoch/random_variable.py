@@ -105,7 +105,7 @@ class ScipyRandomVariable(RandomVariable):
 
     @property
     def median(self):
-        return self._dist.median()
+        return self._dist.ppf(0.5)
 
     @property
     def mean(self):
