@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractproperty, abstractmethod
 
+from spuq.utils.decorators import copydocs
 
 class Basis(object):
     """Abstract base class for basis objects"""
@@ -7,18 +8,18 @@ class Basis(object):
 
     @abstractproperty
     def dim(self):
-        """Returns the dimension of this basis"""
+        """The dimension of this basis."""
         return NotImplemented
 
 
+@copydocs
 class EuclideanBasis(Basis):
     def __init__(self, dim):
         self._dim = dim
         super(EuclideanBasis, self).__init__()
-
+    
     @property
     def dim(self):
-        """Returns the dimension of this basis"""
         return self._dim
 
     def __eq__(self, other):
@@ -27,20 +28,21 @@ class EuclideanBasis(Basis):
 
 
 class FunctionBasis(Basis):
-    @abstractmethod
-    def get_gramian(self):
-        """Returns the Gramian as a LinearOperator (not necessarily a
-        matrix)"""
+
+    @abstractproperty
+    def gramian(self):
+        """The Gramian as a LinearOperator (not necessarily a matrix)"""
         return NotImplemented
+
+
+
+
 
 # NOTE: not directly supported by fenics classes - why do we need it?
 #    @abstractmethod
 #    def eval_at(self, vector):
 #        """Evaluated the basis functions at the specified points"""
 #        return NotImplemented
-
-
-
 #class TensorProductBasis(Basis):
 #    def eval_at(self, vector):
 #        # for b in bases:

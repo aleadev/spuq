@@ -33,8 +33,9 @@ class TestPolynomials(TestCase):
     def test_eval_poly(self):
         """Make sure the eval functions works for polynomials."""
         p = LegendrePolynomials()
-        x = np.poly1d([1, 0])
-        x2 = np.poly1d([1, 0, 0])
+        x = np.poly1d([1.0, 0])
+        x2 = np.poly1d([1.0, 0, 0])
+        assert_is_instance(p.eval(0, x2), np.poly1d)
         assert_equal(p.eval(0, x2), np.poly1d([1]))
         assert_equal(p.eval(1, x2), x ** 2)
         assert_equal(p.eval(3, x2), 2.5 * x ** 6 - 1.5 * x ** 2)

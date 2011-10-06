@@ -4,6 +4,7 @@ from scipy import inf
 
 from spuq.utils.testing import *
 from spuq.stoch.random_variable import *
+from spuq.polyquad.polynomials import *
 
 
 def _test_rv_coherence(rv):
@@ -62,6 +63,9 @@ class TestUniformRV(TestCase):
         assert_equal(d.shift(2).var, d.var)
         assert_equal(d.scale(2).mean, d.mean)
         assert_equal(d.scale(2).var, d.var * 4)
+
+    def test_orth_polys(self):
+        assert_is_instance(self.ud1.orth_polys, PolynomialFamily)
 
     def test_coherence(self):
         _test_rv_coherence(self.ud1)

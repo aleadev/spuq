@@ -1,7 +1,11 @@
 import numpy as np
-from numpy.testing import *
+
+from spuq.utils.testing import *
 
 from spuq.stoch.stochastic_basis import *
+from spuq.utils.multiindex_set import *
+from spuq.stoch.random_variable import *
+
 
 
 class TestPolynomialBasis(TestCase):
@@ -10,25 +14,26 @@ class TestPolynomialBasis(TestCase):
         pass
 
 
-if __name__ == "__main__":
-    from spuq.utils.multiindex_set import *
-    I = MultiindexSet.createCompleteOrderSet(2, 4)
-    print I
+class TestMultiindexBasis(TestCase):
 
-    from spuq.statistics import *
-    N = NormalDistribution()
-    U = UniformDistribution()
-    print N, U
+    def test_init(self):
+        I = MultiindexSet.createCompleteOrderSet(2, 4)
+        #m = MultiindexBasis( I, [1, 2, 3])
 
-    gpc1 = GPCBasis(I, [N, U])
-    gpc2 = GPCBasis(I, [N, N])
-    print gpc1.sample(3)
-    s1 = gpc1.sample(100)
-    s2 = gpc2.sample(100)
-    from spuq.utils.plot.plotter import Plotter
-    Plotter.figure(1)
-    Plotter.scatterplot(I.arr[:7, :], s1)
-    Plotter.figure(2)
-    Plotter.scatterplot(I.arr[8:15, :], s2)
-    Plotter.figure(3)
-    Plotter.histplot(s1[:6, :], bins=50)
+class TestGPCBasis(TestCase):
+
+    def test_init(self):
+        rv = UniformRV()
+        b = GPCBasis(rv, 4)
+
+        assert_equal(b.rv, rv)
+        assert_equal(b.degree, 4)
+        assert_equal(b.dim, 5)
+
+    def test_sample(self):
+        rv = UniformRV()
+        b = GPCBasis(rv, 4)
+
+        x = b.sample(7)
+        assert_equal(x.shape, (5, 7))
+

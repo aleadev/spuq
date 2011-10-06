@@ -6,11 +6,8 @@ import scipy
 import spuq.polyquad._polynomials as _p
 
 class PolynomialFamily(object):
-    """abstract base for polynomials"""
+    """Abstract base for families of (orthogonal) polynomials"""
     __metaclass__ = ABCMeta
-
-    def __init__(self):
-        self.structcoeffs = np.empty((0, 0, 0))
 
     @abstractmethod
     def recurrence_coefficients(self, n):
@@ -32,18 +29,20 @@ class PolynomialFamily(object):
 
     def get_structure_coefficients(self, n):
         """return structure coefficients of indices up to n"""
-        if n > self.structcoeffs.shape[0]:
-            j = self.structcoeffs[0]
-            self.structcoeffs.resize((n, n, n))
-            for a in xrange(n):
-                for b in xrange(n):
-                    for c in xrange(n):
-                        self.structcoeffs[a, b, c] = \
-                            self.get_structure_coefficient(a, b, c)
-        return self.structcoeffs[0:n, 0:n, 0:n]
+        
+        structcoeffs = getattr(self, "_structcoeffs", np.empty((0, 0, 0)))
+
+        if n > structcoeffs.shape[0]:
+            structcoeffs = np.array( 
+                [[[self.get_structure_coefficient(a, b, c)
+                   for a in xrange(n)]
+                  for b in xrange(n)]
+                 for c in xrange(n)])
+
+        return structcoeffs[0:n, 0:n, 0:n]
 
     @abstractmethod
-    def norm(self, n):
+    def norm(self, n, sqrt=True):
         """returns norm of polynomial"""
         return NotImplemented
 
@@ -61,7 +60,7 @@ class NormalisedPolynomialFamily(PolynomialFamily):
         self.recurrence_coefficients = \
             _p.normalise_rc(_family.recurrence_coefficients)
 
-    def norm(self, n):
+    def norm(self, n, sqrt=True):
         """Return the norm of the `n`-th polynomial."""
         return 1.0
 
@@ -76,6 +75,12 @@ def normalise(family):
 
 class LegendrePolynomials(PolynomialFamily):
 
+    def __init__(self, a=-1.0, b=1.0, normalised=False):
+        # currently nothing else is supported (coming soon however)
+        assert a == -1.0
+        assert b == 1.0
+        assert normalised == False
+
     def recurrence_coefficients(self, n):
         return _p.rc_legendre(n)
 
@@ -88,6 +93,12 @@ class LegendrePolynomials(PolynomialFamily):
 
 
 class StochasticHermitePolynomials(PolynomialFamily):
+
+    def __init__(self, mu=0.0, sigma=1.0, normalised=False):
+        # currently nothing else is supported (coming soon however)
+        assert mu == 0.0
+        assert sigma == 1.0
+        assert normalised == False
 
     def recurrence_coefficients(self, n):
         return _p.rc_stoch_hermite(n)

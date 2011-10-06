@@ -110,32 +110,6 @@ class BaseOperator(Operator):
         return self.__codomain
 
 
-class MatrixOperator(BaseOperator):
-    def __init__(self, arr, domain=None, codomain=None):
-        assert(isinstance(arr, np.ndarray))
-        if domain is None:
-            domain = EuclideanBasis(arr.shape[1])
-        if codomain is None:
-            codomain = EuclideanBasis(arr.shape[0])
-
-        self.__arr = arr
-        BaseOperator.__init__(self, domain, codomain)
-
-    def apply(self, vec):
-        "Apply operator to vec which should be in the domain of op"
-        assert(isinstance(vec, FlatVector))
-        assert(self.domain == vec.basis)
-        return FlatVector(np.dot(self.__arr, vec.coeffs), self.codomain)
-
-    def as_matrix(self):
-        return np.asmatrix(self.__arr)
-
-    def transpose(self):
-        return MatrixOperator(self.__arr.T,
-                            self.codomain,
-                            self.domain)
-
-
 class ComposedOperator(Operator):
     """Wrapper class for linear operators that are composed of other
     linear operators
@@ -288,6 +262,56 @@ class SummedOperator(Operator):
 
     def as_matrix(self):
         return sum(map(lambda op: op.as_matrix(), self.operators))
+
+
+class MatrixOperator(BaseOperator):
+    def __init__(self, arr, domain=None, codomain=None):
+        assert(isinstance(arr, np.ndarray))
+        if domain is None:
+            domain = EuclideanBasis(arr.shape[1])
+        if codomain is None:
+            codomain = EuclideanBasis(arr.shape[0])
+
+        self.__arr = arr
+        BaseOperator.__init__(self, domain, codomain)
+
+    def apply(self, vec):
+        "Apply operator to vec which should be in the domain of op"
+        assert(isinstance(vec, FlatVector))
+        assert(self.domain == vec.basis)
+        return FlatVector(np.dot(self.__arr, vec.coeffs), self.codomain)
+
+    def as_matrix(self):
+        return np.asmatrix(self.__arr)
+
+    def transpose(self):
+        return MatrixOperator(self.__arr.T,
+                            self.codomain,
+                            self.domain)
+
+
+class DiagonalMatrixOperator(BaseOperator):
+    def __init__(self, vec, domain=None):
+        assert(isinstance(arr, np.ndarray))
+        if domain is None:
+            domain = EuclideanBasis(vec.shape[0])
+
+        self._vec = vec
+        BaseOperator.__init__(self, domain, domain)
+
+    def apply(self, vec):
+        "Apply operator to vec which should be in the domain of op"
+        assert(isinstance(vec, FlatVector))
+        assert(self.domain == vec.basis)
+        return FlatVector(np.multiply(self._vec, vec.coeffs), self.domain)
+
+    def as_matrix(self):
+        return np.asmatrix(self.__arr)
+
+    def transpose(self):
+        return MatrixOperator(self.__arr.T,
+                            self.codomain,
+                            self.domain)
 
 
 # class TensorOperator(Operator):

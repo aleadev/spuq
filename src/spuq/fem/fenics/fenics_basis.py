@@ -82,7 +82,8 @@ class FEniCSBasis(FEMBasis):
     def dim(self):
         return self.__dim
     
-    def get_gramian(self):
+    @property
+    def gramian(self):
         """Returns the Gramian as a LinearOperator"""
         u = TrialFunction(self.__functionspace)
         v = TestFunction(self.__functionspace)

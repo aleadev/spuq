@@ -9,6 +9,15 @@ class _TestCase(TestCase):
             method = "dummy"
         super(_TestCase, self).__init__(method)
     
+    def assertIsInstance(self, obj, cls, msg=None):
+        """Same as self.assertTrue(isinstance(obj, cls)), with a nicer
+        default message."""
+        if not isinstance(obj, cls):
+            #standardMsg = '%r is not an instance of %r' % (obj, cls)
+            #self.fail(self._formatMessage(msg, standardMsg))
+            # TODO: remove this ugly hack
+            assert_true(type(obj)==cls)
+            
     def dummy(self):
         pass
 
@@ -36,8 +45,10 @@ if sys.hexversion >= 0x02070000:
     assert_is_not_none = _tc.assertIsNotNone
     assert_in = _tc.assertIn
     assert_not_in = _tc.assertNotIn
-    assert_is_instance = _tc.assertIsInstance
     assert_not_is_instance = _tc.assertNotIsInstance
+
+assert_is_instance = _tc.assertIsInstance
+
 
 assert_raises = _tc.assertRaises
 if sys.hexversion >= 0x02070000:

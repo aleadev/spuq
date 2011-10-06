@@ -142,7 +142,9 @@ class NormalRV(ScipyRandomVariable):
 
     @property
     def orth_polys(self):
-        return StochasticHermitePolynomials(self.mu, self.sigma, normalise=True)
+        return polys.StochasticHermitePolynomials(self.mu, 
+                                                  self.sigma, 
+                                                  normalised=False)
 
     def __repr__(self):
         return "N[" + str(self.mu) + ", " + str(self.sigma) + " ** 2]"
@@ -168,7 +170,7 @@ class UniformRV(ScipyRandomVariable):
 
     @property
     def orth_polys(self):
-        return LegendrePolynomials(self.a, self.b, normalise=True)
+        return polys.LegendrePolynomials(self.a, self.b, normalised=False)
 
     def __repr__(self):
         return "U[" + str(self.a) + ", " + str(self.b) + "]"
