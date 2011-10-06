@@ -2,8 +2,13 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 
 import numpy as np
 
+from spuq.utils.type_check import takes, returns, anything, optional
 from spuq.linalg.basis import Basis, EuclideanBasis
-from spuq.linalg.vector import FlatVector
+from spuq.linalg.vector import Vector, FlatVector
+
+
+class BasisMismatchError(ValueError):
+    pass
 
 
 class Operator(object):
@@ -15,9 +20,7 @@ class Operator(object):
     @abstractmethod
     def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
-        assert(isinstance(vec, Basis))
-        assert(self.domain == vec.basis)
-        return vec
+        return NotImplemented
 
     @property
     def is_linear(self):
@@ -87,28 +90,31 @@ class Operator(object):
         """Operators have call semantics, which means """
         return self.apply(arg)
 
+    def _check_basis(self, vec):
+        """Throw if the basis of the vector does not match the basis of the domain"""
+        if self.domain  != vec.basis:
+            raise  BasisMismatchError("Basis don't match: domain %s vector %s" % 
+                                      (str(self.domain), str(vec.basis)))
 
 class BaseOperator(Operator):
     """Base class for operators implementing some of the base
     functionality
     """
 
+    @takes(anything, Basis, Basis)
     def __init__(self, domain, codomain):
-        assert(isinstance(domain, Basis))
-        assert(isinstance(codomain, Basis))
-        self.__domain = domain
-        self.__codomain = codomain
+        self._domain = domain
+        self._codomain = codomain
 
     @property
     def domain(self):
         """Returns the basis of the domain"""
-        return self.__domain
+        return self._domain
 
     @property
     def codomain(self):
         """Returns the basis of the codomain"""
-        return self.__codomain
-
+        return self._codomain
 
 class ComposedOperator(Operator):
     """Wrapper class for linear operators that are composed of other
@@ -265,30 +271,30 @@ class SummedOperator(Operator):
 
 
 class MatrixOperator(BaseOperator):
+
+    @takes(anything, np.ndarray, optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
-        assert(isinstance(arr, np.ndarray))
         if domain is None:
             domain = EuclideanBasis(arr.shape[1])
         if codomain is None:
             codomain = EuclideanBasis(arr.shape[0])
 
-        self.__arr = arr
-        BaseOperator.__init__(self, domain, codomain)
+        self._arr = arr
+        super(MatrixOperator,self).__init__(domain, codomain)
 
+    @takes(anything, FlatVector)
     def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
-        assert(isinstance(vec, FlatVector))
-        assert(self.domain == vec.basis)
-        return FlatVector(np.dot(self.__arr, vec.coeffs), self.codomain)
+        self._check_basis(vec)
+        return FlatVector(np.dot(self._arr, vec.coeffs), self.codomain)
 
     def as_matrix(self):
-        return np.asmatrix(self.__arr)
+        return np.asmatrix(self._arr)
 
     def transpose(self):
-        return MatrixOperator(self.__arr.T,
+        return MatrixOperator(self._arr.T,
                             self.codomain,
                             self.domain)
-
 
 class DiagonalMatrixOperator(BaseOperator):
     def __init__(self, vec, domain=None):
@@ -299,17 +305,17 @@ class DiagonalMatrixOperator(BaseOperator):
         self._vec = vec
         BaseOperator.__init__(self, domain, domain)
 
+    @takes(anything, FlatVector)
     def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
-        assert(isinstance(vec, FlatVector))
-        assert(self.domain == vec.basis)
+        self._check_basis(vec)
         return FlatVector(np.multiply(self._vec, vec.coeffs), self.domain)
 
     def as_matrix(self):
-        return np.asmatrix(self.__arr)
+        return np.asmatrix(self._arr)
 
     def transpose(self):
-        return MatrixOperator(self.__arr.T,
+        return MatrixOperator(self._arr.T,
                             self.codomain,
                             self.domain)
 

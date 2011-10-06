@@ -1,6 +1,6 @@
 import numpy as np
-from numpy.testing import *
 
+from spuq.utils.testing import *
 from spuq.linalg.vector import FlatVector
 
 
@@ -13,17 +13,21 @@ class TestFlatVector(TestCase):
         fv2 = FlatVector(np.array([1.0, 2, 3]))
         fv3 = FlatVector(np.array([1.0, 2]))
         fv4 = FlatVector(np.array([1.0, 2, 4]))
-        self.assertEqual(fv1, fv2)
-        self.assertNotEqual(fv1, fv3)
-        self.assertNotEqual(fv1, fv4)
+
+        assert_true(fv1==fv2)
+        assert_false(fv1!=fv2)
+
+        assert_equal(fv1, fv2)
+        assert_not_equal(fv1, fv3)
+        assert_not_equal(fv1, fv4)
 
     def test_mul(self):
         """Make sure we can multiply vectors with scalars
         """
         fv1 = FlatVector(np.array([1.0, 2, 3]))
         fv2 = FlatVector(np.array([2.5, 5, 7.5]))
-        self.assertEqual(2.5 * fv1, fv2)
-        self.assertEqual(fv1 * 2.5, fv2)
+        assert_equal(2.5 * fv1, fv2)
+        assert_equal(fv1 * 2.5, fv2)
 
 
 if __name__ == "__main__":

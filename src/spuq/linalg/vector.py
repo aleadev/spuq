@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
 from spuq.linalg.basis import Basis, EuclideanBasis
+from spuq.utils.type_check import takes, returns, anything, optional
 
 
 class Vector(object):
@@ -42,11 +43,11 @@ class Vector(object):
 
 class FlatVector(Vector):
     """A vector classed based on the numpy array"""
+
+    @takes(anything, np.ndarray, optional(Basis))
     def __init__(self, coeffs, basis=None):
         if basis is None:
             basis = EuclideanBasis(coeffs.shape[0])
-        assert(isinstance(coeffs, np.ndarray))
-        assert(isinstance(basis, Basis))
         assert(basis.dim == coeffs.shape[0])
         self._coeffs = coeffs
         self._basis = basis
@@ -81,6 +82,9 @@ class FlatVector(Vector):
             return False
         return (self._basis == other._basis and
                 (self.coeffs == other.coeffs).all())
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __repr__(self):
         return "FlatVector(" + str(self.coeffs) + ")"

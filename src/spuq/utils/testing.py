@@ -8,6 +8,12 @@ class _TestCase(TestCase):
         if method is None:
             method = "dummy"
         super(_TestCase, self).__init__(method)
+
+    def setUp(self):
+        """Just call setup in case somebody didn't use the braindead
+        capitalisation"""
+        if hasattr(self, "setup"):
+            self.setup()
     
     def assertIsInstance(self, obj, cls, msg=None):
         """Same as self.assertTrue(isinstance(obj, cls)), with a nicer
@@ -33,7 +39,7 @@ TestCase = _TestCase
 
 _tc = TestCase()
 
-assert_equal = _tc.assertEqual
+#assert_equal = _tc.assertEqual
 assert_not_equal = _tc.assertNotEqual
 assert_true = _tc.assertTrue
 assert_false = _tc.assertFalse

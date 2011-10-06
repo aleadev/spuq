@@ -12,19 +12,26 @@ class Basis(object):
         return NotImplemented
 
 
-@copydocs
+#@copydocs
 class EuclideanBasis(Basis):
     def __init__(self, dim):
         self._dim = dim
-        super(EuclideanBasis, self).__init__()
     
     @property
     def dim(self):
         return self._dim
 
     def __eq__(self, other):
-        return (isinstance(other, EuclideanBasis) and
+        # Note: classes must match exactly, otherwise it is a
+        # *different* basis
+        return (self.__class__ == other.__class__ and
                 self.dim == other.dim)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__, self.dim)
 
 
 class FunctionBasis(Basis):
