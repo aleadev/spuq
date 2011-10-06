@@ -3,28 +3,28 @@ from numpy import exp, sqrt, pi
 from scipy import inf
 
 from spuq.utils.testing import *
-from spuq.stoch.distribution import *
+from spuq.stoch.random_variable import *
 
 
-class TestDistributions(TestCase):
+class TestRandomVariables(TestCase):
 
     def test_base(self):
         assert_equal(1, 1)
 
 
-class TestUniformDistribution(TestCase):
+class TestUniformRV(TestCase):
 
     def setUp(self):
-        self.ud1 = UniformDistribution()
-        self.ud2 = UniformDistribution(2, 6)
+        self.ud1 = UniformRV()
+        self.ud2 = UniformRV(2, 6)
 
     def test_mean(self):
-        assert_equal(self.ud1.mean(), 0)
-        assert_equal(self.ud2.mean(), 4)
+        assert_equal(self.ud1.mean, 0)
+        assert_equal(self.ud2.mean, 4)
 
     def test_var(self):
-        assert_equal(self.ud1.var(), 1.0 / 3.0)
-        assert_equal(self.ud2.var(), 4.0 / 3.0)
+        assert_equal(self.ud1.var, 1.0 / 3.0)
+        assert_equal(self.ud2.var, 4.0 / 3.0)
 
     def test_pdf(self):
         assert_equal(self.ud1.pdf(0.5), 0.5)
@@ -41,29 +41,29 @@ class TestUniformDistribution(TestCase):
 
     def test_sample(self):
         s = self.ud1.sample(5)
-        assert_equal(s.shape,  (5,))
+        assert_equal(s.shape, (5,))
 
     def test_shift_scale(self):
         d = self.ud2
-        assert_equal(d.shift(2).mean(), d.mean() + 2)
-        assert_equal(d.shift(2).var(), d.var())
-        assert_equal(d.scale(2).mean(), d.mean())
-        assert_equal(d.scale(2).var(), d.var() * 4)
+        assert_equal(d.shift(2).mean, d.mean + 2)
+        assert_equal(d.shift(2).var, d.var)
+        assert_equal(d.scale(2).mean, d.mean)
+        assert_equal(d.scale(2).var, d.var * 4)
 
 
-class TestNormalDistribution(TestCase):
+class TestNormalRV(TestCase):
 
     def setUp(self):
-        self.nd1 = NormalDistribution()
-        self.nd2 = NormalDistribution(2, 3)
+        self.nd1 = NormalRV()
+        self.nd2 = NormalRV(2, 3)
 
     def test_mean(self):
-        assert_equal(self.nd1.mean(), 0)
-        assert_equal(self.nd2.mean(), 2)
+        assert_equal(self.nd1.mean, 0)
+        assert_equal(self.nd2.mean, 2)
 
     def test_var(self):
-        assert_equal(self.nd1.var(), 1)
-        assert_equal(self.nd2.var(), 9)
+        assert_equal(self.nd1.var, 1)
+        assert_equal(self.nd2.var, 9)
 
     def test_pdf(self):
         assert_equal(self.nd1.pdf(2), exp(-2) / sqrt(2 * pi))
@@ -79,7 +79,7 @@ class TestNormalDistribution(TestCase):
 
     def test_sample(self):
         s = self.nd1.sample(5)
-        assert_equal(s.shape,  (5,))
+        assert_equal(s.shape, (5,))
 
     def test_shift_scale(self):
         assert_equal(self.nd2.shift(2).mu, 4)
