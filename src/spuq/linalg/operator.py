@@ -3,12 +3,8 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 import numpy as np
 
 from spuq.utils.type_check import takes, returns, anything, optional
-from spuq.linalg.basis import Basis, EuclideanBasis
+from spuq.linalg.basis import Basis, CanonicalBasis, BasisMismatchError
 from spuq.linalg.vector import Vector, FlatVector
-
-
-class BasisMismatchError(ValueError):
-    pass
 
 
 class Operator(object):
@@ -91,10 +87,13 @@ class Operator(object):
         return self.apply(arg)
 
     def _check_basis(self, vec):
-        """Throw if the basis of the vector does not match the basis of the domain"""
-        if self.domain  != vec.basis:
-            raise  BasisMismatchError("Basis don't match: domain %s vector %s" % 
-                                      (str(self.domain), str(vec.basis)))
+        """Throw if the basis of the vector does not match the basis
+        of the domain"""
+        if self.domain != vec.basis:
+            raise BasisMismatchError(
+                "Basis don't match: domain %s vector %s" %
+                (str(self.domain), str(vec.basis)))
+
 
 class BaseOperator(Operator):
     """Base class for operators implementing some of the base
@@ -115,6 +114,7 @@ class BaseOperator(Operator):
     def codomain(self):
         """Returns the basis of the codomain"""
         return self._codomain
+
 
 class ComposedOperator(Operator):
     """Wrapper class for linear operators that are composed of other
@@ -275,12 +275,12 @@ class MatrixOperator(BaseOperator):
     @takes(anything, np.ndarray, optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
         if domain is None:
-            domain = EuclideanBasis(arr.shape[1])
+            domain = CanonicalBasis(arr.shape[1])
         if codomain is None:
-            codomain = EuclideanBasis(arr.shape[0])
+            codomain = CanonicalBasis(arr.shape[0])
 
         self._arr = arr
-        super(MatrixOperator,self).__init__(domain, codomain)
+        super(MatrixOperator, self).__init__(domain, codomain)
 
     @takes(anything, FlatVector)
     def apply(self, vec):
@@ -296,11 +296,12 @@ class MatrixOperator(BaseOperator):
                             self.codomain,
                             self.domain)
 
+
 class DiagonalMatrixOperator(BaseOperator):
     def __init__(self, vec, domain=None):
         assert(isinstance(arr, np.ndarray))
         if domain is None:
-            domain = EuclideanBasis(vec.shape[0])
+            domain = CanonicalBasis(vec.shape[0])
 
         self._vec = vec
         BaseOperator.__init__(self, domain, domain)

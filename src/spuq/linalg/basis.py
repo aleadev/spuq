@@ -1,6 +1,19 @@
 from abc import ABCMeta, abstractproperty, abstractmethod
 
+from spuq.utils import strclass
 from spuq.utils.decorators import copydocs
+
+
+class BasisMismatchError(ValueError):
+    pass
+
+
+def check_basis(basis1, basis2, descr1="basis1", descr2="basis2"):
+    """Throw if the bases do not match"""
+    if basis1 != basis2:
+        raise BasisMismatchError("Basis don't match: %s=%s, %s=%s" %
+                                 (descr1, str(basis1), descr2, str(basis2)))
+
 
 class Basis(object):
     """Abstract base class for basis objects"""
@@ -11,12 +24,24 @@ class Basis(object):
         """The dimension of this basis."""
         return NotImplemented
 
+    @abstractmethod
+    def __eq__(self, other):
+        """Compare two basis objects."""
+        return NotImplemented
 
-#@copydocs
-class EuclideanBasis(Basis):
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return "<%s dim=%s>" % \
+               (strclass(self.__class__), self.dim)
+
+
+@copydocs
+class CanonicalBasis(Basis):
     def __init__(self, dim):
         self._dim = dim
-    
+
     @property
     def dim(self):
         return self._dim
@@ -24,14 +49,8 @@ class EuclideanBasis(Basis):
     def __eq__(self, other):
         # Note: classes must match exactly, otherwise it is a
         # *different* basis
-        return (self.__class__ == other.__class__ and
+        return (type(self) == type(other) and
                 self.dim == other.dim)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __repr__(self):
-        return "%s(%s)" % (self.__class__, self.dim)
 
 
 class FunctionBasis(Basis):
@@ -42,7 +61,7 @@ class FunctionBasis(Basis):
         return NotImplemented
 
 
-
+# class SubBasis, IndexedBasis
 
 
 # NOTE: not directly supported by fenics classes - why do we need it?

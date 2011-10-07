@@ -3,7 +3,7 @@ import numpy as np
 from spuq.utils.type_check import InputParameterError
 from spuq.utils.testing import *
 from spuq.linalg.operator import *
-from spuq.linalg.operator import FlatVector
+
 
 class TestMatrixOperator(TestCase):
 
@@ -25,7 +25,7 @@ class TestMatrixOperator(TestCase):
 
         vec1 = FlatVector(self.vec1)
         vec2 = FlatVector(self.vec2)
-        assert_equal(A*vec1, vec2)
+        assert_equal(A * vec1, vec2)
 
 if __name__ == "__main__":
     run_module_suite()
