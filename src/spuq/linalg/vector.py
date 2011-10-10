@@ -13,21 +13,21 @@ class Vector(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def basis(self):
+    def basis(self):  # pragma: no cover
         """Return basis of this vector"""
         return NotImplemented
 
     @abstractproperty
-    def coeffs(self):
+    def coeffs(self):  # pragma: no cover
         """Return cofficients of this vector w.r.t. the basis"""
         return NotImplemented
 
     @abstractmethod
-    def as_array(self):
+    def as_array(self):  # pragma: no cover
         return NotImplemented
 
     @abstractmethod
-    def __add__(self, other):
+    def __add__(self, other):  # pragma: no cover
         """Compute the sum of two vectors."""
         return NotImplemented
 
@@ -36,16 +36,16 @@ class Vector(object):
         return self + (-1.0 * other)
 
     @abstractmethod
-    def __mul__(self, other):
-        """Compute the product of this vector with a scalar."""
+    def __mul__(self, other):  # pragma: no cover
+        """Compute the product of this vector with a scalar the right."""
         return NotImplemented
 
     def __rmul__(self, other):
-        """Compute the product of this vector with a scalar."""
+        """Compute the product of this vector with a scalar from the left."""
         return self.__mul__(other)
 
     @abstractmethod
-    def __eq__(self, other):
+    def __eq__(self, other):  # pragma: no cover
         """Compare vectors for equality.
 
         Note that vectors are only considered equal when they have
@@ -54,7 +54,11 @@ class Vector(object):
         return NotImplemented
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        """Return true if the vectors are not equal."""
+        res = self.__eq__(other)
+        if res is NotImplemented:
+            return res
+        return not res
 
     def __repr__(self):
         return "<%s basis=%s, coeffs=%s>" % \
@@ -64,7 +68,7 @@ class Vector(object):
 class FlatVector(Vector):
     """A vector classed based on the numpy array"""
 
-    @takes(anything, (np.ndarray, list_of((int,float))), optional(Basis))
+    @takes(anything, (np.ndarray, list_of((int, float))), optional(Basis))
     def __init__(self, coeffs, basis=None):
         if not isinstance(coeffs, np.ndarray):
             coeffs = np.array(coeffs, dtype=float)
@@ -86,6 +90,8 @@ class FlatVector(Vector):
         return self.coeffs
 
     def _create_copy(self, coeffs):
+        """Creates a copy of this vector with new coefficients, but
+        the same class and basis."""
         return self.__class__(coeffs, self.basis)
 
     @takes(anything, "FlatVector")
@@ -111,4 +117,3 @@ class FlatVector(Vector):
         return (type(self) == type(other) and
                 self._basis == other._basis and
                 (self.coeffs == other.coeffs).all())
-

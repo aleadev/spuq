@@ -20,17 +20,21 @@ class Basis(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def dim(self):
+    def dim(self):  # pragma: no cover
         """The dimension of this basis."""
         return NotImplemented
 
     @abstractmethod
-    def __eq__(self, other):
+    def __eq__(self, other):  # pragma: no cover
         """Compare two basis objects."""
         return NotImplemented
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        """Return true if the bases are not equal."""
+        res = self.__eq__(other)
+        if res is NotImplemented:
+            return res
+        return not res
 
     def __repr__(self):
         return "<%s dim=%s>" % \
@@ -56,7 +60,7 @@ class CanonicalBasis(Basis):
 class FunctionBasis(Basis):
 
     @abstractproperty
-    def gramian(self):
+    def gramian(self):  # pragma: no cover
         """The Gramian as a LinearOperator (not necessarily a matrix)"""
         return NotImplemented
 

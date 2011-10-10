@@ -15,7 +15,7 @@ class _TestCase(TestCase):
         if hasattr(self, "setup"):
             self.setup()
     
-    def assertIsInstance(self, obj, cls, msg=None):
+    def myAssertIsInstance(self, obj, cls, msg=None):
         """Same as self.assertTrue(isinstance(obj, cls)), with a nicer
         default message."""
         if not isinstance(obj, cls):
@@ -51,9 +51,10 @@ if sys.hexversion >= 0x02070000:
     assert_is_not_none = _tc.assertIsNotNone
     assert_in = _tc.assertIn
     assert_not_in = _tc.assertNotIn
+    assert_is_instance = _tc.assertIsInstance
     assert_not_is_instance = _tc.assertNotIsInstance
-
-assert_is_instance = _tc.assertIsInstance
+else:
+    assert_is_instance = _tc.myAssertIsInstance
 
 
 assert_raises = _tc.assertRaises

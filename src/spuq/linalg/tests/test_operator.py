@@ -7,24 +7,38 @@ from spuq.linalg.operator import *
 
 class TestMatrixOperator(TestCase):
 
-    def setUp(self):
-        self.arr1 = np.array([[1, 2, 4], [3, 4, 5]], dtype=float)
-        self.vec1 = np.array([2, 3, 4], dtype=float)
-        self.vec2 = np.array([24, 38], dtype=float)
-
     def test_init(self):
-        """Make sure ..."""
-        A = MatrixOperator(self.arr1)
-        assert_equal(A.codomain.dim, 2)
-        assert_equal(A.domain.dim, 3)
-        assert_array_equal(A.as_matrix(), self.arr1)
+        l = [[1, 2, 4], [3, 4, 5]]
+        arri = np.array(l, dtype=int)
+        arr = np.array(l, dtype=float)
+        A1 = MatrixOperator(l)
+        A2 = MatrixOperator(arri)
+        A3 = MatrixOperator(arr)
 
-        assert_raises(TypeError, lambda: MatrixOperator(self.arr1, 2))
-        assert_raises(TypeError, MatrixOperator, self.arr1, 2)
+        assert_equal(A1.codomain, CanonicalBasis(2))
+        assert_equal(A1.domain, CanonicalBasis(3))
+        assert_array_equal(A1.as_matrix(), arr)
+
+        assert_raises(TypeError, MatrixOperator, arr, 2)
         assert_raises(TypeError, MatrixOperator, [2])
 
-        vec1 = FlatVector(self.vec1)
-        vec2 = FlatVector(self.vec2)
+    def test_equal(self):
+        l = [[1, 2, 4], [3, 4, 5]]
+        arr = np.array(l, dtype=float)
+        A1 = MatrixOperator(l)
+        A2 = MatrixOperator(arr)
+        A3 = MatrixOperator([[1, 2, 3], [4, 5, 6]])
+
+        assert_true(A1 == A2)
+        assert_true(not (A1 != A2))
+        assert_true(A1 != A3)
+        assert_true(not (A1 == A3))
+
+    def xxxtest_apply(self):
+        arr = np.array([[1, 2, 4], [3, 4, 5]], dtype=float)
+        A = MatrixOperator(self.arr)
+        vec1 = FlatVector([2, 3, 4])
+        vec2 = FlatVector([24, 38])
         assert_equal(A * vec1, vec2)
 
 if __name__ == "__main__":

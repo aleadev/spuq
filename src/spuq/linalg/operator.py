@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 
 import numpy as np
 
-from spuq.utils.type_check import takes, returns, anything, optional
+from spuq.utils.type_check import takes, returns, anything, optional, list_of
 from spuq.linalg.basis import Basis, CanonicalBasis, BasisMismatchError
 from spuq.linalg.vector import Vector, FlatVector
 
@@ -14,49 +14,51 @@ class Operator(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def apply(self, vec):
+    @takes(anything, Vector)
+    def apply(self, vec):  # pragma: no cover
         "Apply operator to vec which should be in the domain of op"
         return NotImplemented
 
     @property
-    def is_linear(self):
+    def is_linear(self):  # pragma: no cover
         "Return whether the operator is linear"
         return True
 
     @abstractproperty
-    def domain(self):
+    def domain(self):  # pragma: no cover
         "Returns the basis of the domain"
-        pass
+        return NotImplemented
 
     @abstractproperty
-    def codomain(self):
+    def codomain(self):  # pragma: no cover
         "Returns the basis of the codomain"
-        pass
+        return NotImplemented
 
     @property
-    def can_transpose(self):
+    def can_transpose(self):  # pragma: no cover
         "Return whether the operator can return its transpose"
         return False
 
     @property
-    def can_invert(self):
+    def can_invert(self):  # pragma: no cover
         "Return whether the operator can return its inverse"
         return False
 
-    def transpose(self):
+    def transpose(self):  # pragma: no cover
         """Transpose the operator;
         need not be implemented"""
         return NotImplemented
 
-    def invert(self):
+    def invert(self):  # pragma: no cover
         """Return an operator that is the inverse of this operator;
         may not be implemented"""
         return NotImplemented
 
-    def as_matrix(self):
+    def as_matrix(self):  # pragma: no cover
         """Return the operator in matrix form """
         return NotImplemented
 
+    @takes(anything, (Vector, "Operator", int, float))
     def __mul__(self, other):
         """Multiply the operator with a scalar, with another operator,
         meaning composition of the two operators, or with any other
@@ -85,6 +87,20 @@ class Operator(object):
     def __call__(self, arg):
         """Operators have call semantics, which means """
         return self.apply(arg)
+
+    def __eq__(self, other):  # pragma: no cover
+        """Compare operator for equality.
+
+        Needs not be implemented.
+        """
+        return NotImplemented
+
+    def __ne__(self, other):
+        """Return true if the operators are not equal."""
+        res = self.__eq__(other)
+        if res is NotImplemented:
+            return res
+        return not res
 
     def _check_basis(self, vec):
         """Throw if the basis of the vector does not match the basis
@@ -272,8 +288,11 @@ class SummedOperator(Operator):
 
 class MatrixOperator(BaseOperator):
 
-    @takes(anything, np.ndarray, optional(Basis), optional(Basis))
+    @takes(anything, (np.ndarray,list_of(list_of((int,float)))), 
+                      optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
+        if not isinstance(arr, np.ndarray):
+            arr = np.array(arr, dtype=float)
         if domain is None:
             domain = CanonicalBasis(arr.shape[1])
         if codomain is None:
@@ -296,6 +315,8 @@ class MatrixOperator(BaseOperator):
                             self.codomain,
                             self.domain)
 
+    def __eq__(self, other):
+        return super(MatrixOperator,self).__eq__(other)
 
 class DiagonalMatrixOperator(BaseOperator):
     def __init__(self, vec, domain=None):
