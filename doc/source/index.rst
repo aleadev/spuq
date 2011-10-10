@@ -15,7 +15,7 @@ Contents:
    concepts
    egsz/concept
    dev_links
-   src/spuq/linalg/operator
+   dev_snippets
 
 Indices and tables
 ==================
