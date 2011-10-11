@@ -17,6 +17,8 @@ Programming resources
 Python
 ~~~~~~
 
+* decorator library: http://wiki.python.org/moin/PythonDecoratorLibrary
+
 Libraries
 ~~~~~~~~~
 

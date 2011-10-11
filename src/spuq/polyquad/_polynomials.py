@@ -79,12 +79,10 @@ _0 = lambda x: 0 * x
 _1 = lambda x: 0 * x + 1
 
 
-def rc4_to_rc3(rc4_func):
-    def rc3_func(n):
-        (a1, a2, a3, a4) = rc4_func(n)
-        a1 = float(a1)
-        return (a2 / a1, a3 / a1, a4 / a1)
-    return rc3_func
+def rc4_to_rc3(a):
+    """Convert recurrence coeffs from a 4 to a 3 coeffs form."""
+    a0 = float(a[0])
+    return (a[1] / a0, a[2] / a0, a[3] / a0)
 
 
 def rc_norm_to_rc3(rc_norm_func):
@@ -129,6 +127,25 @@ def sqnorm_from_rc(rc_func, n):
         h *= c
     return h
 
+def rc_shift_scale(rc_func, shift, scale):
+    """Return a function that computes recurrence coefficients for
+    polynomials with a weight function that's shifted and scaled.
+
+    I.e. w'(x) = w((x-shift)/scale) where w is the original weight
+    function.
+    """
+    def rc_shifted_scaled(n):
+        (a, b, c) = rc_func(n)
+        return (a - b * shift / scale, b / scale, c)
+    return rc_shifted_scaled
+    
+
+def rc_window_trans(rc_func, domain, window):
+    (a0, b0) = domain
+    (a1, b1) = window
+    shift = 0.5 * (a0 + b0 - a1 - b1)
+    scale = (a0 - b0) / (a1 - b1)
+    return rc_shift_scale(rc_func, shift, scale)
 
 def compute_poly(rc_func, n, x):
     f = [_0(x), _1(x)]
@@ -219,63 +236,22 @@ def stc_stoch_hermite(a, b, c):
 
 
 # Legendre polynomials
-@rc4_to_rc3
 def rc_legendre(n):
     """AS page 782 """
-    return (n + 1.0, 0.0, 2.0 * n + 1.0, float(n))
+    return rc4_to_rc3((n + 1.0, 0.0, 2.0 * n + 1.0, float(n)))
 
 
 def rc_norm_legendre(n):
-    """ """
+    """Recurrence coefficients of the normalised Legendre polys on [-1, 1]."""
     if n > 0:
-        beta = 1.0 / np.sqrt(4.0 - 1.0 / float(n) ** 2)
-        beta2 = (4 - float(n) ** - 2) ** - 0.5
-        assert abs(beta - beta2) < 1e-8
+        beta = (4 - float(n) ** - 2) ** - 0.5
     else:
         beta = 0.0
-        #beta = 1.0
     return (0.0, beta)
 
 
 def sqnorm_legendre(n):
-    """AS page 782 (divided by 2, s.t. h0 == 1)"""
+    """Square of the norm of the legendre polynomials of [-1, 1].
+
+    AS page 782 (divided by 2, s.t. h0 == 1)"""
     return 1.0 / (2.0 * n + 1.0)
-
-
-######################################################
-
-
-def testit():
-    x = np.poly1d([1, 0])
-    rc3_norm_legendre = rc_norm_to_rc3(rc_norm_legendre)
-    P1 = compute_poly(rc3_norm_legendre, 5, x)
-    P2 = compute_poly(rc_legendre, 5, x)
-    for i in range(5):
-        print sqnorm_legendre(i), sqnorm_legendre(i) ** 0.5
-        print P1[i].coeffs * sqnorm_legendre(i) ** 0.5
-        print P2[i].coeffs
-        print
-
-
-def foo():
-    P = compute_poly(rc_legendre, 5, x)
-    z = compute_poly(rc_legendre, 5, 1.0)
-    if False:
-        for i in range(0 * 5 - 1):
-            print P[i]
-            print P[i](1.0)
-            print sqnorm_legendre(i)
-    for i in range(1, 5):
-        print sqnorm_legendre(i)
-        j = i
-        h2 = sqnorm_legendre(j + 1) ** 0.5
-        h1 = sqnorm_legendre(j) ** 0.5
-        h0 = sqnorm_legendre(j - 1) ** 0.5
-        t = rc_legendre(i)
-        print (t[0] * h1 / h2, t[1] * h1 / h2, t[2] * h0 / h2)
-        print (t[0] * h2 / h1, t[1] * h2 / h1, t[2] * h2 / h0)
-        print rc_norm_legendre(i)
-        print
-
-#testit()
-#raise ValueError()

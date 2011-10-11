@@ -66,6 +66,22 @@ class TestRecurrences(TestCase):
         assert_array_almost_equal(rc_1(3), rc_3(3))
         assert_array_almost_equal(rc_1(4), rc_3(4))
 
+    def test_rc_shift_scale(self):
+        x = np.poly1d([1.0, 0])
+        rc_1 = rc_legendre
+        rc_2 = rc_shift_scale(rc_legendre, 2, 3)
+        P1 = compute_poly(rc_1, 5, (x-2.0)/3.0)
+        P2 = compute_poly(rc_2, 5, x)
+        assert_array_almost_equal(P1[0], P2[0])
+        assert_array_almost_equal(P1[3], P2[3])
+        assert_array_almost_equal(P1[5], P2[5])
+        P1 = compute_poly(rc_1, 5, x)
+        P2 = compute_poly(rc_2, 5, 3*x+2)
+        assert_array_almost_equal(P1[0], P2[0])
+        assert_array_almost_equal(P1[3], P2[3])
+        assert_array_almost_equal(P1[5], P2[5])
+
+
     def test_eval_clenshaw(self):
         rc = rc_monomials
         x = np.poly1d([1, 0])

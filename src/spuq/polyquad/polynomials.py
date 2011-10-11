@@ -15,20 +15,21 @@ class PolynomialFamily(object):
 
     @abstractmethod
     def get_structure_coefficient(self, a, b, c):
-        """return specific structure coefficient"""
+        """Return specific structure coefficient"""
         return NotImplemented
 
     def eval(self, n,  x):
-        """Evaluate polynomial of degree n at points x"""
+        """Evaluate polynomial of degree ``n`` at points ``x``"""
         return _p.compute_poly(self.recurrence_coefficients, n, x)[-1]
 
     def get_coefficients(self, n):
-        """return coefficients of polynomial"""
+        """Return coefficients of the polynomial with degree ``n`` of
+        the family."""
         l = self.eval(n,  poly1d([1, 0]))
         return l.coeffs[::-1]
 
     def get_structure_coefficients(self, n):
-        """return structure coefficients of indices up to n"""
+        """Return structure coefficients of indices up to ``n``"""
         
         structcoeffs = getattr(self, "_structcoeffs", np.empty((0, 0, 0)))
 
@@ -43,11 +44,12 @@ class PolynomialFamily(object):
 
     @abstractmethod
     def norm(self, n, sqrt=True):
-        """returns norm of polynomial"""
+        """Return norm of the ``n``-th degree polynomial."""
         return NotImplemented
 
-    def is_normalised(self):
-        """return True if polynomials are normalised"""
+    @property
+    def normalised(self):
+        """True if polynomials are normalised."""
         return False
 
 
@@ -76,17 +78,22 @@ def normalise(family):
 class LegendrePolynomials(PolynomialFamily):
 
     def __init__(self, a=-1.0, b=1.0, normalised=False):
-        # currently nothing else is supported (coming soon however)
-        assert a == -1.0
-        assert b == 1.0
-        assert normalised == False
+        self._a = a
+        self._b = b
+        self._normalised = normalised
 
     def recurrence_coefficients(self, n):
         return _p.rc_legendre(n)
 
     def norm(self, n, sqrt=True):
-        """returns norm of polynomial"""
+        """Returns the norm of polynomial"""
+        if self._normalised:
+            return 1
         return _p.sqnorm_legendre(n)
+
+    @property
+    def normalised(self):
+        return self._normalised
 
     def get_structure_coefficient(self, a, b, c):
         return NotImplemented
@@ -109,7 +116,3 @@ class StochasticHermitePolynomials(PolynomialFamily):
 
     def get_structure_coefficient(self, a, b, c):
         return _p.stc_stoch_hermite(a, b, c)
-
-
-
-
