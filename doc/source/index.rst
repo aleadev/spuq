@@ -16,6 +16,7 @@ Contents:
    egsz/concept
    dev_links
    apiref
+   dev_snippets
 
 Indices and tables
 ==================

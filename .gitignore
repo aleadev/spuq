@@ -2,3 +2,4 @@
 *~
 *.bak
 doc/build
+.coverage

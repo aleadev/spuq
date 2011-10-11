@@ -1,41 +1,71 @@
 from abc import ABCMeta, abstractproperty, abstractmethod
 
+from spuq.utils import strclass
 from spuq.utils.decorators import copydocs
+
+
+class BasisMismatchError(ValueError):
+    pass
+
+
+def check_basis(basis1, basis2, descr1="basis1", descr2="basis2"):
+    """Throw if the bases do not match"""
+    if basis1 != basis2:
+        raise BasisMismatchError("Basis don't match: %s=%s, %s=%s" %
+                                 (descr1, str(basis1), descr2, str(basis2)))
+
 
 class Basis(object):
     """Abstract base class for basis objects"""
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def dim(self):
+    def dim(self):  # pragma: no cover
         """The dimension of this basis."""
         return NotImplemented
 
+    @abstractmethod
+    def __eq__(self, other):  # pragma: no cover
+        """Compare two basis objects."""
+        return NotImplemented
+
+    def __ne__(self, other):
+        """Return true if the bases are not equal."""
+        res = self.__eq__(other)
+        if res is NotImplemented:
+            return res
+        return not res
+
+    def __repr__(self):
+        return "<%s dim=%s>" % \
+               (strclass(self.__class__), self.dim)
+
 
 @copydocs
-class EuclideanBasis(Basis):
+class CanonicalBasis(Basis):
     def __init__(self, dim):
         self._dim = dim
-        super(EuclideanBasis, self).__init__()
-    
+
     @property
     def dim(self):
         return self._dim
 
     def __eq__(self, other):
-        return (isinstance(other, EuclideanBasis) and
+        # Note: classes must match exactly, otherwise it is a
+        # *different* basis
+        return (type(self) == type(other) and
                 self.dim == other.dim)
 
 
 class FunctionBasis(Basis):
 
     @abstractproperty
-    def gramian(self):
+    def gramian(self):  # pragma: no cover
         """The Gramian as a LinearOperator (not necessarily a matrix)"""
         return NotImplemented
 
 
-
+# class SubBasis, IndexedBasis
 
 
 # NOTE: not directly supported by fenics classes - why do we need it?

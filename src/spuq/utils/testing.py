@@ -8,8 +8,14 @@ class _TestCase(TestCase):
         if method is None:
             method = "dummy"
         super(_TestCase, self).__init__(method)
+
+    def setUp(self):
+        """Just call setup in case somebody didn't use the braindead
+        capitalisation"""
+        if hasattr(self, "setup"):
+            self.setup()
     
-    def assertIsInstance(self, obj, cls, msg=None):
+    def myAssertIsInstance(self, obj, cls, msg=None):
         """Same as self.assertTrue(isinstance(obj, cls)), with a nicer
         default message."""
         if not isinstance(obj, cls):
@@ -33,7 +39,7 @@ TestCase = _TestCase
 
 _tc = TestCase()
 
-assert_equal = _tc.assertEqual
+#assert_equal = _tc.assertEqual
 assert_not_equal = _tc.assertNotEqual
 assert_true = _tc.assertTrue
 assert_false = _tc.assertFalse
@@ -45,9 +51,10 @@ if sys.hexversion >= 0x02070000:
     assert_is_not_none = _tc.assertIsNotNone
     assert_in = _tc.assertIn
     assert_not_in = _tc.assertNotIn
+    assert_is_instance = _tc.assertIsInstance
     assert_not_is_instance = _tc.assertNotIsInstance
-
-assert_is_instance = _tc.assertIsInstance
+else:
+    assert_is_instance = _tc.myAssertIsInstance
 
 
 assert_raises = _tc.assertRaises

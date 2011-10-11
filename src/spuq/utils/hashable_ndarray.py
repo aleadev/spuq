@@ -14,6 +14,9 @@ class hashable_ndarray(ndarray):
     def __eq__(self, other):
         return all(ndarray.__eq__(self, other))
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __hash__(self):
         return self.__hash
 
