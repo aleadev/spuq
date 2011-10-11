@@ -61,3 +61,4 @@ Quadrature
 Orthogonal polynomials
 ----------------------
 
+* Gautschi OPQ: http://www.cs.purdue.edu/archives/2002/wxg/codes/OPQ.html
