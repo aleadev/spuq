@@ -9,7 +9,7 @@ class TestBasis(TestCase):
     def test_abstract(self):
         assert_raises(TypeError, Basis)
         assert_raises(TypeError, FunctionBasis)
-
+        pass
 
 class TestCanonicalBasis(TestCase):
 
@@ -39,10 +39,10 @@ class TestCanonicalBasis(TestCase):
         b7b = CanonicalBasis(7)
 
         assert_raises(BasisMismatchError, check_basis, b5, b7a)
-        with assert_raises(BasisMismatchError) as cm:
-            check_basis(b5, b7a, "basisabc", "basisxyz")
-        assert_true(cm.exception.message.find("basisabc") > -1)
-        assert_true(cm.exception.message.find("basisxyz") > -1)
+        exc = assert_raises(BasisMismatchError, check_basis, 
+                            b5, b7a, "basisabc", "basisxyz")
+        assert_true(str(exc).find("basisabc") > -1)
+        assert_true(str(exc).find("basisxyz") > -1)
 
     def test_repr(self):
         b5 = CanonicalBasis(5)

@@ -82,7 +82,7 @@ class TestFlatVector(TestCase):
         assert_equal(2 * fv1, fv3)
         assert_equal(fv1 * 2.5, fv2)
         assert_equal(fv1 * 2, fv3)
-        assert_raises(lambda: fv1 * fv3)
+        assert_raises(TypeError, lambda: fv1 * fv3)
 
         fv4 = FlatVector([1, 2, 3], FooBasis(3))
         fv5 = FlatVector([2, 4, 6], FooBasis(3))

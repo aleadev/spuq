@@ -24,8 +24,27 @@ class _TestCase(TestCase):
             # TODO: remove this ugly hack
             assert_true(type(obj)==cls)
             
+    def failUnlessRaises(self, excClass, callableObj, *args, **kwargs):
+        """Fail unless an exception of class excClass is thrown
+           by callableObj when invoked with arguments args and keyword
+           arguments kwargs. If a different type of exception is
+           thrown, it will not be caught, and the test case will be
+           deemed to have suffered an error, exactly as for an
+           unexpected exception.
+        """
+        try:
+            callableObj(*args, **kwargs)
+        except excClass, e:
+            return e
+        else:
+            if hasattr(excClass,'__name__'): excName = excClass.__name__
+            else: excName = str(excClass)
+            raise self.failureException, "%s not raised" % excName
+
     def dummy(self):
         pass
+
+    assertRaises = failUnlessRaises
 
 del TestCase.assertEquals
 del TestCase.failIf
