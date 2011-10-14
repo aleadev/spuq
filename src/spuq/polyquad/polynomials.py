@@ -1,3 +1,4 @@
+import math
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 import numpy as np
@@ -47,32 +48,55 @@ class PolynomialFamily(object):
         """Return norm of the ``n``-th degree polynomial."""
         return NotImplemented
 
-    @property
+    @abstractproperty
     def normalised(self):
         """True if polynomials are normalised."""
         return False
 
 
-class NormalisedPolynomialFamily(PolynomialFamily):
-    """Wrapper that transforms an unnormalised family of orthogonal
-    polynomials into normalised ones"""
+class BasePolynomialFamily(PolynomialFamily):
+    """ """
 
-    def __init__(self, family):
-        self._family = family
-        self.recurrence_coefficients = \
-            _p.normalise_rc(_family.recurrence_coefficients)
+    def __init__(self, rc_func, sqnorm_func=None, sc_func=None, normalised=False):
+        self._rc_func = rc_func
+
+        if sqnorm_func is None:
+            sqnorm_func = lambda n: _p.sqnorm_from_rc(rc_func, n)
+        self._sqnorm_func = sqnorm_func
+
+        if sc_func is None:
+            # needs to be implemented in _polynomials
+            sc_func = NotImplemented
+        self._sc_func = sc_func
+
+        self._normalised = normalised
+
+    def normalise(self):
+        rc_func = _p.normalise_rc(self._rc_func, self._sqnorm_func)
+        self._rc_func = rc_func
+        self._sqnorm_func = None
+        self._sc_func = NotImplemented
+        self._normalised = True
+
+    def recurrence_coefficients(self, n):
+        return self._rc_func(n)
+
+    def get_structure_coefficient(self, a, b, c):
+        return self._sc_func(a, b, c)
 
     def norm(self, n, sqrt=True):
         """Return the norm of the `n`-th polynomial."""
-        return 1.0
+        if self._normalised:
+            return 1.0
+        elif sqrt:
+            return math.sqrt(self._sqnorm_func(n))
+        else:
+            return self._sqnorm_func(n)
 
-    def is_normalised(self):
-        """Return True if polynomials are normalised."""
-        return True
-
-
-def normalise(family):
-    return NormalisedPolynomialFamily(family)
+    @property
+    def normalised(self):
+        """True if polynomials are normalised."""
+        return self._normalised
 
 
 class LegendrePolynomials(PolynomialFamily):
@@ -99,20 +123,17 @@ class LegendrePolynomials(PolynomialFamily):
         return NotImplemented
 
 
-class StochasticHermitePolynomials(PolynomialFamily):
+class StochasticHermitePolynomials(BasePolynomialFamily):
 
     def __init__(self, mu=0.0, sigma=1.0, normalised=False):
         # currently nothing else is supported (coming soon however)
-        assert mu == 0.0
-        assert sigma == 1.0
-        assert normalised == False
+        rc_func = _p.rc_stoch_hermite
+        if mu != 0.0 or sigma != 1.0:
+            rc_func = _p.rc_shift_scale(rc_func, mu, sigma)
+            sqnorm_func = None
+        else:
+            sqnorm_func = None #_p.sqnorm_stoch_hermite
 
-    def recurrence_coefficients(self, n):
-        return _p.rc_stoch_hermite(n)
-
-    def norm(self, n):
-        """returns norm of polynomial"""
-        return _p.sqnorm_stoch_hermite(n)
-
-    def get_structure_coefficient(self, a, b, c):
-        return _p.stc_stoch_hermite(a, b, c)
+        super(self.__class__, self).__init__(rc_func, sqnorm_func)
+        if normalised:
+            self.normalise()

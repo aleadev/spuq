@@ -2,11 +2,12 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 
 import numpy as np
 
+from spuq.utils import strclass, with_equality
 from spuq.utils.type_check import takes, returns, anything, optional, list_of
 from spuq.linalg.basis import Basis, CanonicalBasis, BasisMismatchError
 from spuq.linalg.vector import Vector, FlatVector
 
-
+@with_equality
 class Operator(object):
     """Abstract base class for (linear) operators mapping elements from
     some domain into the codomain
@@ -87,20 +88,6 @@ class Operator(object):
     def __call__(self, arg):
         """Operators have call semantics, which means """
         return self.apply(arg)
-
-    def __eq__(self, other):  # pragma: no cover
-        """Compare operator for equality.
-
-        Needs not be implemented.
-        """
-        return NotImplemented
-
-    def __ne__(self, other):
-        """Return true if the operators are not equal."""
-        res = self.__eq__(other)
-        if res is NotImplemented:
-            return res
-        return not res
 
     def _check_basis(self, vec):
         """Throw if the basis of the vector does not match the basis

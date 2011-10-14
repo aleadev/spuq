@@ -87,7 +87,6 @@ def rc4_to_rc3(a):
 
 def rc_norm_to_rc3(rc_norm_func):
     def rc3_func(n):
-        print n
         (alpha0, beta0) = rc_norm_func(n)
         (alpha1, beta1) = rc_norm_func(n + 1)
         a = -float(alpha0) / float(beta1)
@@ -98,6 +97,8 @@ def rc_norm_to_rc3(rc_norm_func):
 
 
 def normalise_rc(rc_func, sqnorm_func=None):
+    """Return a function that returns the recurrence coefficients for
+    the normalised polynomials."""
     if sqnorm_func is None:
         sqnorm_func = lambda n: sqnorm_from_rc(rc_func, n)
 
@@ -119,6 +120,8 @@ def sqnorm_from_rc(rc_func, n):
     (Apr., 1975), pp. 505 - 507
     Stable URL: http: // www.jstor.org / stable / 2040291 .
     """
+    assert type(n) == type(1)
+
     (a0, b0, c0) = rc_func(0)
     (an, bn, cn) = rc_func(n)
     h = b0 / bn
@@ -140,23 +143,23 @@ def rc_shift_scale(rc_func, shift, scale):
     return rc_shifted_scaled
     
 
-def rc_window_trans(rc_func, domain, window):
-    (a0, b0) = domain
-    (a1, b1) = window
-    shift = 0.5 * (a0 + b0 - a1 - b1)
-    scale = (a0 - b0) / (a1 - b1)
+def rc_window_trans(rc_func, old_domain, new_domain):
+    (a0, b0) = old_domain
+    (a1, b1) = new_domain
+    shift = 0.5 * ((a1 + b1) - (a0 + b0))
+    scale = float(a1 - b1) / (a0 - b0)
     return rc_shift_scale(rc_func, shift, scale)
 
 def compute_poly(rc_func, n, x):
     f = [_0(x), _1(x)]
     for i in xrange(n):
-        (a, b, c) = rc_func(float(i))
+        (a, b, c) = rc_func(i)
         fn = (a + x * b) * f[i + 1] - c * f[i]
         f.append(fn)
     return f[1:]
 
 
-def compute_poly2(rc_func, n, x):
+def _compute_poly2(rc_func, n, x): # pragma: no cover
     if n == 0:
         # ensure return value has the right format (e.g. if x is a
         # vector, ndarray or poly1d)

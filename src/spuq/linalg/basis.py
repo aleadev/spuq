@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractproperty, abstractmethod
 
-from spuq.utils import strclass
+from spuq.utils import strclass, with_equality
 from spuq.utils.decorators import copydocs
 
 
@@ -14,7 +14,7 @@ def check_basis(basis1, basis2, descr1="basis1", descr2="basis2"):
         raise BasisMismatchError("Basis don't match: %s=%s, %s=%s" %
                                  (descr1, str(basis1), descr2, str(basis2)))
 
-
+@with_equality
 class Basis(object):
     """Abstract base class for basis objects"""
     __metaclass__ = ABCMeta
@@ -23,18 +23,6 @@ class Basis(object):
     def dim(self):  # pragma: no cover
         """The dimension of this basis."""
         return NotImplemented
-
-    @abstractmethod
-    def __eq__(self, other):  # pragma: no cover
-        """Compare two basis objects."""
-        return NotImplemented
-
-    def __ne__(self, other):
-        """Return true if the bases are not equal."""
-        res = self.__eq__(other)
-        if res is NotImplemented:
-            return res
-        return not res
 
     def __repr__(self):
         return "<%s dim=%s>" % \
@@ -49,12 +37,6 @@ class CanonicalBasis(Basis):
     @property
     def dim(self):
         return self._dim
-
-    def __eq__(self, other):
-        # Note: classes must match exactly, otherwise it is a
-        # *different* basis
-        return (type(self) == type(other) and
-                self.dim == other.dim)
 
 
 class FunctionBasis(Basis):

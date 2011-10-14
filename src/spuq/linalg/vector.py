@@ -3,10 +3,10 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
 from spuq.linalg.basis import Basis, CanonicalBasis, check_basis
-from spuq.utils import strclass
+from spuq.utils import strclass, with_equality
 from spuq.utils.type_check import takes, returns, anything, optional, list_of
 
-
+@with_equality
 class Vector(object):
     """Abstract base class for vectors which consist of a coefficient
     vector and an associated basis"""
@@ -43,22 +43,6 @@ class Vector(object):
     def __rmul__(self, other):
         """Compute the product of this vector with a scalar from the left."""
         return self.__mul__(other)
-
-    @abstractmethod
-    def __eq__(self, other):  # pragma: no cover
-        """Compare vectors for equality.
-
-        Note that vectors are only considered equal when they have
-        exactly the same type.
-        """
-        return NotImplemented
-
-    def __ne__(self, other):
-        """Return true if the vectors are not equal."""
-        res = self.__eq__(other)
-        if res is NotImplemented:
-            return res
-        return not res
 
     def __repr__(self):
         return "<%s basis=%s, coeffs=%s>" % \
@@ -116,4 +100,4 @@ class FlatVector(Vector):
         """
         return (type(self) == type(other) and
                 self._basis == other._basis and
-                (self.coeffs == other.coeffs).all())
+                (self._coeffs == other._coeffs).all())

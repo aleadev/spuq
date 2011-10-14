@@ -81,6 +81,30 @@ class TestRecurrences(TestCase):
         assert_array_almost_equal(P1[3], P2[3])
         assert_array_almost_equal(P1[5], P2[5])
 
+    def test_rc_window_trans(self):
+        x = np.poly1d([1.0, 0])
+        rc_1 = rc_stoch_hermite
+        P1 = compute_poly(rc_1, 5, x)
+        # just scale
+        rc_2 = rc_window_trans(rc_stoch_hermite, (-1, 1), (-2, 2))
+        P2 = compute_poly(rc_2, 5, x)
+        assert_almost_equal(P2[5](-2), P1[5](-1))
+        assert_almost_equal(P2[5](0), P1[5](0))
+        assert_almost_equal(P2[5](1), P1[5](0.5))
+        assert_almost_equal(P2[5](2), P1[5](1))
+        # just shift
+        rc_2 = rc_window_trans(rc_stoch_hermite, (-1, 1), (3, 5))
+        P2 = compute_poly(rc_2, 5, x)
+        assert_almost_equal(P2[5](3), P1[5](-1))
+        assert_almost_equal(P2[5](4), P1[5](0))
+        assert_almost_equal(P2[5](5), P1[5](1))
+        # shift and scale
+        rc_2 = rc_window_trans(rc_stoch_hermite, (-1, 1), (2, 6))
+        P2 = compute_poly(rc_2, 5, x)
+        assert_almost_equal(P2[5](2), P1[5](-1))
+        assert_almost_equal(P2[5](4), P1[5](0))
+        assert_almost_equal(P2[5](5), P1[5](0.5))
+        assert_almost_equal(P2[5](6), P1[5](1))
 
     def test_eval_clenshaw(self):
         rc = rc_monomials

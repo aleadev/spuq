@@ -1,3 +1,4 @@
+import math
 import numpy as np
 
 from spuq.utils.testing import *
@@ -68,3 +69,30 @@ class TestHermite(TestCase):
         p = StochasticHermitePolynomials()
         assert_equal(p.eval(0, x), 1)
         assert_almost_equal(p.eval(3, x), x ** 3 - 3 * x)
+        assert_equal(p.norm(0, False), 1)
+        assert_equal(p.norm(1, False), 1)
+        assert_equal(p.norm(2, False), 2)
+        assert_equal(p.norm(3, False), 6)
+        assert_equal(p.norm(4, False), 24)
+        assert_equal(p.norm(5, False), 120)
+        
+        p = StochasticHermitePolynomials(normalised=True)
+        assert_almost_equal(p.eval(3, x), (x ** 3 - 3 * x)/math.sqrt(6.0))
+        assert_almost_equal(p.eval(5, x), (x ** 5 - 10 * x ** 3 + 15 * x) /
+                            math.sqrt(120.0))
+
+        p = StochasticHermitePolynomials(normalised=False)
+        N = 100000
+        y = np.linspace( 0, 1, N+2 )
+        y = y[1:-1]
+        import scipy.stats as stats
+        dist = stats.norm(0, 1)
+        x = dist.ppf( y )
+        print
+        print
+        print sum(p.eval(3, x) * p.eval(3, x))/float(N)
+        print sum(p.eval(3, x) * p.eval(4, x))/float(N)
+        #print x
+        
+
+
