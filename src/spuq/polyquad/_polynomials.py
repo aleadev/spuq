@@ -141,7 +141,7 @@ def rc_shift_scale(rc_func, shift, scale):
         (a, b, c) = rc_func(n)
         return (a - b * shift / scale, b / scale, c)
     return rc_shifted_scaled
-    
+
 
 def rc_window_trans(rc_func, old_domain, new_domain):
     (a0, b0) = old_domain
@@ -241,13 +241,13 @@ def stc_stoch_hermite(a, b, c):
 # Legendre polynomials
 def rc_legendre(n):
     """AS page 782 """
-    return rc4_to_rc3((n + 1.0, 0.0, 2.0 * n + 1.0, float(n)))
+    return rc4_to_rc3((max(0, n) + 1.0, 0.0, 2.0 * n + 1.0, float(n)))
 
 
 def rc_norm_legendre(n):
     """Recurrence coefficients of the normalised Legendre polys on [-1, 1]."""
     if n > 0:
-        beta = (4 - float(n) ** - 2) ** - 0.5
+        beta = (4 - float(n) ** -2) ** -0.5
     else:
         beta = 0.0
     return (0.0, beta)

@@ -99,28 +99,21 @@ class BasePolynomialFamily(PolynomialFamily):
         return self._normalised
 
 
-class LegendrePolynomials(PolynomialFamily):
+class LegendrePolynomials(BasePolynomialFamily):
 
     def __init__(self, a=-1.0, b=1.0, normalised=False):
-        self._a = a
-        self._b = b
-        self._normalised = normalised
+        # currently nothing else is supported (coming soon however)
+        rc_func = _p.rc_legendre
+        if a != -1.0 or b != 1.0:
+            rc_func = _p.rc_window_trans(rc_func, (-1, 1), (a, b))
+            sqnorm_func = None
+        else:
+            sqnorm_func = None # _p.sqnorm_legendre
 
-    def recurrence_coefficients(self, n):
-        return _p.rc_legendre(n)
-
-    def norm(self, n, sqrt=True):
-        """Returns the norm of polynomial"""
-        if self._normalised:
-            return 1
-        return _p.sqnorm_legendre(n)
-
-    @property
-    def normalised(self):
-        return self._normalised
-
-    def get_structure_coefficient(self, a, b, c):
-        return NotImplemented
+        super(self.__class__, self).__init__(rc_func, sqnorm_func)
+        if normalised:
+            self.normalise()
+        return 
 
 
 class StochasticHermitePolynomials(BasePolynomialFamily):
