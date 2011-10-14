@@ -11,8 +11,8 @@ def _check_poly_consistency(p, dist):
     def dist_integrate(dist, f, **kwargs):
         import scipy.integrate as integ
         def foo(x):
-            return f(dist.ppf(x), **kwargs)
-        return integ.quad( foo, 0, 1, epsabs=1e-5)[0]
+            return f(dist.ppf(x))
+        return integ.quad( foo, 0, 1, epsabs=1e-5, **kwargs)[0]
     def polyprod(p, i, j):
         return lambda x: p.eval(i, x) * p.eval(j, x)
     assert_approx_equal(dist_integrate(dist, polyprod(p, 0, 0)), p.norm(0, False))
@@ -77,6 +77,23 @@ class TestLegendre(TestCase):
         #assert_approx_equal(integ(P1 * P1), 1.0)
         #assert_approx_equal(integ(P3 * P3), 1.0)
 
+    @dec.slow
+    def test_consistency(self):
+        import scipy.stats as stats
+        dist = stats.uniform(-1, 1 - -1)
+        p = LegendrePolynomials(normalised=False)
+        _check_poly_consistency(p, dist)
+
+
+        p = LegendrePolynomials(a=2, b=5, normalised=False)
+        dist = stats.uniform(2, 5 - 2)
+        _check_poly_consistency(p, dist)
+
+        p = LegendrePolynomials(a=-2.5, b=-1.2, normalised=True)
+        assert_equal(p.norm(4, False), 1)
+        dist = stats.uniform(-2.5, -1.2 - -2.5)
+        _check_poly_consistency(p, dist)
+
 
 class TestHermite(TestCase):
 
@@ -112,3 +129,7 @@ class TestHermite(TestCase):
         assert_equal(p.norm(4, False), 1)
         dist = stats.norm(-2.5, 1.2)
         _check_poly_consistency(p, dist)
+
+
+if __name__ == "__main__":
+    run_module_suite()

@@ -150,4 +150,5 @@ class TestRecurrences(TestCase):
         assert_array_equal(eval_forsythe(rc, [3, 5, 7, 9], x), 
                            inner(p, [3, 5, 7, 9]))
 
-
+if __name__ == "__main__":
+    run_module_suite()
