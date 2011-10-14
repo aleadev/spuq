@@ -57,6 +57,7 @@ class TestRecurrences(TestCase):
         rc_2 = normalise_rc(rc_legendre)
         rc_3 = normalise_rc(rc_legendre, sqnorm_legendre)
 
+        assert_array_almost_equal(rc_1(0), rc_2(0))
         assert_array_almost_equal(rc_1(1), rc_2(1))
         assert_array_almost_equal(rc_1(2), rc_2(2))
         assert_array_almost_equal(rc_1(3), rc_2(3))

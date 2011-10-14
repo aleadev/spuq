@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import scipy
 
 from spuq.utils.testing import *
 from spuq.polyquad.polynomials import *
@@ -9,12 +10,14 @@ def _check_poly_consistency(p, dist):
     """Check whether the polynomials are truly orthonormal for the
     given distribution"""
     def dist_integrate(dist, f, **kwargs):
-        import scipy.integrate as integ
+        from scipy.integrate import quad
         def foo(x):
             return f(dist.ppf(x))
-        return integ.quad(foo, 0, 1, epsabs=1e-5, **kwargs)[0]
+        return quad(foo, 0, 1, epsabs=1e-5, **kwargs)[0]
+    
     def polyprod(p, i, j):
         return lambda x: p.eval(i, x) * p.eval(j, x)
+    
     assert_approx_equal(dist_integrate(dist, polyprod(p, 0, 0)), 
                         p.norm(0, False))
     assert_approx_equal(dist_integrate(dist, polyprod(p, 3, 3)), 
@@ -87,7 +90,6 @@ class TestLegendre(TestCase):
         p = LegendrePolynomials(normalised=False)
         _check_poly_consistency(p, dist)
 
-
         p = LegendrePolynomials(a=2, b=5, normalised=False)
         dist = stats.uniform(2, 5 - 2)
         _check_poly_consistency(p, dist)
@@ -128,7 +130,7 @@ class TestHermite(TestCase):
         dist = stats.norm(3, 2)
         _check_poly_consistency(p, dist)
 
-        p = StochasticHermitePolynomials(mu= -2.5, sigma=1.2, normalised=True)
+        p = StochasticHermitePolynomials(mu=-2.5, sigma=1.2, normalised=True)
         assert_equal(p.norm(4, False), 1)
         dist = stats.norm(-2.5, 1.2)
         _check_poly_consistency(p, dist)

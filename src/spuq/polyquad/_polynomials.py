@@ -109,6 +109,7 @@ def normalise_rc(rc_func, sqnorm_func=None):
         if n > 0:
             h0 = sqnorm_func(n - 1) ** 0.5
         else:
+            assert c == 0.0
             h0 = 0
         return (a * h1 / h2, b * h1 / h2, c * h0 / h2)
     return rc_norm_func
