@@ -12,12 +12,15 @@ def _check_poly_consistency(p, dist):
         import scipy.integrate as integ
         def foo(x):
             return f(dist.ppf(x))
-        return integ.quad( foo, 0, 1, epsabs=1e-5, **kwargs)[0]
+        return integ.quad(foo, 0, 1, epsabs=1e-5, **kwargs)[0]
     def polyprod(p, i, j):
         return lambda x: p.eval(i, x) * p.eval(j, x)
-    assert_approx_equal(dist_integrate(dist, polyprod(p, 0, 0)), p.norm(0, False))
-    assert_approx_equal(dist_integrate(dist, polyprod(p, 3, 3)), p.norm(3, False))
-    assert_approx_equal(dist_integrate(dist, polyprod(p, 4, 4)), p.norm(4, False))
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 0, 0)), 
+                        p.norm(0, False))
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 3, 3)), 
+                        p.norm(3, False))
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 4, 4)), 
+                        p.norm(4, False))
     assert_almost_equal(dist_integrate(dist, polyprod(p, 0, 1)), 0)
     assert_almost_equal(dist_integrate(dist, polyprod(p, 2, 3)), 0)
     assert_almost_equal(dist_integrate(dist, polyprod(p, 3, 4)), 0)
@@ -27,7 +30,7 @@ class TestPolynomials(TestCase):
 
     def test_eval_array(self):
         """Make sure the eval functions works for arrays."""
-        _a = lambda *args: np.array(args, dtype=float)
+        _a = lambda * args: np.array(args, dtype=float)
         p = LegendrePolynomials()
         x = _a(1, 2, 3)
         assert_array_equal(p.eval(0, x), _a(1, 1, 1))
@@ -49,7 +52,7 @@ class TestLegendre(TestCase):
 
     def test_legendre(self):
         """Make sure the Legendre polynomials work."""
-        _a = lambda *args: np.array(args, dtype=float)
+        _a = lambda * args: np.array(args, dtype=float)
 
         x = 3.14159
         p = LegendrePolynomials()
@@ -109,9 +112,9 @@ class TestHermite(TestCase):
         assert_equal(p.norm(3, False), 6)
         assert_equal(p.norm(4, False), 24)
         assert_equal(p.norm(5, False), 120)
-        
+
         p = StochasticHermitePolynomials(normalised=True)
-        assert_almost_equal(p.eval(3, x), (x ** 3 - 3 * x)/math.sqrt(6.0))
+        assert_almost_equal(p.eval(3, x), (x ** 3 - 3 * x) / math.sqrt(6.0))
         assert_almost_equal(p.eval(5, x), (x ** 5 - 10 * x ** 3 + 15 * x) /
                             math.sqrt(120.0))
     @dec.slow
@@ -125,7 +128,7 @@ class TestHermite(TestCase):
         dist = stats.norm(3, 2)
         _check_poly_consistency(p, dist)
 
-        p = StochasticHermitePolynomials(mu=-2.5, sigma=1.2, normalised=True)
+        p = StochasticHermitePolynomials(mu= -2.5, sigma=1.2, normalised=True)
         assert_equal(p.norm(4, False), 1)
         dist = stats.norm(-2.5, 1.2)
         _check_poly_consistency(p, dist)
