@@ -5,6 +5,24 @@ from spuq.utils.testing import *
 from spuq.polyquad.polynomials import *
 
 
+def _check_poly_consistency(p, dist):
+    """Check whether the polynomials are truly orthonormal for the
+    given distribution"""
+    def dist_integrate(dist, f, **kwargs):
+        import scipy.integrate as integ
+        def foo(x):
+            return f(dist.ppf(x), **kwargs)
+        return integ.quad( foo, 0, 1, epsabs=1e-5)[0]
+    def polyprod(p, i, j):
+        return lambda x: p.eval(i, x) * p.eval(j, x)
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 0, 0)), p.norm(0, False))
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 3, 3)), p.norm(3, False))
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 4, 4)), p.norm(4, False))
+    assert_almost_equal(dist_integrate(dist, polyprod(p, 0, 1)), 0)
+    assert_almost_equal(dist_integrate(dist, polyprod(p, 2, 3)), 0)
+    assert_almost_equal(dist_integrate(dist, polyprod(p, 3, 4)), 0)
+
+
 class TestPolynomials(TestCase):
 
     def test_eval_array(self):
@@ -58,7 +76,6 @@ class TestLegendre(TestCase):
         #assert_approx_equal(integ(P0 * P0), 1.0)
         #assert_approx_equal(integ(P1 * P1), 1.0)
         #assert_approx_equal(integ(P3 * P3), 1.0)
-    
 
 
 class TestHermite(TestCase):
@@ -80,19 +97,18 @@ class TestHermite(TestCase):
         assert_almost_equal(p.eval(3, x), (x ** 3 - 3 * x)/math.sqrt(6.0))
         assert_almost_equal(p.eval(5, x), (x ** 5 - 10 * x ** 3 + 15 * x) /
                             math.sqrt(120.0))
-
-        p = StochasticHermitePolynomials(normalised=False)
-        N = 100000
-        y = np.linspace( 0, 1, N+2 )
-        y = y[1:-1]
+    @dec.slow
+    def test_consistency(self):
         import scipy.stats as stats
         dist = stats.norm(0, 1)
-        x = dist.ppf( y )
-        print
-        print
-        print sum(p.eval(3, x) * p.eval(3, x))/float(N)
-        print sum(p.eval(3, x) * p.eval(4, x))/float(N)
-        #print x
-        
+        p = StochasticHermitePolynomials(normalised=False)
+        _check_poly_consistency(p, dist)
 
+        p = StochasticHermitePolynomials(mu=3, sigma=2, normalised=False)
+        dist = stats.norm(3, 2)
+        _check_poly_consistency(p, dist)
 
+        p = StochasticHermitePolynomials(mu=-2.5, sigma=1.2, normalised=True)
+        assert_equal(p.norm(4, False), 1)
+        dist = stats.norm(-2.5, 1.2)
+        _check_poly_consistency(p, dist)
