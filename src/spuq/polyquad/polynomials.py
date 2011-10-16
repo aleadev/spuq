@@ -2,7 +2,6 @@ import math
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 import numpy as np
-import scipy
 
 import spuq.polyquad._polynomials as _p
 
@@ -11,11 +10,11 @@ class PolynomialFamily(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def recurrence_coefficients(self, n):
+    def recurrence_coefficients(self, n):  # pragma: no cover
         return NotImplemented
 
     @abstractmethod
-    def get_structure_coefficient(self, a, b, c):
+    def get_structure_coefficient(self, a, b, c):  # pragma: no cover
         """Return specific structure coefficient"""
         return NotImplemented
 
@@ -26,7 +25,8 @@ class PolynomialFamily(object):
     def get_coefficients(self, n):
         """Return coefficients of the polynomial with degree ``n`` of
         the family."""
-        l = self.eval(n,  poly1d([1, 0]))
+        x = np.poly1d([1, 0])
+        l = self.eval(n,  x)
         return l.coeffs[::-1]
 
     def get_structure_coefficients(self, n):
@@ -44,12 +44,12 @@ class PolynomialFamily(object):
         return structcoeffs[0:n, 0:n, 0:n]
 
     @abstractmethod
-    def norm(self, n, sqrt=True):
+    def norm(self, n, sqrt=True):  # pragma: no cover
         """Return norm of the ``n``-th degree polynomial."""
         return NotImplemented
 
     @abstractproperty
-    def normalised(self):
+    def normalised(self):  # pragma: no cover
         """True if polynomials are normalised."""
         return False
 
@@ -101,7 +101,7 @@ class BasePolynomialFamily(PolynomialFamily):
 
 class LegendrePolynomials(BasePolynomialFamily):
 
-    def __init__(self, a=-1.0, b=1.0, normalised=False):
+    def __init__(self, a=-1.0, b=1.0, normalised=True):
         # currently nothing else is supported (coming soon however)
         rc_func = _p.rc_legendre
         if a != -1.0 or b != 1.0:
@@ -113,12 +113,11 @@ class LegendrePolynomials(BasePolynomialFamily):
         super(self.__class__, self).__init__(rc_func, sqnorm_func)
         if normalised:
             self.normalise()
-        return 
 
 
 class StochasticHermitePolynomials(BasePolynomialFamily):
 
-    def __init__(self, mu=0.0, sigma=1.0, normalised=False):
+    def __init__(self, mu=0.0, sigma=1.0, normalised=True):
         # currently nothing else is supported (coming soon however)
         rc_func = _p.rc_stoch_hermite
         if mu != 0.0 or sigma != 1.0:

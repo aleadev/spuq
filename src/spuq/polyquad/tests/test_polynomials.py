@@ -1,6 +1,5 @@
 import math
 import numpy as np
-import scipy
 
 from spuq.utils.testing import *
 from spuq.polyquad.polynomials import *
@@ -50,13 +49,22 @@ class TestPolynomials(TestCase):
         assert_equal(p.eval(1, x2), x ** 2)
         assert_equal(p.eval(3, x2), 2.5 * x ** 6 - 1.5 * x ** 2)
 
+    def test_get_coefficients(self):
+        p = LegendrePolynomials()
+        assert_array_equal(p.get_coefficients(3), [0, -1.5, 0, 2.5])
+
+    def test_norm(self):
+        p = LegendrePolynomials(normalised=False)
+        assert_equal(p.norm(3, True), math.sqrt(p.norm(3, False)))
+        # should be default
+        assert_equal(p.norm(3, True), math.sqrt(p.norm(3)))
+        
+
 
 class TestLegendre(TestCase):
 
     def test_legendre(self):
         """Make sure the Legendre polynomials work."""
-        _a = lambda * args: np.array(args, dtype=float)
-
         x = 3.14159
         p = LegendrePolynomials()
         assert_equal(p.eval(0, x), 1)
@@ -124,15 +132,18 @@ class TestHermite(TestCase):
         import scipy.stats as stats
         dist = stats.norm(0, 1)
         p = StochasticHermitePolynomials(normalised=False)
+        assert_false(p.normalised)
         _check_poly_consistency(p, dist)
 
         p = StochasticHermitePolynomials(mu=3, sigma=2, normalised=False)
         dist = stats.norm(3, 2)
+        assert_false(p.normalised)
         _check_poly_consistency(p, dist)
 
         p = StochasticHermitePolynomials(mu=-2.5, sigma=1.2, normalised=True)
         assert_equal(p.norm(4, False), 1)
         dist = stats.norm(-2.5, 1.2)
+        assert_true(p.normalised)
         _check_poly_consistency(p, dist)
 
 

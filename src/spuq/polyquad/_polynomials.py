@@ -72,8 +72,7 @@ Legendre P_n(x), [ - 1, 1], w(x) = 1, 2 / (2n + 1), (n + 1, 0, 2n + 1, n)
 Stoch. Hermite He_n(x), [ - inf, inf], w(x) = 1, (sqrt(2 * pi)n!), (1, 0, 1, n)
 """
 
-import numpy as np
-import scipy as sp
+import scipy
 
 _0 = lambda x: 0 * x
 _1 = lambda x: 0 * x + 1
@@ -126,11 +125,11 @@ def sqnorm_from_rc(rc_func, n):
     """
     assert type(n) == type(1)
 
-    (a0, b0, c0) = rc_func(0)
-    (an, bn, cn) = rc_func(n)
+    b0 = rc_func(0)[1]
+    bn = rc_func(n)[1]
     h = b0 / bn
     for i in range(1, n + 1):
-        (a, b, c) = rc_func(i)
+        c = rc_func(i)[2]
         h *= c
     return h
 
@@ -227,11 +226,10 @@ def rc_stoch_hermite(n):
 
 def sqnorm_stoch_hermite(n):
     """AS page 782 (s.t. h0 == 1)"""
-    return sp.factorial(n)
+    return scipy.factorial(n)
 
 
 def stc_stoch_hermite(a, b, c):
-    n = max((a, b, c))
     s = a + b + c
     if bool(s % 2) or a <= b + c or b <= a + c or c <= a + b:
         c = 0
