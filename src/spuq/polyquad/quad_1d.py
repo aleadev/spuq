@@ -1,9 +1,9 @@
-from abc import ABCMeta, abstractmetho
+from abc import ABCMeta, abstractmethod
 
 from numpy import array, ndarray, zeros, ones, diag, arange, sqrt
 from numpy import linalg as la
 
-class Quad_Rule_1d(object):
+class QuadRule1d(object):
     """Abstract base class for 1d quadrature rules on [0,1]"""
     __metaclass__ = ABCMeta
     
@@ -16,7 +16,7 @@ class Quad_Rule_1d(object):
         return (interval[1]-interval[0])*p + interval[0]
 
 
-class Quad_Rule_Gauss(Quad_Rule_1d):
+class QuadRuleGauss(QuadRule1d):
     """Gauss quadrature rule"""
     
     def getPointsWeights(self, np):
@@ -26,4 +26,4 @@ class Quad_Rule_Gauss(Quad_Rule_1d):
         # transform to [0,1]
         p = .5 * p + .5
         w = .5 * w
-        return p,w
+        return p, w
