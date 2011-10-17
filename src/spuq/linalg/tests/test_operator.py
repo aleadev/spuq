@@ -41,5 +41,5 @@ class TestMatrixOperator(TestCase):
         vec2 = FlatVector([24, 38])
         assert_equal(A * vec1, vec2)
 
-if __name__ == "__main__":
-    run_module_suite()
+
+test_main()
