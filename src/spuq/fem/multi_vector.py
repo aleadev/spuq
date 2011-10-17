@@ -7,7 +7,7 @@ class MultiVector(object):
     
     This class manages a set of Vectors associated to MultiindexSet instances.
     A Vector contains a coefficient vector and the respespective basis.'''
-    #map multiindex to Vector (=coefficients + basis)
+
     def __init__(self, multivec=None):
         if multivec is not None:
             if isinstance(multivec, MultiVector):

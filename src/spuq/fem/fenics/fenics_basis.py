@@ -30,14 +30,14 @@ class FEniCSBasis(FEMBasis):
         self.family = family
         self.degree = degree
         if isinstance(mesh, FEniCSMesh):
-            self.__mesh = mesh
+            self._mesh = mesh
             mesh = mesh.mesh
         elif isinstance(mesh, Mesh):
-            self.__mesh = FEniCSMesh(mesh)
+            self._mesh = FEniCSMesh(mesh)
         else:
             raise TypeError
-        self.__functionspace = FunctionSpace(mesh, family, degree)
-        self.__dim = self.__functionspace.dim()
+        self._functionspace = FunctionSpace(mesh, family, degree)
+        self._dim = self.__functionspace.dim()
 
     def refine(self, cells=None):
         '''refines mesh of basis uniformly or wrt cells, return new (FEniCSBasis,prolongate,restrict)'''
@@ -49,6 +49,11 @@ class FEniCSBasis(FEMBasis):
         return (newFB,prolongate,restrict)
 
     def project(self, vec, vecbasis=None, ptype=PROJECTION.INTERPOLATION):
+        """Project vector vec to this basis.
+        
+            vec can either be a FEniCSVector (in which case vecbasis has to be None) or an array
+            (in which case vecbasis has to be provided as dolfin FunctionSpace)."""
+            
         import spuq.fem.fenics.fenics_vector   # NOTE: from ... import FEniCSVector does not work (cyclic dependencies require module imports)
         if ptype == self.PROJECTION.INTERPOLATION:
             T = interpolate
@@ -63,7 +68,7 @@ class FEniCSBasis(FEMBasis):
             newvec = spuq.fem.fenics.fenics_vector.FEniCSVector(F.vector(), F.function_space())
             return newvec
         else:
-            F = T(Function(vecbasis,vec), self.functionspace)
+            F = T(Function(vecbasis, vec), self.functionspace)
             return (F.vector().array(), F.function_space())
 
     def interpolate(self, F):
@@ -72,21 +77,21 @@ class FEniCSBasis(FEMBasis):
 
     @property
     def functionspace(self):
-        return self.__functionspace
+        return self._functionspace
 
     @property
     def mesh(self):
-        return self.__mesh
+        return self._mesh
     
     @property
     def dim(self):
-        return self.__dim
+        return self._dim
     
     @property
     def gramian(self):
         """Returns the Gramian as a LinearOperator"""
-        u = TrialFunction(self.__functionspace)
-        v = TestFunction(self.__functionspace)
+        u = TrialFunction(self._functionspace)
+        v = TestFunction(self._functionspace)
         a = (u*v)*dx
         A = assemble(a)
         return MatrixOperator(A.array())

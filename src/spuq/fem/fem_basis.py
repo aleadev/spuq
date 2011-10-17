@@ -2,7 +2,7 @@ from abc import *
 from spuq.linalg.basis import FunctionBasis
 
 class FEMBasis(FunctionBasis):
-    ''' '''
+    """"FEM basis"""
     
     __metaclass__ = ABCMeta
 
@@ -17,7 +17,7 @@ class FEMBasis(FunctionBasis):
         """Project coefficient vector to FEMBasis.
         
         vec can either be a FEMVector or an array in which case a
-        basis has to be passed as well.  in the first case, a new
+        basis has to be passed as well. In the first case, a new
         FEMVector is returned, in the second case, a coefficient array
         and the new basis is returned."""
         return NotImplemented

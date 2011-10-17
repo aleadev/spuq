@@ -2,14 +2,14 @@
 
 from dolfin import Function, Expression, interpolate
 from spuq.utils.type_check import *
-from spuq.linalg import GenericFunction, SympyFunction
+from spuq.linalg.function import GenericFunction, SympyFunction
 
 class FenicsFunction(GenericFunction):
-    """wrapper for discrete fenics Function"""
+    """Wrapper for discrete fenics Function"""
     
     @takes(str, Dfstr=optional((list_of(str),tuple_of(str))), FS=optional())
     def __init__(self, fstr, Dfstr=None, FS=None, dimin=2, dimout=1):
-        """initialise (discrete) function
+        """Initialise (discrete) function.
         
         In case some function space is provided, the discrete interpolation of the function (given as string with 'x[0]' and 'x[1]') is constructed.
         Otherwise, the analytical representation is kept.
@@ -31,9 +31,9 @@ class FenicsFunction(GenericFunction):
 
         
     def eval(self, x=None):
-        """function evaluation
+        """Function evaluation.
         
-            return evaluated function at x or function string if x in not set"""
+            Return evaluated function at x or function string if x in not set"""
         if x:
             if self._FS:
                 return self._f(x)
@@ -44,9 +44,9 @@ class FenicsFunction(GenericFunction):
 
         
     def diff(self, x=None, order=1):
-        """return derivative
+        """Return derivative.
         
-            return derivative at x or function string of derivative if x is not set"""
+            Return derivative at x or function string of derivative if x is not set"""
         assert order == 1, "only first derivative supported"
         if x:
             if self._FS:

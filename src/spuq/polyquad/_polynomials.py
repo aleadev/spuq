@@ -1,4 +1,4 @@
-r""" This is a private module that implements the basic recurrence
+""" This is a private module that implements the basic recurrence
 relations for orthgonal polynomials and methods for converting between
 different formats for those recurrences
 
