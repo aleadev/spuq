@@ -3,7 +3,7 @@ from numpy import exp, sqrt, pi
 from scipy import inf
 
 from spuq.utils.testing import *
-from spuq.stoch.random_variable import *
+from spuq.stochastics.random_variable import *
 from spuq.polyquad.polynomials import *
 
 

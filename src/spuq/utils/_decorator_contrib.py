@@ -56,7 +56,7 @@ def get_doc(cls, fname, member=True):
         if doc is None:
             continue
         return doc
-    return default
+    return default      # is default defined?
 
 
 def doc_func_transform(name, context, target, obj=None):

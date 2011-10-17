@@ -32,7 +32,7 @@ Homogeneous Dirichlet boundary conditions :math:`u=0` on
 :math:`D`
 
 :math:`D` is a Lipschitz domain. For the application we will restrict
-this to a rectangular domain, maybe simply :math:`[0,1]^2`, ok?
+this to :math:`[0,1]^2`.
 Definition in |fenics|_ will look like::
 
   # create mesh and define function space
@@ -226,6 +226,11 @@ Projection :math:`\Pi_\mu^\nu:V_\nu\to V_\mu` for some
 :math:`\mu,\nu\in\Lambda` can be an arbitrary map such as the
 :math:`L^2`-projection, the :math:`\mathcal{A}`-orthogonal projection
 or nodal interpolation.
+
+
+The projection error is evaluated by
+
+.. math:: \delta_\mu := \sum_{m=1}^\infty \left\Lvert\frac{a_m}{\overline{a}}\right\Rvert_{L^\infty(D)}\left\{\beta^m_{\mu+1}\left\vert \Pi^{\mu+e_m}_\mu w_{N,\mu+e_m} - w_{N,\mu+e_m} \right\vert_{H^1_0(D)} + \beta^m_{\mu_m}\left\vert \Pi^{\mu-e_m}_\mu w_{N,\mu-e_m} - w_{N,\mu-e_m} \right\vert_{H^1_0(D)} \right\}
 
 
 Refinement

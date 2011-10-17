@@ -29,17 +29,17 @@ class TestCopyDocs(TestCase):
         assert_equal(self.Bc.y.__doc__, "B.y")
 
     class B(A):
-        def x():
+        def x(self):
             pass
-        def y():
+        def y(self):
             """B.y"""
             pass
 
     @copydocs
     class C(B):
-        def x():
+        def x(self):
             pass
-        def z():
+        def z(self):
             """C.z"""
             pass
 
@@ -50,10 +50,10 @@ class TestCopyDocs(TestCase):
 
     @copydocs
     class Cc(Bc):
-        def x():
+        def x(self):
             """C.x"""
             pass
-        def z():
+        def z(self):
             """C.z"""
             pass
 

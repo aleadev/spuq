@@ -1,9 +1,12 @@
 __all__ = ["linear_operator",
          "composed_operator",
          "summed_operator",
+         "function",
          "LinearOperator",
          "FullVector",
-         "FullLinearOperator"]
+         "FullLinearOperator",
+         "GenericFunction",
+         "SympyFunction"]
 
 #from .linear_operator import (LinearOperator, FullLinearOperator)
 #from .full_vector import (FullVector)

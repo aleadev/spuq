@@ -74,11 +74,11 @@ class ShiftedRandomVariable(RandomVariable):
 
     @property
     def mean(self):
-        return dist.mean() + delta
+        return self.dist.mean() + self.delta
 
     @abstractmethod
     def pdf(self, x):
-        return dist.pdf(x - dist)
+        return self.dist.pdf(x - self.dist)
 
     def __repr__(self):
         return self.dist.__repr__() + " + " + str(self.delta)
