@@ -1,3 +1,8 @@
+"""Module for 1d quadrature rules.
+
+Note that the interfaces and classes in this module are still very
+immature, and will probably change.
+"""
 from abc import ABCMeta, abstractmethod
 
 from numpy import array, ndarray, zeros, ones, diag, arange, sqrt

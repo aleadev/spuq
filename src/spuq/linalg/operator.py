@@ -16,6 +16,7 @@ class Operator(object):
 
     @abstractmethod
     @takes(anything, Vector)
+    @returns(Vector)
     def apply(self, vec):  # pragma: no cover
         "Apply operator to vec which should be in the domain of op"
         return NotImplemented
@@ -105,6 +106,12 @@ class BaseOperator(Operator):
 
     @takes(anything, Basis, Basis)
     def __init__(self, domain, codomain):
+        """
+        Create a BaseOperator with domain and codomain.
+        
+        @param domain: Basis
+        @param codomain: Basis
+        """
         self._domain = domain
         self._codomain = codomain
 
@@ -306,19 +313,20 @@ class MatrixOperator(BaseOperator):
         return super(MatrixOperator,self).__eq__(other)
 
 class DiagonalMatrixOperator(BaseOperator):
-    def __init__(self, vec, domain=None):
-        assert(isinstance(arr, np.ndarray))
+    @takes(anything, np.ndarray, Basis)
+    def __init__(self, diag, domain=None):
+        assert(isinstance(diag, np.ndarray))
         if domain is None:
-            domain = CanonicalBasis(vec.shape[0])
+            domain = CanonicalBasis(diag.shape[0])
 
-        self._vec = vec
+        self._diag = diag
         BaseOperator.__init__(self, domain, domain)
 
     @takes(anything, FlatVector)
     def apply(self, vec):
-        "Apply operator to vec which should be in the domain of op"
+        "Apply operator to ``vec`` which should be in the domain of the operator."
         self._check_basis(vec)
-        return FlatVector(np.multiply(self._vec, vec.coeffs), self.domain)
+        return FlatVector(np.multiply(self._diag, vec.coeffs), self.domain)
 
     def as_matrix(self):
         return np.asmatrix(self._arr)

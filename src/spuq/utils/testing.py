@@ -90,3 +90,11 @@ if sys.hexversion >= 0x02070000:
     assert_regexp_matches = _tc.assertRegexpMatches
     assert_not_regexp_matches = _tc.assertNotRegexpMatches
     assert_items_equal = _tc.assertItemsEqual
+
+def test_main(name=None):
+    frame = sys._getframe(1)
+    mod_name = frame.f_locals.get('__name__', None)
+    file_to_run = frame.f_locals.get('__file__', None)
+    #print file_to_run
+    if mod_name == "__main__":
+        run_module_suite(file_to_run)

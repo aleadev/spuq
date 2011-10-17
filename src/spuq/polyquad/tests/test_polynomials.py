@@ -33,7 +33,7 @@ class TestPolynomials(TestCase):
     def test_eval_array(self):
         """Make sure the eval functions works for arrays."""
         _a = lambda * args: np.array(args, dtype=float)
-        p = LegendrePolynomials()
+        p = LegendrePolynomials(normalised=False)
         x = _a(1, 2, 3)
         assert_array_equal(p.eval(0, x), _a(1, 1, 1))
         assert_array_equal(p.eval(1, x), _a(1, 2, 3))
@@ -41,7 +41,7 @@ class TestPolynomials(TestCase):
 
     def test_eval_poly(self):
         """Make sure the eval functions works for polynomials."""
-        p = LegendrePolynomials()
+        p = LegendrePolynomials(normalised=False)
         x = np.poly1d([1.0, 0])
         x2 = np.poly1d([1.0, 0, 0])
         assert_is_instance(p.eval(0, x2), np.poly1d)
@@ -50,14 +50,14 @@ class TestPolynomials(TestCase):
         assert_equal(p.eval(3, x2), 2.5 * x ** 6 - 1.5 * x ** 2)
 
     def test_get_coefficients(self):
-        p = LegendrePolynomials()
+        p = LegendrePolynomials(normalised=False)
         assert_array_equal(p.get_coefficients(3), [0, -1.5, 0, 2.5])
 
     def test_norm(self):
         p = LegendrePolynomials(normalised=False)
         assert_equal(p.norm(3, True), math.sqrt(p.norm(3, False)))
         # should be default
-        assert_equal(p.norm(3, True), math.sqrt(p.norm(3)))
+        assert_equal(p.norm(3, True), p.norm(3))
         
 
 
@@ -66,7 +66,7 @@ class TestLegendre(TestCase):
     def test_legendre(self):
         """Make sure the Legendre polynomials work."""
         x = 3.14159
-        p = LegendrePolynomials()
+        p = LegendrePolynomials(normalised=False)
         assert_equal(p.eval(0, x), 1)
         assert_equal(p.eval(3, x), 2.5 * x ** 3 - 1.5 * x)
 
@@ -113,7 +113,7 @@ class TestHermite(TestCase):
     def test_hermite(self):
         """Make sure the Hermite polynomials work."""
         x = 3.14159
-        p = StochasticHermitePolynomials()
+        p = StochasticHermitePolynomials(normalised=False)
         assert_equal(p.eval(0, x), 1)
         assert_almost_equal(p.eval(3, x), x ** 3 - 3 * x)
         assert_equal(p.norm(0, False), 1)
@@ -147,5 +147,4 @@ class TestHermite(TestCase):
         _check_poly_consistency(p, dist)
 
 
-if __name__ == "__main__":
-    run_module_suite()
+test_main()

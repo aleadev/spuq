@@ -1,5 +1,3 @@
-import numpy as np
-
 from spuq.utils.testing import *
 from spuq.linalg.basis import *
 
@@ -14,7 +12,7 @@ class TestBasis(TestCase):
 class TestCanonicalBasis(TestCase):
 
     def test_init(self):
-        b5 = CanonicalBasis(5)
+        CanonicalBasis(5)
 
     def test_compare(self):
         b5 = CanonicalBasis(5)
@@ -35,12 +33,11 @@ class TestCanonicalBasis(TestCase):
 
     def test_check_basis(self):
         b5 = CanonicalBasis(5)
-        b7a = CanonicalBasis(7)
-        b7b = CanonicalBasis(7)
+        b7 = CanonicalBasis(7)
 
-        assert_raises(BasisMismatchError, check_basis, b5, b7a)
+        assert_raises(BasisMismatchError, check_basis, b5, b7)
         exc = assert_raises(BasisMismatchError, check_basis, 
-                            b5, b7a, "basisabc", "basisxyz")
+                            b5, b7, "basisabc", "basisxyz")
         assert_true(str(exc).find("basisabc") > -1)
         assert_true(str(exc).find("basisxyz") > -1)
 
@@ -51,3 +48,6 @@ class TestCanonicalBasis(TestCase):
         FooBasis = type("FooBasis", (CanonicalBasis,), {})
         b5 = FooBasis(5)
         assert_equal(str(b5), "<FooBasis dim=5>")
+
+
+test_main()
