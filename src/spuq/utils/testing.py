@@ -91,6 +91,7 @@ if sys.hexversion >= 0x02070000:
     assert_not_regexp_matches = _tc.assertNotRegexpMatches
     assert_items_equal = _tc.assertItemsEqual
 
+@dec.setastest(False)
 def test_main(name=None):
     frame = sys._getframe(1)
     mod_name = frame.f_locals.get('__name__', None)
