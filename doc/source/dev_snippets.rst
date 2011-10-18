@@ -35,3 +35,17 @@ Code
 * Don't use private variables (``__``), only if you have good reason
   to, and then it should be documented why.
 
+Unit tests
+==========
+
+* Include only stuff from ``spuq.utils.testing`` for the unit tests;
+  not from ``nose`` or ``unittest`` so that we can have all
+  modifications in one place
+
+* Use of ``from xxx import *`` is ok in unit tests (not in packages,
+  however)
+
+* Unit tests shall contain a call to ``test_main()`` at the bottom
+  (call ``run_module_test`` from ``numpy.testing``, if the test was the
+  ``__main__`` package)
+
