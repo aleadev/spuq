@@ -25,8 +25,8 @@ class Basis(object):
         return NotImplemented
 
     def __repr__(self):
-        return "<%s dim=%s>" % \
-               (strclass(self.__class__), self.dim)
+        return ("<%s dim=%s>" %
+                (strclass(self.__class__), self.dim))
 
 
 @copydocs

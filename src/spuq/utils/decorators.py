@@ -61,3 +61,23 @@ def copydoc(meth):
 import _decorator_contrib
 
 copydoc = _decorator_contrib.inherits_docstring
+
+
+
+class IntCache:
+    Empty = object()
+
+    def __init__(self, func, size):
+        self.func = func
+        self.cache = size * [self.Empty]
+    def __call__(self, n):
+        if n < 0 or n >= len(self.cache):
+            return self.func(n)
+        if self.cache[n] is self.Empty:
+            self.cache[n] = self.func(n)
+        return self.cache[n]
+
+def simple_int_cache(size):
+    def decorator(func):
+        return IntCache(func, size)
+    return decorator

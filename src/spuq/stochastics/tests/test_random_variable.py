@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import exp, sqrt, pi
 from scipy import inf
+import scipy
 
 from spuq.utils.testing import *
 from spuq.stochastics.random_variable import *
@@ -26,11 +27,23 @@ def _test_rv_coherence(rv):
     # make sure median, cdf and invcdf match
     assert_approx_equal(rv.cdf(rv.median), 0.5)
 
+    # make sure the orthogonal polynomials are truly orthonormal
+    # w.r.t. to the measure induced by the random variable
+    p = rv.orth_polys
+    assert_almost_equal(rv.quad(p[2] * p[3]), 0)
+    assert_almost_equal(rv.quad(p[1] * p[4]), 0)
+    assert_almost_equal(rv.quad(p[1] * p[1]), 1)
+    assert_almost_equal(rv.quad(p[5] * p[5]), 1)
+
 class TestUniformRV(TestCase):
 
     def setUp(self):
         self.ud1 = UniformRV()
         self.ud2 = UniformRV(2, 6)
+
+    def test_repr(self):
+        assert_equal(str(self.ud1), "<UniformRV a=-1.0 b=1.0>")
+        assert_equal(str(self.ud2), "<UniformRV a=2.0 b=6.0>")
 
     def test_mean(self):
         assert_equal(self.ud1.mean, 0)
@@ -78,6 +91,10 @@ class TestNormalRV(TestCase):
         self.nd1 = NormalRV()
         self.nd2 = NormalRV(2, 3)
 
+    def test_repr(self):
+        assert_equal(str(self.nd1), "<NormalRV mu=0.0 sigma=1.0>")
+        assert_equal(str(self.nd2), "<NormalRV mu=2.0 sigma=3.0>")
+
     def test_mean(self):
         assert_equal(self.nd1.mean, 0)
         assert_equal(self.nd2.mean, 2)
@@ -113,5 +130,4 @@ class TestNormalRV(TestCase):
         _test_rv_coherence(self.nd2)
 
 
-if __name__ == "__main__":
-    run_module_suite()
+test_main()

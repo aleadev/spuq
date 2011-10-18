@@ -30,5 +30,4 @@ class TestMultiindexSet(TestCase):
         assert_true((f == np.array([1, 12])).all())
 
 
-if __name__ == "__main__":
-    run_module_tests()
+test_main()

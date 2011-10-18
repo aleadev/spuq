@@ -5,72 +5,81 @@ import scipy
 import scipy.stats
 
 import spuq.polyquad.polynomials as polys
-
+from spuq.utils import strclass
 
 class RandomVariable(object):
     """Base class for random variables"""
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def pdf(self, x):
+    def pdf(self, x):  # pragma: no cover
         """Return the probability distribution function at x"""
         return NotImplemented
 
     @abstractmethod
-    def cdf(self, x):
+    def cdf(self, x):  # pragma: no cover
         """Return the cumulative distribution function at x"""
         return NotImplemented
 
     @abstractmethod
-    def invcdf(self, x):
+    def invcdf(self, x):  # pragma: no cover
         """Return the cumulative distribution function at x"""
         return NotImplemented
 
     @abstractproperty
-    def mean(self):
+    def mean(self):  # pragma: no cover
         """The mean of the distribution"""
         return NotImplemented
 
     @abstractproperty
-    def var(self):
+    def var(self):  # pragma: no cover
         """The variance of the distribution"""
         return NotImplemented
 
     @abstractproperty
-    def skew(self):
+    def skew(self):  # pragma: no cover
         """The skewness of the distribution"""
         return NotImplemented
 
     @abstractproperty
-    def kurtosis(self):
+    def kurtosis(self):  # pragma: no cover
         """The kurtosis excess of the distribution"""
         return NotImplemented
 
     @abstractproperty
-    def median(self):
+    def median(self):  # pragma: no cover
         """The median of the distribution"""
         return NotImplemented
 
     @abstractproperty
-    def orth_polys(self):
+    def orth_polys(self):  # pragma: no cover
         """The median of the distribution"""
         return NotImplemented
 
     @abstractmethod
-    def sample(self, size):
+    def sample(self, size):  # pragma: no cover
         """Sample from the distribution"""
         return NotImplemented
 
+    def quad(self, func):
+        """Integrate the given function over the measure induced by
+        this random variable."""
+        def trans_func(x):
+            return func(self.invcdf(x))
+        return scipy.integrate.quad(trans_func, 0, 1, epsabs=1e-5)[0]
 
-class ShiftedRandomVariable(RandomVariable):
+
+class ShiftedRandomVariable(RandomVariable): #  pragma: no cover
     """Proxy class that shifts a given random variable by some amount.
     
     Do not use yet as not all methods are appropriately
-    overridden. Especially the orthogonal polynomials need some work.
+    overridden. Especially the orthogonal polynomials need some
+    work. Also cdf and invcdf. Remove the pragma when finished.
     """
     def __init__(self, dist, delta):
         self.dist = dist
         self.delta = delta
+        assert False
 
     @property
     def mean(self):
@@ -144,10 +153,11 @@ class NormalRV(ScipyRandomVariable):
     def orth_polys(self):
         return polys.StochasticHermitePolynomials(self.mu, 
                                                   self.sigma, 
-                                                  normalised=False)
+                                                  normalised=True)
 
     def __repr__(self):
-        return "N[" + str(self.mu) + ", " + str(self.sigma) + " ** 2]"
+        return ("<%s mu=%s sigma=%s>" %
+                (strclass(self.__class__), self.mu, self.sigma))
 
 
 class UniformRV(ScipyRandomVariable):
@@ -170,7 +180,8 @@ class UniformRV(ScipyRandomVariable):
 
     @property
     def orth_polys(self):
-        return polys.LegendrePolynomials(self.a, self.b, normalised=False)
+        return polys.LegendrePolynomials(self.a, self.b, normalised=True)
 
     def __repr__(self):
-        return "U[" + str(self.a) + ", " + str(self.b) + "]"
+        return ("<%s a=%s b=%s>" %
+                (strclass(self.__class__), self.a, self.b))

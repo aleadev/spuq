@@ -22,6 +22,10 @@ class PolynomialFamily(object):
         """Evaluate polynomial of degree ``n`` at points ``x``"""
         return _p.compute_poly(self.recurrence_coefficients, n, x)[-1]
 
+    def __getitem__(self, n):
+        x = np.poly1d([1, 0])
+        return self.eval(n,  x)
+
     def get_coefficients(self, n):
         """Return coefficients of the polynomial with degree ``n`` of
         the family."""
