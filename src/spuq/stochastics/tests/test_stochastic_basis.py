@@ -2,7 +2,7 @@ import numpy as np
 
 from spuq.utils.testing import *
 
-from spuq.stoch.stochastic_basis import *
+from spuq.stochastics.stochastic_basis import *
 from spuq.utils.multiindex_set import *
 from spuq.stochastics.random_variable import *
 

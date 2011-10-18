@@ -1,19 +1,9 @@
 import sys
 
-
 from numpy.testing import *
 
-class _TestCase(TestCase):
-    def __init__(self, method=None):
-        if method is None:
-            method = "dummy"
-        super(_TestCase, self).__init__(method)
 
-    def setUp(self):
-        """Just call setup in case somebody didn't use the braindead
-        capitalisation"""
-        if hasattr(self, "setup"):
-            self.setup()
+class TestCase(TestCase):
     
     def myAssertIsInstance(self, obj, cls, msg=None):
         """Same as self.assertTrue(isinstance(obj, cls)), with a nicer
@@ -46,17 +36,7 @@ class _TestCase(TestCase):
 
     assertRaises = failUnlessRaises
 
-del TestCase.assertEquals
-del TestCase.failIf
-del TestCase.failIfAlmostEqual
-del TestCase.failIfEqual
-del TestCase.failUnless
-del TestCase.failUnlessAlmostEqual
-del TestCase.failUnlessEqual
-
-TestCase = _TestCase
-
-_tc = TestCase()
+_tc = TestCase("dummy")
 
 #assert_equal = _tc.assertEqual
 assert_not_equal = _tc.assertNotEqual
@@ -92,10 +72,10 @@ if sys.hexversion >= 0x02070000:
     assert_items_equal = _tc.assertItemsEqual
 
 @dec.setastest(False)
-def test_main(name=None):
+def test_main():
+    """``main`` function for test modules"""
     frame = sys._getframe(1)
     mod_name = frame.f_locals.get('__name__', None)
-    file_to_run = frame.f_locals.get('__file__', None)
-    #print file_to_run
     if mod_name == "__main__":
+        file_to_run = frame.f_locals.get('__file__', None)
         run_module_suite(file_to_run)

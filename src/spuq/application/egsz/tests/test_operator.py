@@ -1,3 +1,1 @@
-
-
-class Operator(object):
+# class Operator(object):
