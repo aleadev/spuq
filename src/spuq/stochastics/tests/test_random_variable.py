@@ -11,12 +11,15 @@ from spuq.polyquad.polynomials import *
 def _test_rv_coherence(rv):
     m = rv.mean
     v = rv.var
+    
     # make sure variance is positive
-    assert_true(v > 0)
+    assert_true(rv.var > 0)
+    
     # make sure cdf and invcdf match
     assert_approx_equal(rv.invcdf(rv.cdf(m)), m)
     assert_approx_equal(rv.invcdf(rv.cdf(m + v)), m + v)
     assert_approx_equal(rv.invcdf(rv.cdf(m - v)), m - v)
+    
     # make sure pdf and cdf match (using central difference
     # approximation, therefore check only 4 significant digits)
     eps = 1e-9
@@ -24,6 +27,7 @@ def _test_rv_coherence(rv):
         assert_approx_equal(rv.cdf(x + eps * v) - rv.cdf(x - eps * v), 
                             2 * eps * v * rv.pdf(x),
                             significant=4)
+
     # make sure median, cdf and invcdf match
     assert_approx_equal(rv.cdf(rv.median), 0.5)
 
@@ -34,6 +38,15 @@ def _test_rv_coherence(rv):
     assert_almost_equal(rv.quad(p[1] * p[4]), 0)
     assert_almost_equal(rv.quad(p[1] * p[1]), 1)
     assert_almost_equal(rv.quad(p[5] * p[5]), 1)
+    
+    # make sure pdf and mean, var, skewness, and kurtosis match
+    _1 = np.poly1d(1)
+    x = (_1.integ()-rv.mean)/np.sqrt(rv.var)
+    assert_almost_equal(rv.quad(_1), 1)
+    assert_almost_equal(rv.quad(x), 0)
+    assert_almost_equal(rv.quad(x**2), 1)
+    assert_almost_equal(rv.quad(x**3), rv.skew)
+    assert_almost_equal(rv.quad(x**4)-3, rv.kurtosis)
 
 class TestUniformRV(TestCase):
 

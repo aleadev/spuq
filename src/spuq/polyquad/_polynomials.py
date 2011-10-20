@@ -180,8 +180,8 @@ def eval_clenshaw(rc_func, coeffs, x):
     q1 = q2 = _0(x)
     n = len(coeffs) - 1
     for k in reversed(xrange(n + 1)):
-        (ak, bk, ck) = rc_func(k)
-        (ak2, bk2, ck2) = rc_func(k + 1)
+        (ak, bk, _) = rc_func(k)
+        (_, _, ck2) = rc_func(k + 1)
         q0 = coeffs[k] + (ak + bk * x) * q1 - ck2 * q2
         q1, q2 = q0, q1
     return q0
@@ -260,3 +260,12 @@ def sqnorm_legendre(n):
 
     AS page 782 (divided by 2, s.t. h0 == 1)"""
     return 1.0 / (2.0 * n + 1.0)
+
+    
+def rc_jacobi(n, alpha, beta):
+    """AS page 782 """
+    a1 = 2 * (n + 1) * (n + alpha + beta + 1) * (2 * n + alpha + beta)
+    a2 = (2 * n + alpha + beta + 1) * (alpha**2 - beta**2) 
+    a3 = (2 * n + alpha + beta + 1) * (2 * n + alpha + beta) * (2 * n + alpha + beta + 2) 
+    a4 = 2 * (n + alpha - 1) * (n + beta - 1) * (2 * n + alpha + beta) 
+    return rc4_to_rc3((a1, a2, a3, a4))

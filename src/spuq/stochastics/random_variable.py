@@ -185,3 +185,33 @@ class UniformRV(ScipyRandomVariable):
     def __repr__(self):
         return ("<%s a=%s b=%s>" %
                 (strclass(self.__class__), self.a, self.b))
+
+
+class BetaRV(ScipyRandomVariable):
+
+    def __init__(self, alpha=0.5, beta=0.5, a=0, b=1):
+        self.a = float(min(a, b))
+        self.b = float(max(a, b))
+        self.alpha = float(alpha)
+        self.beta = float(beta)
+        loc = a
+        scale = (self.b - self.a)
+        super(BetaRV, self).__init__(scipy.stats.beta(alpha, beta, 
+                                                      loc, scale))
+
+    def shift(self, delta):
+        return BetaRV(self.a + delta, self.b + delta)
+
+    def scale(self, scale):
+        m = 0.5 * (self.a + self.b)
+        d = scale * 0.5 * (self.b - self.a)
+        return BetaRV(self.alpha, self.beta, m - d, m + d)
+
+    @property
+    def orth_polys(self):
+        return None 
+        # return polys.JacobiPolynomials(self.alpha, self.beta, a, b, normalised=True)
+
+    def __repr__(self):
+        return ("<%s alpha=%s beta=%s a=%s b=%s>" %
+                (strclass(self.__class__), self.alpha, self.beta, self.a, self.b))
