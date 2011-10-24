@@ -9,6 +9,8 @@ class PolynomialFamily(object):
     """Abstract base for families of (orthogonal) polynomials"""
     __metaclass__ = ABCMeta
 
+    x = np.poly1d([1.0, 0.0])
+
     @abstractmethod
     def recurrence_coefficients(self, n):  # pragma: no cover
         return NotImplemented
@@ -133,3 +135,19 @@ class StochasticHermitePolynomials(BasePolynomialFamily):
         super(self.__class__, self).__init__(rc_func, sqnorm_func)
         if normalised:
             self.normalise()
+
+
+class JacobiPolynomials(BasePolynomialFamily):
+
+    def __init__(self, alpha=0.5, beta=0.5, a=-1.0, b=1.0, normalised=True):
+        rc_func = lambda n: _p.rc_jacobi(n, alpha, beta)
+        if a != -1.0 or b != 1.0:
+            rc_func = _p.rc_window_trans(rc_func, (-1, 1), (a, b))
+            sqnorm_func = None
+        else:
+            sqnorm_func = None # _p.sqnorm_legendre
+
+        super(self.__class__, self).__init__(rc_func, sqnorm_func)
+        if normalised:
+            self.normalise()
+

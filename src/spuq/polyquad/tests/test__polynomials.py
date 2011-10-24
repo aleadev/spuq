@@ -23,6 +23,20 @@ class TestRecurrences(TestCase):
         assert_array_equal(P[3].coeffs, np.array([1, 0, - 3, 0]))
         assert_array_equal(P[4].coeffs, np.array([1, 0, - 6, 0, 3]))
 
+    def test_jacobi(self):
+        x = np.poly1d([1, 0])
+        rc_jac = lambda n: rc_jacobi(n, 0, 2)
+        P = compute_poly(rc_jac, 5, x)
+        assert_array_almost_equal(P[0].coeffs, [1])
+        assert_array_almost_equal(P[1].coeffs, [2, -1])
+        assert_array_almost_equal(P[2].coeffs, [3.75, -2.5, -0.25])
+        assert_array_almost_equal(P[3].coeffs, [7, -5.25, -1.5, 0.75])
+
+        assert_array_almost_equal(sqnorm_legendre(0), 1)
+        h1 = [sqnorm_from_rc(rc_jac, i) for i in range(7)]
+        h2 = [sqnorm_jacobi(i, 0, 2) for i in range(7)]
+        assert_array_almost_equal(h1, h2)
+
     def test_monomials(self):
         x = np.poly1d([1, 0])
         P = compute_poly(rc_monomials, 5, x)

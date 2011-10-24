@@ -267,5 +267,21 @@ def rc_jacobi(n, alpha, beta):
     a1 = 2 * (n + 1) * (n + alpha + beta + 1) * (2 * n + alpha + beta)
     a2 = (2 * n + alpha + beta + 1) * (alpha**2 - beta**2) 
     a3 = (2 * n + alpha + beta + 1) * (2 * n + alpha + beta) * (2 * n + alpha + beta + 2) 
-    a4 = 2 * (n + alpha - 1) * (n + beta - 1) * (2 * n + alpha + beta) 
+    a4 = 2 * (n + alpha) * (n + beta) * (2 * n + alpha + beta + 2) 
     return rc4_to_rc3((a1, a2, a3, a4))
+
+def sqnorm_jacobi(n, alpha, beta):
+    """Square of the norm of the legendre polynomials of [-1, 1].
+
+    AS page 782 (divided by 2, s.t. h0 == 1)"""
+    #gamma = scipy.special.gamma
+    from scipy.special import gamma
+    if n==0:
+        return 1
+    return (2.0 ** (alpha + beta + 1) /
+            (2 * n + alpha + beta + 1) * 
+            gamma(n + alpha + 1) * 
+            gamma(n + beta + 1) /
+            scipy.factorial(n) /
+            gamma(n + alpha + beta + 1)) / sqnorm_jacobi(0, alpha, beta)
+
