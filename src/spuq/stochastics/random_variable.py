@@ -1,11 +1,13 @@
-from abc import *
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 import numpy as np
 import scipy
 import scipy.stats
+import scipy.integrate
 
 import spuq.polyquad.polynomials as polys
 from spuq.utils import strclass
+from spuq.utils.type_check import anything, takes
 
 class RandomVariable(object):
     """Base class for random variables"""
@@ -61,7 +63,7 @@ class RandomVariable(object):
         """Sample from the distribution"""
         return NotImplemented
 
-    def quad(self, func):
+    def integrate(self, func):
         """Integrate the given function over the measure induced by
         this random variable."""
         def trans_func(x):
@@ -114,7 +116,7 @@ class ScipyRandomVariable(RandomVariable):
 
     @property
     def median(self):
-        return self._dist.ppf(0.5)
+        return self.invcdf(0.5)
 
     @property
     def mean(self):
@@ -171,12 +173,12 @@ class UniformRV(ScipyRandomVariable):
                                                             scale))
 
     def shift(self, delta):
-        return UniformRV(self.a + delta, self.b + delta)
+        return UniformRV(a=self.a + delta, b=self.b + delta)
 
     def scale(self, scale):
         m = 0.5 * (self.a + self.b)
         d = scale * 0.5 * (self.b - self.a)
-        return UniformRV(m - d, m + d)
+        return UniformRV(a=m - d, b=m + d)
 
     @property
     def orth_polys(self):
@@ -189,29 +191,67 @@ class UniformRV(ScipyRandomVariable):
 
 class BetaRV(ScipyRandomVariable):
 
-    def __init__(self, alpha=0.5, beta=0.5, a=0, b=1):
+    
+    def __init__(self, alpha, beta, a=0, b=1):
+        if alpha <= 0 or beta <= 0:
+            raise TypeError("alpha and beta must be positive")
         self.a = float(min(a, b))
         self.b = float(max(a, b))
         self.alpha = float(alpha)
         self.beta = float(beta)
-        loc = a
+        loc = self.a
         scale = (self.b - self.a)
-        super(BetaRV, self).__init__(scipy.stats.beta(alpha, beta, 
+        super(BetaRV, self).__init__(scipy.stats.beta(self.alpha, self.beta, 
                                                       loc, scale))
 
     def shift(self, delta):
-        return BetaRV(self.a + delta, self.b + delta)
+        return BetaRV(self.alpha, self.beta, a=self.a + delta, b=self.b + delta)
 
     def scale(self, scale):
         m = 0.5 * (self.a + self.b)
         d = scale * 0.5 * (self.b - self.a)
-        return BetaRV(self.alpha, self.beta, m - d, m + d)
+        return BetaRV(self.alpha, self.beta, a=m - d, b=m + d)
 
     @property
     def orth_polys(self):
-        return None 
-        # return polys.JacobiPolynomials(self.alpha, self.beta, a, b, normalised=True)
+        # Note: the meaning of alpha and beta in the standard formulation of the Beta distribution and 
+        # of the Jacobi polynomials is shifted by 1 and reversed in the meaning
+        return polys.JacobiPolynomials(alpha=self.beta-1, beta=self.alpha-1, 
+                                       a=self.a, b=self.b, normalised=True)
+    def invcdf(self, x):
+        if self.alpha==0.5 and self.beta==0.5 and x==0.5:
+            # this is a workaround for a scipy bug
+            r = 0.5 * (self.a + self.b)
+        else:
+            r=self._dist.ppf(x)
+        return r
 
     def __repr__(self):
         return ("<%s alpha=%s beta=%s a=%s b=%s>" %
                 (strclass(self.__class__), self.alpha, self.beta, self.a, self.b))
+
+
+class SemicircularRV(ScipyRandomVariable):
+
+    def __init__(self, a=-1, b=1):
+        self.a = float(min(a, b))
+        self.b = float(max(a, b))
+        rv = scipy.stats.semicircular(loc=0.5 * (self.a + self.b), scale=0.5 * (self.b - self.a))
+        super(SemicircularRV, self).__init__(rv)
+
+    def shift(self, delta):
+        return SemicircularRV(a=self.a + delta, b=self.b + delta)
+
+    def scale(self, scale):
+        m = 0.5 * (self.a + self.b)
+        d = scale * 0.5 * (self.b - self.a)
+        return SemicircularRV(a=m - d, b=m + d)
+
+    @property
+    def orth_polys(self):
+        return polys.JacobiPolynomials(alpha=0.5, beta=0.5, 
+                                       a=self.a, b=self.b, normalised=True)
+
+    def __repr__(self):
+        return ("<%s a=%s b=%s>" %
+                (strclass(self.__class__), self.a, self.b))

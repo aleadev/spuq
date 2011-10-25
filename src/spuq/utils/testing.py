@@ -60,8 +60,8 @@ assert_raises = _tc.assertRaises
 if sys.hexversion >= 0x02070000:
     assert_raises_regexp = _tc.assertRaisesRegexp
 
-assert_almost_equal = _tc.assertAlmostEqual
-assert_not_almost_equal= _tc.assertNotAlmostEqual
+#assert_almost_equal = _tc.assertAlmostEqual
+#assert_not_almost_equal= _tc.assertNotAlmostEqual
 if sys.hexversion >= 0x02070000:
     assert_greater = _tc.assertGreater
     assert_greater_equal = _tc.assertGreaterEqual

@@ -108,7 +108,7 @@ def normalise_rc(rc_func, sqnorm_func=None):
         if n > 0:
             h0 = sqnorm_func(n - 1) ** 0.5
         else:
-            assert c == 0.0
+            #assert c == 0.0
             h0 = 0
         return (a * h1 / h2, b * h1 / h2, c * h0 / h2)
     return rc_norm_func
@@ -264,6 +264,12 @@ def sqnorm_legendre(n):
     
 def rc_jacobi(n, alpha, beta):
     """AS page 782 """
+    if n==0:
+        a = (alpha - beta) / 2.0 
+        b = (alpha + beta + 2) / 2.0 
+        c = 0
+        return (a, b, c) 
+
     a1 = 2 * (n + 1) * (n + alpha + beta + 1) * (2 * n + alpha + beta)
     a2 = (2 * n + alpha + beta + 1) * (alpha**2 - beta**2) 
     a3 = (2 * n + alpha + beta + 1) * (2 * n + alpha + beta) * (2 * n + alpha + beta + 2) 
@@ -274,14 +280,26 @@ def sqnorm_jacobi(n, alpha, beta):
     """Square of the norm of the legendre polynomials of [-1, 1].
 
     AS page 782 (divided by 2, s.t. h0 == 1)"""
-    #gamma = scipy.special.gamma
-    from scipy.special import gamma
+    def _sqnorm(n, alpha, beta):
+        from scipy.special import gamma
+        return (2.0 ** (alpha + beta + 1) /
+                (2 * n + alpha + beta + 1) * 
+                gamma(n + alpha + 1) * 
+                gamma(n + beta + 1) /
+                scipy.factorial(n) /
+                gamma(n + alpha + beta + 1)) / sqnorm_jacobi(0, alpha, beta)
     if n==0:
         return 1
-    return (2.0 ** (alpha + beta + 1) /
-            (2 * n + alpha + beta + 1) * 
-            gamma(n + alpha + 1) * 
-            gamma(n + beta + 1) /
-            scipy.factorial(n) /
-            gamma(n + alpha + beta + 1)) / sqnorm_jacobi(0, alpha, beta)
+    return _sqnorm(n, alpha, beta) / _sqnorm(0, alpha, beta)
 
+def rc_chebyshev_t(n):
+    """AS page 782 """
+    if n==0:
+        return (0.0, 1.0, 0.0)
+    return (0.0, 2.0, 1)
+
+def rc_chebyshev_u(n):
+    """AS page 782 """
+    if n==0:
+        return (0.0, 2.0, 0.0)
+    return (0.0, 2.0, 1.0)
