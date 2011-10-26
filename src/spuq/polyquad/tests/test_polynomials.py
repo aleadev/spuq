@@ -202,18 +202,14 @@ class TestJacobi(TestCase):
     def test_consistency(self):
         import scipy.stats as stats
         dist = stats.beta(2, 3, loc=-1, scale=2)
-        print dist.ppf(0)
-        print dist.ppf(1)
-        p = JacobiPolynomials(alpha=1, beta=2, a=-1, b=1, normalised=False)
+        p = JacobiPolynomials(alpha=2, beta=1, a=-1, b=1, normalised=False)
+        assert_false(p.normalised)
+        _check_poly_consistency(p, dist)
 
-        import spuq.stochastics.random_variable as rvs
-        rv = rvs.BetaRV(alpha=2, beta=3, a=-1, b=1)
-        q = rv.orth_polys
-        
-        
-        #p = JacobiPolynomials(alpha=1, beta=2, a=-1, b=1, normalised=True)
-        #assert_false(p.normalised)
-        _check_poly_consistency(q, dist)
+        dist = stats.beta(2, 1.5, loc=-2, scale=5)
+        p = JacobiPolynomials(alpha=0.5, beta=1, a=-2, b=3)
+        assert_true(p.normalised)
+        _check_poly_consistency(p, dist)
 
 
 test_main()
