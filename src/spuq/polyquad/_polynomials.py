@@ -79,15 +79,18 @@ _1 = lambda x: 0 * x + 1
 
 
 def rc4_to_rc3(a):
-    """Convert recurrence coeffs from a 4 to a 3 coeffs form."""
+    """Convert recurrence coefficients from a 4 coefficient form as in 
+    Abramowitz to a 3 coefficient form."""
     a0 = float(a[0])
     return (a[1] / a0, a[2] / a0, a[3] / a0)
 
 
 def rc_norm_to_rc3(rc_norm_func):
+    """Convert a recurrence coefficient function that returns two normalised 
+    coefficients to one that returns them in 3 coefficient form."""
     def rc3_func(n):
         (alpha0, beta0) = rc_norm_func(n)
-        (alpha1, beta1) = rc_norm_func(n + 1)
+        (_, beta1) = rc_norm_func(n + 1)
         a = -float(alpha0) / float(beta1)
         b = 1.0 / float(beta1)
         c = float(beta0) / float(beta1)
@@ -115,13 +118,17 @@ def normalise_rc(rc_func, sqnorm_func=None):
 
 
 def sqnorm_from_rc(rc_func, n):
-    """Compute norm from recurrence.
+    """Compute norm of the n-th polynomial from the recurrence coefficients.
+    
+    @param rc_func: function that computes the recurrence coefficients   
+    @param n: number of the polynomial
 
+    Source:
     Normalizing Orthogonal Polynomials by Using their Recurrence Coefficients
     Alan G. Law and M. B. Sledd
     Proceedings of the American Mathematical Society, Vol. 48, No. 2
     (Apr., 1975), pp. 505 - 507
-    Stable URL: http: // www.jstor.org / stable / 2040291 .
+    URL: http://www.jstor.org/stable/2040291
     """
     assert type(n) == type(1)
 
@@ -195,7 +202,7 @@ def eval_forsythe(rc_func, coeffs, x):
     f0 = coeffs[0]
     if n < 1:
         return f0
-    (a0, b0, c0) = rc_func(0)
+    (a0, b0, _) = rc_func(0)
     t1 = a0 + b0 * x
     f1 = f2 = f0 + coeffs[1] * t1
 
@@ -292,14 +299,19 @@ def sqnorm_jacobi(n, alpha, beta):
         return 1
     return _sqnorm(n, alpha, beta) / _sqnorm(0, alpha, beta)
 
+# Chebyshev polynomials
 def rc_chebyshev_t(n):
-    """AS page 782 """
+    """Chebyshev polynomials of the first kind on [-1,1]
+    
+    see AS page 782 """
     if n==0:
         return (0.0, 1.0, 0.0)
     return (0.0, 2.0, 1)
 
 def rc_chebyshev_u(n):
-    """AS page 782 """
+    """Chebyshev polynomials of the second kind on [-1,1]
+    
+    see AS page 782 """
     if n==0:
         return (0.0, 2.0, 0.0)
     return (0.0, 2.0, 1.0)

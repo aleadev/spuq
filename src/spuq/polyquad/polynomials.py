@@ -108,7 +108,6 @@ class BasePolynomialFamily(PolynomialFamily):
 class LegendrePolynomials(BasePolynomialFamily):
 
     def __init__(self, a=-1.0, b=1.0, normalised=True):
-        # currently nothing else is supported (coming soon however)
         rc_func = _p.rc_legendre
         if a != -1.0 or b != 1.0:
             rc_func = _p.rc_window_trans(rc_func, (-1, 1), (a, b))
@@ -124,7 +123,6 @@ class LegendrePolynomials(BasePolynomialFamily):
 class StochasticHermitePolynomials(BasePolynomialFamily):
 
     def __init__(self, mu=0.0, sigma=1.0, normalised=True):
-        # currently nothing else is supported (coming soon however)
         rc_func = _p.rc_stoch_hermite
         if mu != 0.0 or sigma != 1.0:
             rc_func = _p.rc_shift_scale(rc_func, mu, sigma)
@@ -145,11 +143,34 @@ class JacobiPolynomials(BasePolynomialFamily):
         rc_func = lambda n: _p.rc_jacobi(n, alpha, beta)
         if a != -1.0 or b != 1.0:
             rc_func = _p.rc_window_trans(rc_func, (-1.0, 1.0), (a, b))
-            sqnorm_func = None
-        else:
-            sqnorm_func = None # _p.sqnorm_legendre
+        sqnorm_func = None
 
         super(self.__class__, self).__init__(rc_func, sqnorm_func)
         if normalised:
             self.normalise()
 
+
+class ChebyshevT(BasePolynomialFamily):
+
+    def __init__(self, a=-1.0, b=1.0, normalised=True):
+        rc_func = _p.rc_chebyshev_t
+        if a != -1.0 or b != 1.0:
+            rc_func = _p.rc_window_trans(rc_func, (-1, 1), (a, b))
+        sqnorm_func = None
+
+        super(self.__class__, self).__init__(rc_func, sqnorm_func)
+        if normalised:
+            self.normalise()
+
+
+class ChebyshevU(BasePolynomialFamily):
+
+    def __init__(self, a=-1.0, b=1.0, normalised=True):
+        rc_func = _p.rc_chebyshev_u
+        if a != -1.0 or b != 1.0:
+            rc_func = _p.rc_window_trans(rc_func, (-1, 1), (a, b))
+        sqnorm_func = None
+
+        super(self.__class__, self).__init__(rc_func, sqnorm_func)
+        if normalised:
+            self.normalise()

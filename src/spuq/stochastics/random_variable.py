@@ -249,8 +249,36 @@ class SemicircularRV(ScipyRandomVariable):
 
     @property
     def orth_polys(self):
-        return polys.JacobiPolynomials(alpha=0.5, beta=0.5, 
-                                       a=self.a, b=self.b, normalised=True)
+        return polys.ChebyshevU(a=self.a, b=self.b, normalised=True)
+        #return polys.JacobiPolynomials(alpha=0.5, beta=0.5, 
+        #                               a=self.a, b=self.b, normalised=True)
+
+    def __repr__(self):
+        return ("<%s a=%s b=%s>" %
+                (strclass(self.__class__), self.a, self.b))
+
+
+class ArcsineRV(ScipyRandomVariable):
+
+    def __init__(self, a=0, b=1):
+        self.a = float(min(a, b))
+        self.b = float(max(a, b))
+        rv = scipy.stats.arcsine(loc=self.a, scale=(self.b - self.a))
+        super(ArcsineRV, self).__init__(rv)
+
+    def shift(self, delta):
+        return ArcsineRV(a=self.a + delta, b=self.b + delta)
+
+    def scale(self, scale):
+        m = 0.5 * (self.a + self.b)
+        d = scale * 0.5 * (self.b - self.a)
+        return ArcsineRV(a=m - d, b=m + d)
+
+    @property
+    def orth_polys(self):
+        return polys.ChebyshevT(a=self.a, b=self.b, normalised=True)
+        #return polys.JacobiPolynomials(alpha=-0.5, beta=-0.5, 
+        #                               a=self.a, b=self.b, normalised=True)
 
     def __repr__(self):
         return ("<%s a=%s b=%s>" %

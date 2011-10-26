@@ -10,22 +10,22 @@ from spuq.polyquad.polynomials import *
 
 def _test_rv_coherence(rv):
     m = rv.mean
-    v = rv.var
+    s = 0.1*scipy.sqrt(rv.var)
     
     # make sure variance is positive
     assert_true(rv.var > 0)
     
     # make sure cdf and invcdf match
     assert_approx_equal(rv.invcdf(rv.cdf(m)), m)
-    assert_approx_equal(rv.invcdf(rv.cdf(m + v)), m + v)
-    assert_approx_equal(rv.invcdf(rv.cdf(m - v)), m - v)
+    assert_approx_equal(rv.invcdf(rv.cdf(m + s)), m + s)
+    assert_approx_equal(rv.invcdf(rv.cdf(m - s)), m - s)
     
     # make sure pdf and cdf match (using central difference
     # approximation, therefore check only 4 significant digits)
     eps = 1e-9
-    for x in [m, m-v, m+v]:
-        assert_approx_equal(rv.cdf(x + eps * v) - rv.cdf(x - eps * v), 
-                            2 * eps * v * rv.pdf(x),
+    for x in [m, m-s, m+s]:
+        assert_approx_equal(rv.cdf(x + eps * s) - rv.cdf(x - eps * s), 
+                            2 * eps * s * rv.pdf(x),
                             significant=4)
 
     # make sure median, cdf and invcdf match
@@ -247,6 +247,56 @@ class TestSemicircularRV(TestCase):
         assert_equal(self.rv1.cdf(1000), 1)
         assert_equal(self.rv1.cdf(-1000), 0)
         assert_equal(self.rv2.cdf(4), 0.5)
+
+    def test_sample(self):
+        s = self.rv1.sample(5)
+        assert_equal(s.shape, (5,))
+
+    def test_shift_scale(self):
+        d = self.rv2
+        assert_equal(d.shift(2).mean, d.mean + 2)
+        assert_equal(d.shift(2).var, d.var)
+        assert_equal(d.scale(2).mean, d.mean)
+        assert_equal(d.scale(2).var, d.var * 4)
+
+    def test_orth_polys(self):
+        assert_is_instance(self.rv1.orth_polys, PolynomialFamily)
+
+    def test_coherence(self):
+        _test_rv_coherence(self.rv1)
+        _test_rv_coherence(self.rv2)
+
+
+class TestArcsineRV(TestCase):
+
+    def setUp(self):
+        self.rv1 = ArcsineRV()
+        self.rv2 = ArcsineRV(2, 6)
+
+    def test_repr(self):
+        assert_equal(str(self.rv1), "<ArcsineRV a=0.0 b=1.0>")
+        assert_equal(str(self.rv2), "<ArcsineRV a=2.0 b=6.0>")
+
+    def test_mean(self):
+        assert_equal(self.rv1.mean, 0.5)
+        assert_equal(self.rv2.mean, 4)
+
+    def test_var(self):
+        assert_equal(self.rv1.var, 1.0 / 8.0)
+        assert_equal(self.rv2.var, 16.0 / 8.0)
+
+    def test_pdf(self):
+        assert_almost_equal(self.rv1.pdf(1/4.0), 4.0 / scipy.pi / scipy.sqrt(3.0))
+        assert_almost_equal(self.rv1.pdf(1/3.0), 3.0 / scipy.pi / scipy.sqrt(2.0))
+        assert_almost_equal(self.rv1.pdf(2/3.0), 3.0 / scipy.pi / scipy.sqrt(2.0))
+        assert_equal(self.rv2.pdf(1.99), 0)
+        assert_equal(self.rv2.pdf(6.01), 0)
+
+    def test_cdf(self):
+        assert_almost_equal(self.rv1.cdf(0.5), 0.5)
+        assert_equal(self.rv1.cdf(1000), 1)
+        assert_equal(self.rv1.cdf(-1000), 0)
+        assert_almost_equal(self.rv2.cdf(4), 0.5)
 
     def test_sample(self):
         s = self.rv1.sample(5)

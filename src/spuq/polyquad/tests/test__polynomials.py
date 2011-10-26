@@ -10,18 +10,18 @@ class TestRecurrences(TestCase):
         P = compute_poly(rc_legendre, 5, x)
         assert_array_equal(P[0].coeffs, [1])
         assert_array_equal(P[1].coeffs, np.array([1, 0]))
-        assert_array_equal(P[2].coeffs, np.array([3, 0, - 1]) / 2.0)
-        assert_array_equal(P[3].coeffs, np.array([5, 0, - 3, 0]) / 2.0)
-        assert_array_equal(P[4].coeffs, np.array([35, 0, - 30, 0, 3]) / 8.0)
+        assert_array_equal(P[2].coeffs, np.array([3, 0, -1]) / 2.0)
+        assert_array_equal(P[3].coeffs, np.array([5, 0, -3, 0]) / 2.0)
+        assert_array_equal(P[4].coeffs, np.array([35, 0, -30, 0, 3]) / 8.0)
 
     def test_stoch_hermite(self):
         x = np.poly1d([1, 0])
         P = compute_poly(rc_stoch_hermite, 5, x)
         assert_array_equal(P[0].coeffs, [1])
         assert_array_equal(P[1].coeffs, np.array([1, 0]))
-        assert_array_equal(P[2].coeffs, np.array([1, 0, - 1]))
-        assert_array_equal(P[3].coeffs, np.array([1, 0, - 3, 0]))
-        assert_array_equal(P[4].coeffs, np.array([1, 0, - 6, 0, 3]))
+        assert_array_equal(P[2].coeffs, np.array([1, 0, -1]))
+        assert_array_equal(P[3].coeffs, np.array([1, 0, -3, 0]))
+        assert_array_equal(P[4].coeffs, np.array([1, 0, -6, 0, 3]))
 
     def test_jacobi(self):
         x = np.poly1d([1, 0])
@@ -36,6 +36,24 @@ class TestRecurrences(TestCase):
         h1 = [sqnorm_from_rc(rc_jac, i) for i in range(7)]
         h2 = [sqnorm_jacobi(i, 0, 2) for i in range(7)]
         assert_array_almost_equal(h1, h2)
+
+    def test_chebyshev_t(self):
+        x = np.poly1d([1, 0])
+        P = compute_poly(rc_chebyshev_t, 5, x)
+        assert_array_equal(P[0].coeffs, [1])
+        assert_array_equal(P[1].coeffs, np.array([1, 0]))
+        assert_array_equal(P[2].coeffs, np.array([2, 0, -1]))
+        assert_array_equal(P[3].coeffs, np.array([4, 0, -3, 0]))
+        assert_array_equal(P[4].coeffs, np.array([8, 0, -8, 0, 1]))
+
+    def test_chebyshev_u(self):
+        x = np.poly1d([1, 0])
+        P = compute_poly(rc_chebyshev_u, 5, x)
+        assert_array_equal(P[0].coeffs, [1])
+        assert_array_equal(P[1].coeffs, np.array([2, 0]))
+        assert_array_equal(P[2].coeffs, np.array([4, 0, -1]))
+        assert_array_equal(P[3].coeffs, np.array([8, 0, -4, 0]))
+        assert_array_equal(P[4].coeffs, np.array([16, 0, -12, 0, 1]))
 
     def test_monomials(self):
         x = np.poly1d([1, 0])
