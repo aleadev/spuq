@@ -233,19 +233,19 @@ def rc_stoch_hermite(n):
 
 def sqnorm_stoch_hermite(n):
     """AS page 782 (s.t. h0 == 1)"""
-    return scipy.factorial(n)
+    return float(scipy.factorial(n))
 
 
-def stc_stoch_hermite(a, b, c):
+def stc_stoch_hermite(a, b, c, triple=False):
     s = a + b + c
-    if bool(s % 2) or a <= b + c or b <= a + c or c <= a + b:
-        c = 0
-    else:
-        s /= 2
-        fac = scipy.factorial
-        c = (fac(s - a) * fac(s - b) * fac(s - c) /
-             (fac(a) * fac(b) * fac(c)))
-
+    if bool(s % 2) or a > b + c or b > a + c or c > a + b:
+        return 0
+    s /= 2
+    fac = scipy.factorial
+    factor = 1.0/sqnorm_stoch_hermite(c) if not triple else 1.0
+    return float(fac(a) * fac(b) * fac(c) * factor /
+                 (fac(s - a) * fac(s - b) * fac(s - c)))
+            
 
 # Legendre polynomials
 def rc_legendre(n):

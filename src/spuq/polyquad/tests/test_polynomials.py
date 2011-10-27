@@ -155,12 +155,14 @@ class TestJacobi(TestCase):
 
     def test_jacobi(self):
         x = JacobiPolynomials.x
+        # test the standard JacobiPolynomials for alpha=1, beta=1  
         p = JacobiPolynomials(alpha=1.0, beta=1.0, normalised=False)
         assert_array_almost_equal(p.eval(0, x), x**0)
         assert_array_almost_equal(p.eval(1, x), 2 * x)
         assert_array_almost_equal(p.eval(2, x), 15.0 / 4  * x ** 2 - 3.0 / 4)
         assert_array_almost_equal(p.eval(3, x), 7 * x ** 3 - 3 * x)
 
+        # test the standard JacobiPolynomials for alpha=0, beta=2 (unsymmetric), and check the norm  
         p = JacobiPolynomials(alpha=0.0, beta=2.0, normalised=False)
         assert_array_almost_equal(p.eval(1, x), 2 * x - 1)
         assert_array_almost_equal(p.eval(2, x), 3.75  * x ** 2 - 2.5 * x - 0.25)
@@ -174,10 +176,9 @@ class TestJacobi(TestCase):
         assert_approx_equal(p.norm(4, False), 3.0/11.0)
         assert_approx_equal(p.norm(5, False), 3.0/13.0)
 
+        # test the normalised JacobiPolynomials for alpha=0, beta=2  
         p = JacobiPolynomials(alpha=0, beta=2, normalised=True)
         assert_array_almost_equal(p.eval(3, x), (7 * x ** 3 - 5.25 * x **2 - 1.5 * x + 0.75) / math.sqrt(1/3.0))
-        #assert_almost_equal(p.eval(5, x), (7 * x ** 3 - 5.25 * x **2 - 1.5 * x + 0.75) /
-        #                    math.sqrt(3.0/13.0))
 
         p = JacobiPolynomials(alpha=0.5, beta=-0.5, normalised=False)
         assert_array_almost_equal(p.eval(0, x), x**0)
@@ -188,7 +189,9 @@ class TestJacobi(TestCase):
         assert_array_almost_equal(p.eval(1, x), x)
         assert_array_almost_equal(p.eval(3, x), 2.5 * x ** 3 - 1.5 * x)
 
-    def test_cmp_legendre(self):
+    def test_cmp_jacobi_legendre(self):
+        # make the Jacobi polynomials for alpha=0 and beta=0 are the same as 
+        # the Legendre polynomials 
         p = JacobiPolynomials(alpha=0, beta=0, a=3, b=7, normalised=True)
         q = LegendrePolynomials(a=3, b=7, normalised=True)
         assert_array_almost_equal( p[0], q[0])

@@ -78,4 +78,8 @@ def test_main():
     mod_name = frame.f_locals.get('__name__', None)
     if mod_name == "__main__":
         file_to_run = frame.f_locals.get('__file__', None)
-        run_module_suite(file_to_run)
+        if file_to_run is not None:
+            run_module_suite(file_to_run)
+        else:
+            print "Could not determine the file name of the current file. Probably this function has been called by execfile."
+            

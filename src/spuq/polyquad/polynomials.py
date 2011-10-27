@@ -4,6 +4,8 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
 import spuq.polyquad._polynomials as _p
+import spuq.utils.decorators as _dec
+
 
 class PolynomialFamily(object):
     """Abstract base for families of (orthogonal) polynomials"""
@@ -63,12 +65,17 @@ class PolynomialFamily(object):
 class BasePolynomialFamily(PolynomialFamily):
     """ """
 
-    def __init__(self, rc_func, sqnorm_func=None, sc_func=None, normalised=False):
-        self._rc_func = rc_func
+    def __init__(self, rc_func, sqnorm_func=None, sc_func=None, normalised=False, cache_size=1000):
+        if cache_size>0:
+            cache = _dec.simple_int_cache(cache_size)
+        else:
+            cache = lambda func: func 
+            
+        self._rc_func = cache(rc_func)
 
         if sqnorm_func is None:
             sqnorm_func = lambda n: _p.sqnorm_from_rc(rc_func, n)
-        self._sqnorm_func = sqnorm_func
+        self._sqnorm_func = cache(sqnorm_func)
 
         if sc_func is None:
             # needs to be implemented in _polynomials
@@ -109,11 +116,10 @@ class LegendrePolynomials(BasePolynomialFamily):
 
     def __init__(self, a=-1.0, b=1.0, normalised=True):
         rc_func = _p.rc_legendre
+        sqnorm_func = _p.sqnorm_legendre
         if a != -1.0 or b != 1.0:
             rc_func = _p.rc_window_trans(rc_func, (-1, 1), (a, b))
             sqnorm_func = None
-        else:
-            sqnorm_func = None # _p.sqnorm_legendre
 
         super(self.__class__, self).__init__(rc_func, sqnorm_func)
         if normalised:
@@ -124,11 +130,10 @@ class StochasticHermitePolynomials(BasePolynomialFamily):
 
     def __init__(self, mu=0.0, sigma=1.0, normalised=True):
         rc_func = _p.rc_stoch_hermite
+        sqnorm_func = _p.sqnorm_stoch_hermite
         if mu != 0.0 or sigma != 1.0:
             rc_func = _p.rc_shift_scale(rc_func, mu, sigma)
             sqnorm_func = None
-        else:
-            sqnorm_func = None #_p.sqnorm_stoch_hermite
 
         super(self.__class__, self).__init__(rc_func, sqnorm_func)
         if normalised:
@@ -141,9 +146,9 @@ class JacobiPolynomials(BasePolynomialFamily):
         if alpha<=-1 or beta<=-1:
             raise TypeError("alpha and beta must be larger than -1")
         rc_func = lambda n: _p.rc_jacobi(n, alpha, beta)
+        sqnorm_func = None
         if a != -1.0 or b != 1.0:
             rc_func = _p.rc_window_trans(rc_func, (-1.0, 1.0), (a, b))
-        sqnorm_func = None
 
         super(self.__class__, self).__init__(rc_func, sqnorm_func)
         if normalised:
@@ -154,9 +159,9 @@ class ChebyshevT(BasePolynomialFamily):
 
     def __init__(self, a=-1.0, b=1.0, normalised=True):
         rc_func = _p.rc_chebyshev_t
+        sqnorm_func = None
         if a != -1.0 or b != 1.0:
             rc_func = _p.rc_window_trans(rc_func, (-1, 1), (a, b))
-        sqnorm_func = None
 
         super(self.__class__, self).__init__(rc_func, sqnorm_func)
         if normalised:
@@ -167,9 +172,9 @@ class ChebyshevU(BasePolynomialFamily):
 
     def __init__(self, a=-1.0, b=1.0, normalised=True):
         rc_func = _p.rc_chebyshev_u
+        sqnorm_func = None
         if a != -1.0 or b != 1.0:
             rc_func = _p.rc_window_trans(rc_func, (-1, 1), (a, b))
-        sqnorm_func = None
 
         super(self.__class__, self).__init__(rc_func, sqnorm_func)
         if normalised:
