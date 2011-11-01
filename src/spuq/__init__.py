@@ -6,16 +6,7 @@ __all__ = [
     "utils",
     ]
 
-#import statistics
-#from statistics import *
-
-#import linalg
-#from linalg import *
-
-#import utils
-#from utils import *
-
-#import bases
+import spuq.utils.fixes
 
 
 try:
@@ -25,3 +16,4 @@ try:
 except ImportError:
     # silently ignore import errors here
     pass
+
