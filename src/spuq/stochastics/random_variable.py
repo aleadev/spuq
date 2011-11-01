@@ -218,13 +218,6 @@ class BetaRV(ScipyRandomVariable):
         # of the Jacobi polynomials is shifted by 1 and reversed in the meaning
         return polys.JacobiPolynomials(alpha=self.beta-1, beta=self.alpha-1, 
                                        a=self.a, b=self.b, normalised=True)
-    def invcdf(self, x):
-        if self.alpha==0.5 and self.beta==0.5 and x==0.5:
-            # this is a workaround for a scipy bug
-            r = 0.5 * (self.a + self.b)
-        else:
-            r=self._dist.ppf(x)
-        return r
 
     def __repr__(self):
         return ("<%s alpha=%s beta=%s a=%s b=%s>" %
