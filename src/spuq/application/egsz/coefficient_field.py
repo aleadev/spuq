@@ -7,7 +7,7 @@ from spuq.stochastics.random_variable import RandomVariable
 class CoefficientField(object):
     """expansion of a coefficient field according to EGSZ (1.2)"""
     
-    @takes((list_of(GenericFunction),tuple_of(GenericFunction)), (list_of(RandomVariable)))
+    @takes((list_of(GenericFunction),tuple_of(GenericFunction)), list_of(RandomVariable))
     def __init__(self, funcs, rvs):
         """initialise with list of functions and list of random variables
         

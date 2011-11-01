@@ -45,13 +45,13 @@ class SympyFunction(GenericFunction):
             
     def eval(self, x=None):
         if x:
-            return self._f.subs().evalf()
+            return self.f.subs().evalf()
         else:
             return self.str() 
         
     def diff(self, x=None, order=1):
         if x:
-            return self._f.diff(x, order)
+            return self.f.diff(x, order)
         else:
             return str(diff(self.f)) 
         
