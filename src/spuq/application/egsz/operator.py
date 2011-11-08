@@ -39,15 +39,17 @@ class MultiOperator(Operator):
         Delta = w.active_set()
         for mu in Delta:
             # deterministic part
-            A0 = self._FEM.assemble_operator( {'a':self._CF[mu][0]}, w[mu].basis )
+            A0 = self._FEM.assemble_operator( {'a':self._CF[0]}, w[mu].basis )
             v[mu] = A0 * w[mu] 
             for m in xrange(1, maxm):
                 # assemble A for \mu and a_m
-                Am = self._FEM.assemble_operator( {'a':self._CF[mu][m]}, w[mu].basis )
+                Am = self._FEM.assemble_operator( {'a':self._CF[m]}, w[mu].basis )
 
-                # mu
+                # prepare polynom coefficients
                 (a, b, c) = p.recurrence_coefficients(mu[m])
                 beta = (a/b, 1/b, c/b)
+
+                # mu
                 wN = -beta[0]*w[mu]
 
                 # mu+1

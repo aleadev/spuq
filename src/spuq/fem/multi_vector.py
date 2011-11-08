@@ -3,10 +3,12 @@ from spuq.utils.hashable_ndarray import hashable_ndarray
 from numpy import ndarray
 
 class MultiVector(object):
-    '''Accommodates tuples of type (MultiindexSet, Vector).
+    '''Accommodates tuples of type (MultiindexSet, Vector/Object).
     
     This class manages a set of Vectors associated to MultiindexSet instances.
-    A Vector contains a coefficient vector and the respespective basis.'''
+    A Vector contains a coefficient vector and the respespective basis.
+    Note that the type of the second value of the tuple is not restricted to
+    anything specific.'''
 
     def __init__(self, multivec=None):
         if multivec is not None:
@@ -24,11 +26,11 @@ class MultiVector(object):
             assert(isinstance(mi, ndarray))
             return self.mi2vec[hashable_ndarray(mi)]
     
-    def __setitem__(self, mi, vec):
+    def __setitem__(self, mi, val):
         if not isinstance(mi, hashable_ndarray):
             assert(isinstance(mi, ndarray))
             mi = hashable_ndarray(mi)
-        self.mi2vec[mi] = vec
+        self.mi2vec[mi] = val
     
     def active_indices(self):
         return self.mi2vec.keys()
@@ -54,6 +56,8 @@ class MultiVector(object):
         return "MultiVector("+str(self.mi2vec.keys())+")"
 #        return "MultiVector("+str(self.mi2vec)+")"
 
+
+# TODO: move tests to own file/dir!!!
 
 import unittest
 class TestMultiVector(unittest.TestCase):

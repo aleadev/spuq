@@ -1,9 +1,15 @@
-""" """
+"""FEM discretisation implementation"""
 
 from dolfin import *
 from spuq.fem.fem_discretisation import FEMDiscretisation
 
 class FEMPoisson(FEMDiscretisation):
+    """FEM discrete Laplace operator with coefficient :math:`a`
+
+        ..math:: -\mathrm{div}a \nabla u
+
+        ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
+    """
 
         def assemble_operator(self, data, basis):
             """Assemble discrete Poisson operator, i.e., the stiffness matrix"""
