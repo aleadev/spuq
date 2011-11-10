@@ -30,8 +30,8 @@ class MultiOperator(Operator):
         self._FEM = FEM
         self._CF = CF
             
-    @takes(MultiVector, RandomVariable)
-    def apply(self, w, rv, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
+    @takes(RandomVariable, MultiVector, int)
+    def apply(self, rv, w, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
         "Apply operator to vec which should be in the same domain"
         
         p = rv.orth_poly
@@ -41,7 +41,7 @@ class MultiOperator(Operator):
             # deterministic part
             A0 = self._FEM.assemble_operator( {'a':self._CF[0]}, w[mu].basis )
             v[mu] = A0 * w[mu] 
-            for m in xrange(1, maxm):
+            for m in range(1, maxm):
                 # assemble A for \mu and a_m
                 Am = self._FEM.assemble_operator( {'a':self._CF[m]}, w[mu].basis )
 
