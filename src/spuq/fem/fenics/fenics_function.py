@@ -7,7 +7,7 @@ from spuq.linalg.function import GenericFunction, SympyFunction
 class FenicsFunction(GenericFunction):
     """Wrapper for discrete fenics Function"""
     
-    @takes(str, Dfstr=optional((list_of(str),tuple_of(str))), FS=optional())
+    @takes(string, Dfstr=optional((list_of(string),tuple_of(string))), FS=optional())
     def __init__(self, fstr, Dfstr=None, FS=None, dimin=2, dimout=1):
         """Initialise (discrete) function.
         
@@ -24,7 +24,7 @@ class FenicsFunction(GenericFunction):
             self._exf = Expression(F.eval().replace('x','x[0]').replace('y','x[1]'))
             self._exDf = Expression(F.diff().replace('x','x[0]').replace('y','x[1]'))
         
-        if self.FS:
+        if FS:
             self._FS = FS
             self._f = interpolate(self._exf, self._FS)
             self._Df = interpolate(self._exDf, self._FS)
@@ -40,7 +40,7 @@ class FenicsFunction(GenericFunction):
             else:
                 return self._exf(x)
         else:
-            return str(self._exf) 
+            return self._exf
 
         
     def diff(self, x=None, order=1):
@@ -54,7 +54,7 @@ class FenicsFunction(GenericFunction):
             else:
                 return self._exDf(x)
         else:
-            return str(self._exDf)
+            return FenicsFunction(self._exDf)
 
         
     @property

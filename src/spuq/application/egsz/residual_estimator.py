@@ -12,9 +12,9 @@ terms are defined for some discrete :math:`w_N\in\mathcal{V}_N` by
 .. math:: \eta_{\mu,T}(w_N) &:= h_T || \overline{a}^{-1/2} (f\delta_{\mu,0} + \nabla\overline{a}\cdot\nabla w_{N,\mu}
                                 + \sum_{m=1}^\infty \nabla a_m\cdot\nabla( \alpha^m_{\mu_m+1}\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m}
                                 - \alpha_{\mu_m}^m w_{N,\mu} + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu_m-e_m} w_{N,\mu-e_m} ||_{L^2(T)}\\
-          \eta_{\mu,S}(w_N) &:= h_S^{-1/2} || \overline{a}^{-1/2} [\overline{a}\nabla w_{N,\mu} + \sum_{m=1}^\infty a_m\nabla
+          \eta_{\mu,S}(w_N) &:= h_S^{-1/2} || \overline{a}^{-1/2} [(\overline{a}\nabla w_{N,\mu} + \sum_{m=1}^\infty a_m\nabla
                                   ( \alpha_{\mu_m+1}^m\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m} - \alpha_{\mu_m}^m w_{N,\mu}
-                                  + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m} ||_{L^2(S)}\\
+                                  + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m})\cdot\nu] ||_{L^2(S)}\\
           \delta_\mu(w_N) &:= \sum_{m=1}^\infty || a_m/\overline{a} ||_{L^\infty(D)
                           ||| \alpha_{\mu+1}^m \nabla(\Pi_{\mu+e_m}^\mu (\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m}) ) - w_{N,\mu+e_m} |||
                           + ||| \alpha_{\mu-1}^m \nabla(\Pi_{\mu-e_m}^\mu (\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m}) ) - w_{N,\mu-e_m} |||
@@ -36,6 +36,7 @@ from spuq.utils.type_check import *
 from spuq.utils.multiindex_set import MultiindexSet
 from spuq.application.egsz.coefficient_field import CoefficientField
 
+from numpy import ndarray, array
 from dolfin import *
 
 
@@ -61,11 +62,13 @@ class ResidualEstimator(object):
     def _evaluateResidualEstimator(self, mu, rv, wN, CF, f, projected_wN, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
         """Evaluate the residual error according to EGSZ (5.7) which consists of volume terms (5.3) and jump terms (5.5).
 
-        ..math::
-            \eta_{\mu,T}(w_N) &:= ... \\
-            \eta_{\mu,S}(w_N) &:= ...
+            .. math:: \eta_{\mu,T}(w_N) &:= h_T || \overline{a}^{-1/2} (f\delta_{\mu,0} + \nabla\overline{a}\cdot\nabla w_{N,\mu}
+                                + \sum_{m=1}^\infty \nabla a_m\cdot\nabla( \alpha^m_{\mu_m+1}\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m}
+                                - \alpha_{\mu_m}^m w_{N,\mu} + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu_m-e_m} w_{N,\mu-e_m} ||_{L^2(T)}\\
+          \eta_{\mu,S}(w_N) &:= h_S^{-1/2} || \overline{a}^{-1/2} [(\overline{a}\nabla w_{N,\mu} + \sum_{m=1}^\infty a_m\nabla
+                                  ( \alpha_{\mu_m+1}^m\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m} - \alpha_{\mu_m}^m w_{N,\mu}
+                                  + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m})\cdot\nu] ||_{L^2(S)}\\
         """
-
         # prepare cache data structures
         if not projected_wN:
             projected_wN = MultiVector()
@@ -74,7 +77,6 @@ class ResidualEstimator(object):
 
         # get mean field of coefficient
         a = CF[0]
-#        asq = 1/sqrt(a) 
 
         # prepare FEM
         V = wN[mu].functionspace
@@ -83,11 +85,9 @@ class ResidualEstimator(object):
         w = TestFunction(DG)
         h = CellSize(mesh)
         nu = FacetNormal(mesh)              # mesh normal vectors
-        R_T = dot(grad(a),grad(wN[mu]))
+        R_T = dot(a.diff(),grad(wN[mu]))
         if mu.is_zero:
             R_T = R_T + f 
-        # TODO: note that the jump seems to be vector valued as opposed to the usual normal derivative jump component.
-        # Thus, vector valued test space has to be used etc.! Check!
         R_E = a * grad(wN[mu])
         
         # iterate m
@@ -109,11 +109,12 @@ class ResidualEstimator(object):
 
             # add volume contribution for m
             a = CF[m]
-            res = beta[1]*projected_wN[mu][mu1] - beta[0]*wN[mu] + beta[-1]*projected_wN[mu][mu2] 
+            res = beta[1]*projected_wN[mu][mu1] - beta[0]*wN[mu] + beta[-1]*projected_wN[mu][mu2]
+            # TODO: this probably has to be changed for "a" analytic (dx/diff) 
             r_t = dot( grad(a), grad(res) ) 
             R_T = R_T + r_t 
             # add edge contribution for m
-            r_e = a*grad(res)
+            r_e = a*dot( grad(res), grad(nu) )
             R_E = R_E + r_e
 
         # scaling of residual terms and definition of residual form
@@ -127,10 +128,12 @@ class ResidualEstimator(object):
         return (eta, error)
 
 
-    @takes(MultiVector, CoefficientField)
-    def evaluateFlux(self, wN, CF):
-        """
-        TODO
+    @takes((tuple,list,ndarray), RandomVariable, MultiVector, MultiindexSet, CoefficientField, MultiVector, int)
+    def evaluateFlux(self, x, rv, wN, mu, CF, projected_wN, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
+        """Evaluate numerical flux :math:`\sigma_\mu(w_N)` according to EGSZ (5.1) 
+        
+            ..math:: \sigma_\mu(w_N) := \overline{a}\nabla w_{N,\mu} + \sum_{m=1}^\infty a_m\nabla(\alpha_{\mu_m+1}^m\Pi_\mu^{\mu+e_m}w_{N,\mu+e_m}
+                                                    -\alpha_{\mu_m}^m}w_{N,\mu} + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m}w_{N,\mu-e_m})
         """
 #        newDelta = extend(Delta)
 #
@@ -145,15 +148,96 @@ class ResidualEstimator(object):
 #                if mu2 in Delta:
 #                    sigma_x += a[m]( w[mu].mesh.nodes ) * beta(m, mu[m]) *\
 #                        w[mu2].project( w[mu].mesh ).dx()
-        pass
+        # TODO: Lambda and extension of Lambda?!?
+        if isinstance(x, tuple) or isinstance(list):
+            x = array(x)
+
+        # prepare cache data structures
+        if not projected_wN:
+            projected_wN = MultiVector()
+        if mu not in projected_wN.keys():
+            projected_wN[mu] = MultiVector()
+
+        sigma = MultiVector()
+        a = CF[0]
+        for mu in wN.active_set():
+            val = a*wN[mu].dx()(x)
+            for m in range(1,maxm):
+                # prepare polynom coefficients
+                p = rv.orth_poly
+                (a, b, c) = p.recurrence_coefficients(mu[m])
+                beta = (a/b, 1/b, c/b)
+
+                # prepare projections of wN
+                # mu+1
+                mu1 = mu.add( (m,1) )
+                if mu1 not in projected_wN[mu].keys():
+                    projected_wN[mu][mu1] = wN[mu].functionspace.project(wN[mu1], pt)
+                # mu-1
+                mu2 = mu.add( (m,-1) )
+                if mu2 not in projected_wN[mu].keys():
+                    projected_wN[mu][mu2] = wN[mu].functionspace.project(wN[mu2], pt)
+
+                # mu+1
+                am = CF[m]
+                val += am*beta[1]*projected_wN[mu][mu1].dx()(x)
+                # mu+1
+                val -= am*beta[0]*wN[mu].dx()(x)
+                # mu-1
+                val += am*beta[-1]*projected_wN[mu][mu2].dx()(x)
+                sigma[mu] = val
+        return sigma
 
 
-    @takes()
-    def evaluateGradFlux(self, wN, CF):
+    @takes((tuple,list,ndarray), RandomVariable, MultiVector, MultiindexSet, CoefficientField, MultiVector, int)
+    def evaluateDivFlux(self, x, rv, wN, mu, CF, projected_wN, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
+        """Evaluate divergence of numerical flux :math:`\nabla\cdot\sigma_\mu(w_N)` according to EGSZ (5.4)
+        
+            ..math:: \nabla\cdot\sigma_\mu(w_N) = \nabla\overline{a}\cdot\nabla w_{N,\mu} + \sum_{m=1}^\infty \nabla a_m\cdot\nabla(
+                                                    \alpha_{\mu_m+1}^m\Pi_\mu^{\mu+e_m}w_{N,\mu+e_m} - \alpha_{\mu_m}^m w_{N,\mu}
+                                                    +\alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m}w_{N,\mu-e_m})
+            
+            Note that this form is only valid for conforming piecewise affine approximation spaces (P1 FEM).
         """
-        TODO
-        """
-        pass
+        # TODO: Lambda and extension of Lambda?!?
+        if isinstance(x, tuple) or isinstance(x, list):
+            x = array(x)
+
+        # prepare cache data structures
+        if not projected_wN:
+            projected_wN = MultiVector()
+        if mu not in projected_wN.keys():
+            projected_wN[mu] = MultiVector()
+
+        sigma = MultiVector()
+        a = CF[0]
+        for mu in wN.active_set():
+            val = inner(a.diff(x), wN[mu].dx()(x))
+            for m in range(1,maxm):
+                # prepare polynom coefficients
+                p = rv.orth_poly
+                (a, b, c) = p.recurrence_coefficients(mu[m])
+                beta = (a/b, 1/b, c/b)
+
+                # prepare projections of wN
+                # mu+1
+                mu1 = mu.add( (m,1) )
+                if mu1 not in projected_wN[mu].keys():
+                    projected_wN[mu][mu1] = wN[mu].functionspace.project(wN[mu1], pt)
+                # mu-1
+                mu2 = mu.add( (m,-1) )
+                if mu2 not in projected_wN[mu].keys():
+                    projected_wN[mu][mu2] = wN[mu].functionspace.project(wN[mu2], pt)
+
+                # mu+1
+                am = CF[m]
+                val += beta[1]*inner(am.diff(x), projected_wN[mu][mu1].dx()(x))
+                # mu+1
+                val -= beta[0]*inner(am.diff(x), wN[mu].dx()(x))
+                # mu-1
+                val += beta[-1]*inner(am.diff(x), projected_wN[mu][mu2].dx()(x))
+                sigma[mu] = val
+        return sigma
 
 
     @takes(RandomVariable, MultiVector, CoefficientField, MultiVector, MultiVector, int)
