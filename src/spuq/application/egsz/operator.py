@@ -25,27 +25,29 @@ class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials"""
     
     @takes(FEMDiscretisation, CoefficientField)
-    def __init__(self, FEM, CF):
+    def __init__(self, FEM, CF, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
         """Initialise discrete operator with FEM discretisation and coefficient field of the diffusion coefficient"""
         self._FEM = FEM
         self._CF = CF
+        self.maxm = ...
             
     @takes(RandomVariable, MultiVector, int)
-    def apply(self, rv, w, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
+    def apply(self, w):
         "Apply operator to vec which should be in the same domain"
         
-        p = rv.orth_poly
         v = MultiVector()           # result vector
         Delta = w.active_set()
         for mu in Delta:
             # deterministic part
-            A0 = self._FEM.assemble_operator( {'a':self._CF[0]}, w[mu].basis )
+            A0 = self._FEM.assemble_operator( {'a':self._CF[0][0]}, w[mu].basis )
             v[mu] = A0 * w[mu] 
             for m in range(1, maxm):
                 # assemble A for \mu and a_m
-                Am = self._FEM.assemble_operator( {'a':self._CF[m]}, w[mu].basis )
+                a, rv = self._CF[m]
+                Am = self._FEM.assemble_operator( {'a': a}, w[mu].basis )
 
                 # prepare polynom coefficients
+                p = rv.orth_poly
                 (a, b, c) = p.recurrence_coefficients(mu[m])
                 beta = (a/b, 1/b, c/b)
 

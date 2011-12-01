@@ -49,17 +49,19 @@ class ResidualEstimator(object):
     """
 
 
-    @takes(MultiindexSet, RandomVariable, MultiVector, CoefficientField, Expression, MultiVector, int)
-    def evaluateResidualEstimator(self, rv, wN, CF, f, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
+    @takes(anything, MultiindexSet, MultiVector, CoefficientField, Expression, MultiVector, int)
+    def evaluateResidualEstimator(self, wN, CF, f, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
         """Evaluate residual estimator EGSZ (5.7) for all active mu of wN."""
-        projected_wN = None
+        self._projected_wN = MultiVector()
+        self._maxm = maxm
+        self._pt = pt
         eta = MultiVector()
         for mu in wN.active_set():
-            eta[mu] = self._evaluateResidualEstimator(mu, rv, wN, CF, f, projected_wN, maxm)
+            eta[mu] = self._evaluateResidualEstimator(mu, wN, CF, f)
         return eta
 
-    @takes(MultiindexSet, RandomVariable, MultiVector, CoefficientField, Expression, MultiVector, int)
-    def _evaluateResidualEstimator(self, mu, rv, wN, CF, f, projected_wN, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
+    @takes(anything, MultiindexSet, MultiVector, CoefficientField, Expression)
+    def _evaluateResidualEstimator(self, mu, wN, CF, f):
         """Evaluate the residual error according to EGSZ (5.7) which consists of volume terms (5.3) and jump terms (5.5).
 
             .. math:: \eta_{\mu,T}(w_N) &:= h_T || \overline{a}^{-1/2} (f\delta_{\mu,0} + \nabla\overline{a}\cdot\nabla w_{N,\mu}
@@ -70,13 +72,11 @@ class ResidualEstimator(object):
                                   + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m})\cdot\nu] ||_{L^2(S)}\\
         """
         # prepare cache data structures
-        if not projected_wN:
-            projected_wN = MultiVector()
         if mu not in projected_wN.keys():
             projected_wN[mu] = MultiVector()
 
         # get mean field of coefficient
-        a = CF[0]
+        a, _ = CF[0]
 
         # prepare FEM
         V = wN[mu].functionspace
@@ -92,10 +92,12 @@ class ResidualEstimator(object):
         
         # iterate m
         for m in range(maxm):
+            a, rv = CF[m]
+
             # prepare polynom coefficients
             p = rv.orth_poly
-            (a, b, c) = p.recurrence_coefficients(mu[m])
-            beta = (a/b, 1/b, c/b)
+            (a?, b, c) = p.recurrence_coefficients(mu[m])
+            beta = (a?/b, 1/b, c/b)
 
             # prepare projections of wN
             # mu+1
@@ -108,7 +110,6 @@ class ResidualEstimator(object):
                 projected_wN[mu][mu2] = wN[mu].functionspace.project(wN[mu2], pt)
 
             # add volume contribution for m
-            a = CF[m]
             res = beta[1]*projected_wN[mu][mu1] - beta[0]*wN[mu] + beta[-1]*projected_wN[mu][mu2]
             # TODO: this probably has to be changed for "a" analytic (dx/diff) 
             r_t = dot( grad(a), grad(res) ) 
