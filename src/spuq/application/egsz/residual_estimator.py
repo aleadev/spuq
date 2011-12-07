@@ -76,7 +76,7 @@ class ResidualEstimator(object):
             projected_wN[mu] = MultiVector()
 
         # get mean field of coefficient
-        a, _ = CF[0]
+        a0_f, a0_rv = CF[0]
 
         # prepare FEM
         V = wN[mu].functionspace
@@ -85,10 +85,10 @@ class ResidualEstimator(object):
         w = TestFunction(DG)
         h = CellSize(mesh)
         nu = FacetNormal(mesh)              # mesh normal vectors
-        R_T = dot(a.diff(),grad(wN[mu]))
+        R_T = dot(a0_f.diff(),grad(wN[mu]))
         if mu.is_zero:
             R_T = R_T + f 
-        R_E = a * grad(wN[mu])
+        R_E = a0_f * grad(wN[mu])
         
         # iterate m
         for m in range(maxm):
@@ -112,7 +112,7 @@ class ResidualEstimator(object):
             # add volume contribution for m
             res = beta[1]*projected_wN[mu][mu1] - beta[0]*wN[mu] + beta[-1]*projected_wN[mu][mu2]
             # TODO: this probably has to be changed for "a" analytic (dx/diff) 
-            r_t = dot( grad(a), grad(res) ) 
+            r_t = dot( grad(am_f), grad(res) ) 
             R_T = R_T + r_t 
             # add edge contribution for m
             r_e = a*dot( grad(res), grad(nu) )
@@ -160,12 +160,13 @@ class ResidualEstimator(object):
             projected_wN[mu] = MultiVector()
 
         sigma = MultiVector()
-        a = CF[0]
+        a0_f, a0_rv = CF[0]
         for mu in wN.active_set():
-            val = a*wN[mu].dx()(x)
+            val = a0_f*wN[mu].dx()(x)
             for m in range(1,maxm):
                 # prepare polynom coefficients
-                p = rv.orth_poly
+                am_f, am_rv = CF[m]
+                p = am_rv.orth_poly
                 (a, b, c) = p.recurrence_coefficients(mu[m])
                 beta = (a/b, 1/b, c/b)
 
@@ -180,12 +181,11 @@ class ResidualEstimator(object):
                     projected_wN[mu][mu2] = wN[mu].functionspace.project(wN[mu2], pt)
 
                 # mu+1
-                am = CF[m]
-                val += am*beta[1]*projected_wN[mu][mu1].dx()(x)
+                val += am_f*beta[1]*projected_wN[mu][mu1].dx()(x)
                 # mu+1
-                val -= am*beta[0]*wN[mu].dx()(x)
+                val -= am_f*beta[0]*wN[mu].dx()(x)
                 # mu-1
-                val += am*beta[-1]*projected_wN[mu][mu2].dx()(x)
+                val += am_f*beta[-1]*projected_wN[mu][mu2].dx()(x)
                 sigma[mu] = val
         return sigma
 
@@ -211,12 +211,13 @@ class ResidualEstimator(object):
             projected_wN[mu] = MultiVector()
 
         sigma = MultiVector()
-        a = CF[0]
+        a0_f, a0_rv = CF[0]
         for mu in wN.active_set():
-            val = inner(a.diff(x), wN[mu].dx()(x))
+            val = inner(a0_f.diff(x), wN[mu].dx()(x))
             for m in range(1,maxm):
                 # prepare polynom coefficients
-                p = rv.orth_poly
+                am_f, am_rv = CF[m]
+                p = am_rv.orth_poly
                 (a, b, c) = p.recurrence_coefficients(mu[m])
                 beta = (a/b, 1/b, c/b)
 
@@ -231,12 +232,11 @@ class ResidualEstimator(object):
                     projected_wN[mu][mu2] = wN[mu].functionspace.project(wN[mu2], pt)
 
                 # mu+1
-                am = CF[m]
-                val += beta[1]*inner(am.diff(x), projected_wN[mu][mu1].dx()(x))
+                val += beta[1]*inner(am_f.diff(x), projected_wN[mu][mu1].dx()(x))
                 # mu+1
-                val -= beta[0]*inner(am.diff(x), wN[mu].dx()(x))
+                val -= beta[0]*inner(am_f.diff(x), wN[mu].dx()(x))
                 # mu-1
-                val += beta[-1]*inner(am.diff(x), projected_wN[mu][mu2].dx()(x))
+                val += beta[-1]*inner(am_f.diff(x), projected_wN[mu][mu2].dx()(x))
                 sigma[mu] = val
         return sigma
 
@@ -259,7 +259,8 @@ class ResidualEstimator(object):
         for mu in wN.active_set():
             dmu = 0
             for m in range(1,maxm):
-                dmu += self.evaluateLocalProjectionError(rv, wN, mu, m, CF, projected_wN, projected_back_wN, pt)
+                am_f, am_rv = CF[m]
+                dmu += self.evaluateLocalProjectionError(am_rv, wN, mu, m, CF, projected_wN, projected_back_wN, pt)
             delta[mu] = dmu
         return delta
 
@@ -276,14 +277,14 @@ class ResidualEstimator(object):
         """
 
         # determine ||a_m/\overline{a}||_{L\infty(D)}
-        a = CF[0]
-        am = CF[m]
-        amin = min(a(wN[mu].mesh.coordinates()))
-        ammax = max(am(wN[mu].mesh.coordinates()))
+        a0_f, a0_rv = CF[0]
+        am_f, am_rv = CF[m]
+        amin = min(a0_f(wN[mu].mesh.coordinates()))
+        ammax = max(am_f(wN[mu].mesh.coordinates()))
         ainfty = ammax//amin
 
         # prepare projections of wN
-        zeta1, zeta2 = self._evaluateProjections(rv, wN, mu, m, projected_wN, projected_back_wN, pt)
+        zeta1, zeta2 = self._evaluateProjections(am_rv, wN, mu, m, projected_wN, projected_back_wN, pt)
         zeta1 *= ainfty
         zeta2 *= ainfty
 
