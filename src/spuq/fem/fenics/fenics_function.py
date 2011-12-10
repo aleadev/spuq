@@ -1,11 +1,11 @@
-"""fenics discrete function wrapper"""
+"""FEniCS discrete function wrapper"""
 
 from dolfin import Function, Expression, interpolate
 from spuq.utils.type_check import *
 from spuq.linalg.function import GenericFunction, SympyFunction
 
 class FenicsFunction(GenericFunction):
-    """Wrapper for discrete fenics Function"""
+    """Wrapper for discrete FEniCS Function"""
     
     @takes(string, Dfstr=optional((list_of(string),tuple_of(string))), FS=optional())
     def __init__(self, fstr, Dfstr=None, FS=None, dimin=2, dimout=1):
