@@ -6,7 +6,7 @@ __all__ = ["linear_operator",
          "FullVector",
          "FullLinearOperator",
          "GenericFunction",
-         "SympyFunction"]
+         "SimpleFunction"]
 
 #from .linear_operator import (LinearOperator, FullLinearOperator)
 #from .full_vector import (FullVector)

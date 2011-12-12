@@ -1,15 +1,5 @@
-from numpy import poly1d, ones
+from numpy import poly1d
 from spuq.linalg.function import GenericFunction
-
-class FunctionScalar(GenericFunction):
-    def __init__(self, const=1, domain_dim=1, codomain_dim=1):
-        self.const = const
-        
-    def eval(self, *x):
-        return self.const*ones((self.codomain_dim,1))
-    
-    def diff(self):
-        return FunctionScalar(const=0, domain_dim=self.domain_dim, codomain_dim=self.domain_dim*self.codomain_dim) 
     
 class Poly1dFunction(GenericFunction):
     """numpy poly1d GenericFunction wrapper"""
