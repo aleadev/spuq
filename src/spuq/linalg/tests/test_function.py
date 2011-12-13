@@ -1,6 +1,3 @@
-import math
-import numpy as np
-
 from spuq.linalg.function import SimpleFunction
 from spuq.utils.testing import *
 
@@ -36,7 +33,8 @@ class TestFunctions(TestCase):
         print (f**g)(7,5), 490
         h1=f**g
         h2=g**f
-#        print (h1**h2)((5,7),(5,7)), 350*490
+# FIXME!
+#        print (h1**h2)(5,7,5,7), 350*490
 
         # tensorisation
         print 'tensor'

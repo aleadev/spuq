@@ -1,6 +1,6 @@
 """generic function interface, a simple function class and a const function class"""
 
-from numpy import ones
+from numpy import ones, infty
 from abc import ABCMeta, abstractmethod
 from types import MethodType
 from spuq.utils.decorators import copydocs
@@ -16,10 +16,11 @@ class GenericFunction(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, domain_dim=1, codomain_dim=1, factor=1):
+    def __init__(self, domain_dim=1, codomain_dim=1, factor=1, domain=(-infty,infty)):
         self.domain_dim = domain_dim
         self.codomain_dim = codomain_dim
         self.factor = factor
+        self._domain = [domain for _ in range(self.domain_dim)]
 
     def __call__(self, *x):
         if len(x)==1 and isinstance(x[0], GenericFunction):
@@ -47,7 +48,11 @@ class GenericFunction(object):
     def diff(self):
         """return derivative GenericFunction"""
         return NotImplemented
-        
+
+    @property
+    def domain(self):
+        return self._domain
+
     def __add__(self, g):
         return _add(self, g)
 

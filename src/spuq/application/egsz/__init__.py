@@ -1,3 +1,4 @@
-__all__ = ["egsz_coefficient_field",
-         "egsz_operator",
-         "egsz_residual_estimator"]
+__all__ = ["coefficient_field",
+         "fem_discretisation",
+         "operator",
+         "residual_estimator"]
