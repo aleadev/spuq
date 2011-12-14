@@ -1,6 +1,6 @@
 """FEniCS discrete function wrapper"""
 
-from dolfin import FunctionSpace, VectorFunctionSpace, Function, Expression, interpolate, grad
+from dolfin import FunctionSpace, VectorFunctionSpace, Function, Expression, interpolate, project, grad
 from spuq.utils.type_check import *
 from spuq.linalg.function import GenericFunction
 
@@ -75,8 +75,7 @@ class FEniCSFunction(GenericFunction):
         if self.Dfex:
             self.Df = interpolate(self.Dfex, self.DfFS)
         elif numericalDf:
-#            self.Df = project(grad(self.f), self.DfFS)
-            self.Df = interpolate(grad(self.f), self.DfFS)
+            self.Df = project(grad(self.f), self.DfFS)
 
     def eval(self, *x):
         """Function evaluation.
@@ -84,7 +83,7 @@ class FEniCSFunction(GenericFunction):
             Return function evaluated at x"""
         return self.f(*x)
 
-        
+
     def diff(self):
         """Return derivative.
         
