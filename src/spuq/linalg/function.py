@@ -236,7 +236,10 @@ class ConstFunction(GenericFunction):
         self.const = const
 
     def eval(self, *x):
-        return self.const*ones((self.codomain_dim,1))
+        if self.codomain_dim > 1:
+            return self.const*ones((self.codomain_dim,1))
+        else:
+            return self.const
 
     def diff(self):
         return ConstFunction(const=0, domain_dim=self.domain_dim, codomain_dim=self.domain_dim*self.codomain_dim)
@@ -251,10 +254,10 @@ def wrapConstFunction(f):
 
         F = [a for a in args if isinstance(a,GenericFunction)];
 
-        print args
+#        print 'ARGS---',args
         assert len(F)>0
-        print 'FUNCTION', F[1]
-        print map(lambda a: check_const(a,F[1]), args)
+#        print 'FUNCTION', F[1]
+#        print 'ARGS check_const---',map(lambda a: check_const(a,F[1]), args)
 
         if len(F) == len(args):     # all arguments are already GenericFunctions
             f(*args)
