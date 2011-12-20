@@ -16,36 +16,43 @@ where the coefficients :math:`(\alpha^m_{n-1},\alpha^m_n,\alpha^m_{n+1})` are ob
 from spuq.linalg.operator import Operator
 from spuq.utils.type_check import *
 from spuq.application.egsz.coefficient_field import CoefficientField 
+from spuq.application.egsz.projection_cache import ProjectionCache 
 from spuq.fem.multi_vector import MultiVector
 from spuq.fem.fem_discretisation import FEMDiscretisation
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.stochastics.random_variable import RandomVariable
+from numpy import dot
 
 class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials"""
     
-    @takes(FEMDiscretisation, CoefficientField)
-    def __init__(self, FEM, CF, maxm=10, pt=FEniCSBasis.PROJECTION.INTERPOLATION):
+    @takes(any, FEMDiscretisation, CoefficientField, int)
+    def __init__(self, FEM, CF, maxm=10, domain=None, codomain=None):
         """Initialise discrete operator with FEM discretisation and coefficient field of the diffusion coefficient"""
         self._FEM = FEM
         self._CF = CF
-        self.maxm = ...
-            
-    @takes(RandomVariable, MultiVector, int)
-    def apply(self, w):
-        "Apply operator to vec which should be in the same domain"
+        self._maxm = maxm
+
+    @takes(any, MultiVector, ProjectionCache)
+    def apply(self, wN, wN_projection_cache=None, ptype=FEniCSBasis.PROJECTION.INTERPOLATION):
+        """Apply operator to vector which has to live in the same domain"""
+
+        if wN_projection_cache:
+            wN_cache = wN_projection_cache
+        else:
+            wN_cache = ProjectionCache(wN, ptype=ptype)
         
         v = MultiVector()           # result vector
-        Delta = w.active_set()
+        Delta = wN.active_set()
         for mu in Delta:
             # deterministic part
             am_f, am_rf = self._CF[0]
-            A0 = self._FEM.assemble_operator( {'a':am_f}, w[mu].basis )
-            v[mu] = A0 * w[mu] 
-            for m in range(1, maxm):
+            A0 = self._FEM.assemble_operator( {'a':am_f}, wN[mu].basis )
+            v[mu] = A0 * wN[mu] 
+            for m in range(1, self._maxm):
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
-                Am = self._FEM.assemble_operator( {'a':am_f}, w[mu].basis )
+                Am = self._FEM.assemble_operator( {'a':am_f}, wN[mu].basis )
 
                 # prepare polynom coefficients
                 p = am_rv.orth_poly
@@ -53,28 +60,28 @@ class MultiOperator(Operator):
                 beta = (a/b, 1/b, c/b)
 
                 # mu
-                wN = -beta[0]*w[mu]
+                cur_wN = -beta[0]*wN[mu]
 
                 # mu+1
                 mu1 = mu.add( (m,1) )
                 if mu1 in Delta:
-                    wN += beta[1] * w[mu].functionspace.project(w[mu1], ptype=pt)
+                    cur_wN += beta[1] * wN_cache[mu, mu1, False]
 
                 # mu-1
                 mu2 = mu.add( (m,-1) )
                 if mu2 in Delta:
-                    wN += beta[-1] * w[mu].functionspace.project(w[mu2], ptype=pt)
+                    cur_wN += beta[-1] * wN_cache[mu, mu2, False]
 
                 # apply discrete operator
-                v[mu] = Am * wN
+                v[mu] = dot(Am, cur_wN)
         return v
         
     def domain(self):
-        "Returns the basis of the domain"
-        # TODO
+        """Returns the basis of the domain"""
+        # TODO: this could be extracted from the discrete domains (meshes) of the vectors or provided by the user
         return None
 
     def codomain(self):
-        "Returns the basis of the codomain"
+        """Returns the basis of the codomain"""
         # TODO
         return None

@@ -1,9 +1,6 @@
 from exceptions import TypeError, AttributeError
 from spuq.utils.enum import Enum
-#from spuq.fem import *
-#from spuq.fem.fenics import *
 from spuq.fem.fem_basis import FEMBasis
-#from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.fem.fenics.fenics_mesh import FEniCSMesh
 from spuq.linalg.operator import MatrixOperator
 from dolfin import FunctionSpace, FunctionSpaceBase, Function, \
@@ -12,12 +9,12 @@ from dolfin.fem.interpolation import interpolate
 from dolfin.fem.projection import project
 
 class FEniCSBasis(FEMBasis):
-    '''wrapper for FEniCS/dolfin FunctionSpace'''
+    """wrapper for FEniCS/dolfin FunctionSpace"""
     
     PROJECTION = Enum('INTERPOLATION','L2PROJECTION')
 
     def __init__(self, mesh=None, family='CG', degree=1, functionspace=None):
-        '''initialise discrete basis on mesh'''
+        """initialise discrete basis on mesh"""
         if functionspace is not None:
             assert(mesh is None)
             assert(isinstance(functionspace, FunctionSpaceBase))
@@ -40,7 +37,7 @@ class FEniCSBasis(FEMBasis):
         self._dim = self.__functionspace.dim()
 
     def refine(self, cells=None):
-        '''refines mesh of basis uniformly or wrt cells, return new (FEniCSBasis,prolongate,restrict)'''
+        """refines mesh of basis uniformly or wrt cells, return new (FEniCSBasis,prolongate,restrict)"""
         import spuq.fem.fenics.fenics_vector   # NOTE: from ... import FEniCSVector does not work (cyclic dependencies require module imports)
         newmesh = self.mesh.refine(cells)
         newFB = FEniCSBasis(newmesh, self.family, self.degree)
@@ -72,7 +69,7 @@ class FEniCSBasis(FEMBasis):
             return (F.vector().array(), F.function_space())
 
     def interpolate(self, F):
-        '''interpolate FEniCS Expression/Function on basis'''
+        """interpolate FEniCS Expression/Function on basis"""
         return interpolate(F, self.functionspace)
 
     @property

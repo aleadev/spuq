@@ -17,6 +17,7 @@ class CoefficientField(object):
         assert len(rvs) == 1 or len(funcs)-1 == len(rvs)
         self._funcs = funcs
         self._rvs = rvs
+        self._length = len(funcs)
         
     def coefficients(self):
         """return expansion iterator for (Function,RV) pairs"""
@@ -44,3 +45,8 @@ class CoefficientField(object):
 
     def __repr__(self):
         return "CoefficientField(funcs={0},rvs={1})".format(self._funcs,self._rvs)
+
+    @property
+    def length(self):
+        """length of coefficient field expansion"""
+        return self._length
