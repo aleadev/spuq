@@ -12,7 +12,7 @@ class MultiindexSet(object):
         self.count = arr.shape[0]
         pass
     
-    def power(self,vec):
+    def power(self, vec):
         for i in xrange(vec.size):
             if i==0:
                 res = vec[i]**self.arr[:,i]
@@ -28,23 +28,22 @@ class MultiindexSet(object):
         return bool(len(sp.nonzero(self.arr)[0])) 
 
     @staticmethod
-    def createCompleteOrderSet(m,p):
+    def createCompleteOrderSet(m, p):
         def createMultiindexSet(m, p):
-            #from numpy import int8,  zeros,  vstack, hstack
             if m==0:
-                return np.zeros( (1, 0),  np.int8 )
+                return np.zeros( (1, 0), np.int8 )
             else:
-                I = np.zeros( (0, m),  np.int8 )
+                I = np.zeros( (0, m), np.int8 )
                 for q in xrange(0, p+1):
                     J = createMultiindexSet(m-1, q)
-                    Jn = q-J.sum(1).reshape((J.shape[0],1))
-                    I = np.vstack( (I,  np.hstack( (J, Jn))))
+                    Jn = q-J.sum(1).reshape((J.shape[0], 1))
+                    I = np.vstack( (I, np.hstack( (J, Jn))))
                 return I
-        arr=createMultiindexSet(m,p)
+        arr = createMultiindexSet(m, p)
         return MultiindexSet(arr)
 
-    def __getitem__(self,i):
+    def __getitem__(self, i):
         return self.arr[i]
         
     def __repr__(self):
-        return "MI(m={0},p={1},arr={2})".format(self.m,self.p,self.arr)
+        return "MI(m={0}, p={1}, arr={2})".format(self.m, self.p, self.arr)

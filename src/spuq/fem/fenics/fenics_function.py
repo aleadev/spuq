@@ -6,6 +6,7 @@ from spuq.linalg.function import GenericFunction
 
 class FEniCSExpression(GenericFunction):
     """Wrapper for FEniCS Expressions"""
+    
     def __init__(self, fstr=None, fexpression=None, Dfstr=None, domain_dim=1, codomain_dim=1):
         GenericFunction.__init__(self, domain_dim, codomain_dim)
         if fstr:

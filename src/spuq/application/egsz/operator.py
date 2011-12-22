@@ -34,10 +34,12 @@ class MultiOperator(Operator):
         self._maxm = maxm
 
     @takes(any, MultiVector, ProjectionCache)
-    def apply(self, wN, wN_projection_cache=None, ptype=FEniCSBasis.PROJECTION.INTERPOLATION):
+    def apply(self, wN=None, wN_projection_cache=None, ptype=FEniCSBasis.PROJECTION.INTERPOLATION):
         """Apply operator to vector which has to live in the same domain"""
 
         if wN_projection_cache:
+            assert wN==None or wN==wN_projection_cache.wN
+            wN = wN_projection_cache.wN
             wN_cache = wN_projection_cache
         else:
             wN_cache = ProjectionCache(wN, ptype=ptype)
@@ -46,8 +48,8 @@ class MultiOperator(Operator):
         Delta = wN.active_set()
         for mu in Delta:
             # deterministic part
-            am_f, am_rf = self._CF[0]
-            A0 = self._FEM.assemble_operator( {'a':am_f}, wN[mu].basis )
+            a0_f, _ = self._CF[0]
+            A0 = self._FEM.assemble_operator( {'a':a0_f}, wN[mu].basis )
             v[mu] = A0 * wN[mu] 
             for m in range(1, self._maxm):
                 # assemble A for \mu and a_m
@@ -65,12 +67,12 @@ class MultiOperator(Operator):
                 # mu+1
                 mu1 = mu.add( (m,1) )
                 if mu1 in Delta:
-                    cur_wN += beta[1] * wN_cache[mu, mu1, False]
+                    cur_wN += beta[1] * wN_cache[mu1, mu, False]
 
                 # mu-1
                 mu2 = mu.add( (m,-1) )
                 if mu2 in Delta:
-                    cur_wN += beta[-1] * wN_cache[mu, mu2, False]
+                    cur_wN += beta[-1] * wN_cache[mu2, mu, False]
 
                 # apply discrete operator
                 v[mu] = dot(Am, cur_wN)
@@ -79,9 +81,9 @@ class MultiOperator(Operator):
     def domain(self):
         """Returns the basis of the domain"""
         # TODO: this could be extracted from the discrete domains (meshes) of the vectors or provided by the user
-        return None
+        return NotImplemented
 
     def codomain(self):
         """Returns the basis of the codomain"""
         # TODO
-        return None
+        return NotImplemented
