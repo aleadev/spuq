@@ -1,13 +1,14 @@
+from __future__ import division
+
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.fem.fenics.fenics_function import FEniCSExpression, FEniCSFunction
 from spuq.fem.multi_vector import MultiVector
 from spuq.stochastics.random_variable import NormalRV
 
 from dolfin import UnitSquare, UnitCircle
-from exception import TypeError
+from exceptions import TypeError
 from itertools import repeat
 from numpy import array
-from __future__ import division
 
 
 class SampleProblem(object):
@@ -31,7 +32,7 @@ class SampleProblem(object):
         return M
 
     @classmethod
-    def createCF(cls, cftype, cfsize)
+    def createCF(cls, cftype, cfsize):
         def tuplegen():
             for m in count():
                 for n in range(0,m+1):

@@ -1,5 +1,6 @@
 from spuq.fem.fem_vector import FEMVector
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
+from spuq.fem.fenics.fenics_function import FEniCSFunction
 from dolfin import Function, FunctionSpaceBase, GenericVector
 from dolfin.cpp import GenericFunction
 from numpy import empty

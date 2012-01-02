@@ -1,10 +1,14 @@
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.fem_discretisation import FEMPoisson
+from spuq.fem.fenics.fenics_vector import FEniCSVector
+from spuq.fem.fenics.fenics_function import FEniCSExpression
 from spuq.fem.multi_vector import MultiVector
 from spuq.utils.multiindex_set import MultiindexSet
 from spuq.stochastics.random_variable import NormalRV
 from spuq.utils.testing import *
+
+from dolfin import UnitSquare, FunctionSpace, Function, Expression
 
 class TestOperator(TestCase):
     def test_multioperator(self):
@@ -21,7 +25,7 @@ class TestOperator(TestCase):
         degree = 1
         V = FunctionSpace(mesh, "CG", degree)
         f = Function(V)
-        initvector = FEniCSVector(f)
+        initvector = FEniCSVector(function=f)
         wN1 = MultiVector(mi, initvector)
         # init test coefficient field
         F = list()
