@@ -10,7 +10,7 @@ class FEMDiscretisation(object):
     __metaclass__ = ABCMeta
     
     @abstractmethod
-    @takes(dict, FEMBasis)
+    @takes(anything, dict, FEMBasis)
     def assemble_operator(self, data, basis):
         """Evaluate discrete operator"""
         return NotImplemented

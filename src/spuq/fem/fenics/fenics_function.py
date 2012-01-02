@@ -7,7 +7,7 @@ from spuq.linalg.function import GenericFunction
 class FEniCSExpression(GenericFunction):
     """Wrapper for FEniCS Expressions"""
     
-    def __init__(self, fstr=None, fexpression=None, Dfstr=None, domain_dim=1, codomain_dim=1):
+    def __init__(self, fstr=None, fexpression=None, Dfstr=None, Dfexpression=None, domain_dim=2, codomain_dim=1):
         GenericFunction.__init__(self, domain_dim, codomain_dim)
         if fstr:
             self.f = Expression(fstr)
@@ -16,6 +16,8 @@ class FEniCSExpression(GenericFunction):
             self.f = fexpression
         if Dfstr:
             self.Df = Expression(Dfstr)
+        elif Dfexpression:
+            self.Df = Dfexpression
         else:
             self.Df = None
             
@@ -23,7 +25,8 @@ class FEniCSExpression(GenericFunction):
         return self.f(*x)
         
     def diff(self):
-        return FEniCSExpression(fexpression=self.f)
+        assert self.Df
+        return FEniCSExpression(fexpression=self.Df)
 
 
 class FEniCSFunction(GenericFunction):

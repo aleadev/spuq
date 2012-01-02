@@ -190,7 +190,6 @@ class UniformRV(ScipyRandomVariable):
 
 
 class BetaRV(ScipyRandomVariable):
-
     
     def __init__(self, alpha, beta, a=0, b=1):
         if alpha <= 0 or beta <= 0:

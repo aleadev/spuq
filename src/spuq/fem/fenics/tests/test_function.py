@@ -1,6 +1,7 @@
 from dolfin import UnitSquare, FunctionSpace
 from spuq.utils.testing import *
 from spuq.fem.fenics.fenics_function import *
+from spuq.fem.fenics.fenics_vector import FEniCSVector
 
 class TestFEniCSFunction(TestCase):
     def test_function(self):
@@ -35,5 +36,7 @@ class TestFEniCSFunction(TestCase):
             print Df1(pos)
             print Df2(pos)
 
+    def test_vector(self):
+        pass
 
 test_main()

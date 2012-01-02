@@ -73,10 +73,13 @@ class FlatVector(Vector):
     def as_array(self):
         return self.coeffs
 
-    def _create_copy(self, coeffs):
+    def _create_copy(self, coeffs=None):
         """Creates a copy of this vector with new coefficients, but
         the same class and basis."""
-        return self.__class__(coeffs, self.basis)
+        if coeffs!=None:
+            return self.__class__(coeffs, self.basis)
+        else:
+            return self.__class__(self.coeffs, self.basis)
 
     @takes(anything, "FlatVector")
     def __add__(self, other):

@@ -7,12 +7,13 @@ from spuq.stochastics.random_variable import RandomVariable
 class CoefficientField(object):
     """expansion of a coefficient field according to EGSZ (1.2)"""
     
-    @takes((list_of(GenericFunction), tuple_of(GenericFunction)), list_of(RandomVariable))
+    @takes((list_of(GenericFunction),tuple_of(GenericFunction)), (list_of(RandomVariable),tuple_of(RandomVariable)))
     def __init__(self, funcs, rvs):
         """initialise with list of functions and list of random variables
         
             The first function is the mean field for which no random variable is required, i.e. len(funcs)=len(rvs)+1.
             Alternatively, just one random variable can be provided for all expansion coefficients.
+            Usually, the functions should be wrapped FEniCS Expressions or Functions, i.e. FEniCSExpression or FEniCSFunction.
         """
         assert len(rvs) == 1 or len(funcs)-1 == len(rvs)
         self._funcs = funcs

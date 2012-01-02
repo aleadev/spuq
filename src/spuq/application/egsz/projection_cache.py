@@ -7,10 +7,11 @@ class ProjectionCache(object):
     """cache for projections of vectors in multivector wN onto different discrete spaces of other vectors in wN"""
     
     @takes(any, MultiVector)
-    def __init__(self, wN, ptype=FEniCSBasis.PROJECTION.INTERPOLATION):
+    def __init__(self, wN=None, ptype=FEniCSBasis.PROJECTION.INTERPOLATION):
         """initialise cache with multivector"""
         
-        assert wN
+        if not wN:
+	    wN = MultiVector()
         self.wN = wN
         self._ptype = ptype
         self.clear()

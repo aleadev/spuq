@@ -50,7 +50,7 @@ class MultiOperator(Operator):
             # deterministic part
             a0_f, _ = self._CF[0]
             A0 = self._FEM.assemble_operator( {'a':a0_f}, wN[mu].basis )
-            v[mu] = A0 * wN[mu] 
+            v[mu] = A0 * wN[mu]
             for m in range(1, self._maxm):
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]

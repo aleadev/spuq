@@ -15,15 +15,14 @@ class FEniCSBasis(FEMBasis):
 
     def __init__(self, mesh=None, family='CG', degree=1, functionspace=None):
         """initialise discrete basis on mesh"""
-        if functionspace is not None:
-            assert(mesh is None)
-            assert(isinstance(functionspace, FunctionSpaceBase))
+        if functionspace != None:
+            assert mesh==None and isinstance(functionspace, FunctionSpaceBase)
             UFL = functionspace.ufl_element()
             family = UFL.family()
             degree = UFL.degree()
             mesh = functionspace.mesh()
             
-        assert(mesh is not None)
+        assert mesh!=None
         self.family = family
         self.degree = degree
         if isinstance(mesh, FEniCSMesh):
