@@ -1,6 +1,7 @@
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.fem_discretisation import FEMPoisson
+from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.fem.fenics.fenics_function import FEniCSExpression
 from spuq.fem.multi_vector import MultiVector
@@ -17,7 +18,7 @@ class TestOperator(TestCase):
 
         # set initial solution and set of active indices Lambda
         # MultiindexSet
-        m = 5
+        m = 2
         p = 3
         mi = MultiindexSet.createCompleteOrderSet(m, p)
         # init multivector
@@ -31,9 +32,9 @@ class TestOperator(TestCase):
         F = list()
         for i, j in enumerate(mi.arr.tolist()):
             ex1 = Expression('x[0]*x[0]+A*sin(10.*x[1])', A=i)
-            Dex1 = Expression('2.*x[0]+A*10.sin(10.*x[1])', A=i)
+            Dex1 = Expression('2.*x[0]+A*10.*sin(10.*x[1])', A=i)
             F.append(FEniCSExpression(fexpression=ex1, Dfexpression=Dex1))
-        CF1 = CoefficientField(F, NormalRV())
+        CF1 = CoefficientField(F, (NormalRV(),))
         MO1 = MultiOperator(FEM, CF1, 3)
         uN1 = MO1.apply(wN1)
 

@@ -26,14 +26,14 @@ from numpy import dot
 class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials"""
     
-    @takes(any, FEMDiscretisation, CoefficientField, int)
+#    @takes(any, "FEMDiscretisation", "CoefficientField", int)
     def __init__(self, FEM, CF, maxm=10, domain=None, codomain=None):
         """Initialise discrete operator with FEM discretisation and coefficient field of the diffusion coefficient"""
         self._FEM = FEM
         self._CF = CF
         self._maxm = maxm
 
-    @takes(any, MultiVector, ProjectionCache)
+#    @takes(any, "MultiVector", "ProjectionCache")
     def apply(self, wN=None, wN_projection_cache=None, ptype=FEniCSBasis.PROJECTION.INTERPOLATION):
         """Apply operator to vector which has to live in the same domain"""
 
@@ -45,19 +45,19 @@ class MultiOperator(Operator):
             wN_cache = ProjectionCache(wN, ptype=ptype)
         
         v = MultiVector()           # result vector
-        Delta = wN.active_set()
+        Delta = wN.active_indices()
         for mu in Delta:
             # deterministic part
             a0_f, _ = self._CF[0]
             A0 = self._FEM.assemble_operator( {'a':a0_f}, wN[mu].basis )
-            v[mu] = A0 * wN[mu]
+            v[mu] = A0.array() * wN[mu]
             for m in range(1, self._maxm):
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
                 Am = self._FEM.assemble_operator( {'a':am_f}, wN[mu].basis )
 
                 # prepare polynom coefficients
-                p = am_rv.orth_poly
+                p = am_rv.orth_polys
                 (a, b, c) = p.recurrence_coefficients(mu[m])
                 beta = (a/b, 1/b, c/b)
 
@@ -75,15 +75,15 @@ class MultiOperator(Operator):
                     cur_wN += beta[-1] * wN_cache[mu2, mu, False]
 
                 # apply discrete operator
-                v[mu] = dot(Am, cur_wN)
+                v[mu] = Am.array() * cur_wN
         return v
         
     def domain(self):
         """Returns the basis of the domain"""
         # TODO: this could be extracted from the discrete domains (meshes) of the vectors or provided by the user
-        return NotImplemented
+        raise NotImplementedError
 
     def codomain(self):
         """Returns the basis of the codomain"""
         # TODO
-        return NotImplemented
+        raise NotImplementedError

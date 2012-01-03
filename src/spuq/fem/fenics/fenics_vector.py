@@ -25,7 +25,7 @@ class FEniCSVector(FEMVector):
             else:
                 assert isinstance(function, Function)
                 self._F = FEniCSFunction(function)
-            self._basis = FEniCSBasis(functionspace=self._F.f.function_space())
+            self._basis = FEniCSBasis(functionspace=self._F.function_space())
             self._coeffs = self._F.f.vector()
     
     @property

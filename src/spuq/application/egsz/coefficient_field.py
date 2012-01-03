@@ -1,4 +1,4 @@
-"""expansion of a coefficient field"""
+"""The expansion of a coefficient field."""
 
 from spuq.utils.type_check import *
 from spuq.linalg.function import GenericFunction
@@ -7,7 +7,7 @@ from spuq.stochastics.random_variable import RandomVariable
 class CoefficientField(object):
     """expansion of a coefficient field according to EGSZ (1.2)"""
     
-    @takes((list_of(GenericFunction),tuple_of(GenericFunction)), (list_of(RandomVariable),tuple_of(RandomVariable)))
+#    @takes((list_of(FEniCSFunction),tuple_of(FEniCSFunction),list_of(FEniCSExpression),tuple_of(FEniCSExpression)), (list_of(RandomVariable),tuple_of(RandomVariable)))
     def __init__(self, funcs, rvs):
         """initialise with list of functions and list of random variables
         
@@ -40,7 +40,7 @@ class CoefficientField(object):
             return self._funcs[0], None
         else:
             if len(self._rvs) == 1:
-                return self._funcs[i], self._rvs
+                return self._funcs[i], self._rvs[0]
             else:
                 return self._funcs[i], self._rvs[i-1]
 

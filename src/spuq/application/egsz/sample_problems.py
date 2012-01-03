@@ -42,8 +42,10 @@ class SampleProblem(object):
             f = lambda a,b: Expression("sin(A*pi*x[0])*sin(B*pi*x[1])",A=a,B=b)
             Df = lambda a,b: Expression("A*B*sin(A*pi*x[0])*sin(B*pi*x[1])",A=a,B=b)
         elif cf[0]=="monomials":
-            f = lambda a,b: Expression("A",A=a)
-            Df = lambda a,b: Expression("A",A=a)
+            f = lambda a,b: Expression("*".join(["x[0]" for _ in range(a)])+"+"\
+                                        +"*".join(["x[1]" for _ in range(b)]))
+            Df = lambda a,b: Expression(str(a)+"*"+"*".join(["x[0]" for _ in range(a)])+"+"\
+                                       +str(b)+"+"+"*".join(["x[1]" for _ in range(b)]))
         else:
             raise TypeError('unsupported function type')
 

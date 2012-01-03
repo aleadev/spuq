@@ -6,7 +6,7 @@ from spuq.utils.type_check import *
 class ProjectionCache(object):
     """cache for projections of vectors in multivector wN onto different discrete spaces of other vectors in wN"""
     
-    @takes(any, MultiVector)
+#    @takes(any, MultiVector)
     def __init__(self, wN=None, ptype=FEniCSBasis.PROJECTION.INTERPOLATION):
         """initialise cache with multivector"""
         
@@ -17,16 +17,18 @@ class ProjectionCache(object):
         self.clear()
 
     def clear(self, mu=None):
-        """clear cache for alls or specific multiindex sets"""
+        """clear cache for all or specific multiindex sets"""
         
-        if MultiindexSet:
+        if not hasattr(self, '_projected_wN') or not mu:
+            self._projected_wN = MultiVector()
+        if not hasattr(self, '_projected_back_wN') or not mu:
+            self._projected_back_wN = MultiVector()
+
+        if mu:
             self._projected_wN[mu] = MultiVector()
             self._projected_back_wN[mu] = MultiVector()
-        else:
-            self._projected_wN = MultiVector()        
-            self._projected_back_wN = MultiVector()        
 
-    @takes(any, MultiindexSet, MultiindexSet)
+#    @takes(any, MultiindexSet, MultiindexSet)
     def get_projection(self, mu_src, mu_dest, with_back_projection=True):
         """return projection (and back projection) of vector in multivector"""
         

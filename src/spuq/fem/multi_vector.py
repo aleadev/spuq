@@ -1,5 +1,6 @@
 from exceptions import TypeError
 from spuq.utils.hashable_ndarray import hashable_ndarray  
+from spuq.utils.type_check import *
 from numpy import ndarray
 
 class MultiVector(object):
@@ -10,22 +11,21 @@ class MultiVector(object):
     Note that the type of the second value of the tuple is not restricted to
     anything specific."""
 
-    def __init__(self, multivec=None, multiindex=None, initvector=None):
-        # setup
-        if multivec is not None:
-            if isinstance(multivec, MultiVector):
-                self.mi2vec = multivec.mi2vec
-            else:
-                raise TypeError
-        else:
-            self.mi2vec = dict()
-
+    def __init__(self, multiindex=None, initvector=None):
+        self.mi2vec = dict()
         # initialise
         if multiindex:
             assert initvector
             for mi in multiindex:
                 self[mi] = initvector
-    
+
+    @staticmethod
+    @takes("MultiVector")
+    def create(multivec):
+        MV = MultiVector()
+        # setup
+        MV.mi2vec = multivec.mi2vec
+
     def __getitem__(self, mi):
         if isinstance(mi, hashable_ndarray):
             return self.mi2vec[mi]

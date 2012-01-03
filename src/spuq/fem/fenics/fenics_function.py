@@ -10,76 +10,109 @@ class FEniCSExpression(GenericFunction):
     def __init__(self, fstr=None, fexpression=None, Dfstr=None, Dfexpression=None, domain_dim=2, codomain_dim=1):
         GenericFunction.__init__(self, domain_dim, codomain_dim)
         if fstr:
-            self.f = Expression(fstr)
+            self.fex = Expression(fstr)
         else:
             assert fexpression
-            self.f = fexpression
+            self.fex = fexpression
         if Dfstr:
-            self.Df = Expression(Dfstr)
+            self.Dfex = Expression(Dfstr)
         elif Dfexpression:
-            self.Df = Dfexpression
+            self.Dfex = Dfexpression
         else:
-            self.Df = None
+            self.Dfex = None
             
     def eval(self, *x):
-        return self.f(*x)
+        return self.fex(*x)
         
     def diff(self):
-        assert self.Df
-        return FEniCSExpression(fexpression=self.Df)
+        assert self.Dfex
+        return FEniCSExpression(fexpression=self.Dfex)
 
 
 class FEniCSFunction(GenericFunction):
     """Wrapper for discrete FEniCS function"""
     
-#    @takes(any, fFS=FunctionSpace, DfFS=optional(FunctionSpace), fexpression=optional(Expression,FEniCSExpression), Dfexpression=optional(Expression,FEniCSExpression), fstr=optional(str), Dfstr=optional(list_of(str)), domain_dim=int, codomain_dim=int, domain=optional(list_of(int)), numericalDf=optional(bool))
-    def __init__(self, fFS, DfFS=None, fexpression=None, Dfexpression=None, fstr=None, Dfstr=None,\
+#    @takes(any, function=Function, Dfunction=optional(Function), fexpression=optional(Expression,FEniCSExpression), Dfexpression=optional(Expression,FEniCSExpression), fstr=optional(str), Dfstr=optional(list_of(str)), domain_dim=int, codomain_dim=int, domain=optional(list_of(int)), numericalDf=optional(bool))
+    def __init__(self, function=None, Dfunction=None, fexpression=None, Dfexpression=None, fstr=None, Dfstr=None,\
                     domain_dim=2, codomain_dim=1, domain=None, numericalDf=True):
         """Initialise (discrete) function.
         
-        TODO: document functionality!
+        Initialisation can be done with some Function, Expression or string. If the first derivatives are needed, the user should also provide the analytical form when available. Otherwise, the numerical gradient is evaluated on the VectorFunctionSpace of the function. Furthermore, dimension and codimension should be specified.
+        Usage:
+            # from Function
+            mesh = UnitSquare(5,5)
+            V = FunctionSpace(mesh,'CG',1)
+            F = Function(V)
+            ...
+            f = FEniCSFunction(function=F)
+            # from Exression
+            ex1 = Expression("x[0]*x[1]")
+            ex2 = FEniCSExpression(ex1)
+            f1 = FEniCSFunction(fexpression=ex1)
+            f2 = FEniCSFunction(fexpression=ex2)
+            # from string
+            f3 = FEniCSFunction(fstr="x[0]*sin(10.*x[1])")
         """
-        if not domain:
-            domain = [(min([x[d] for x in fFS.mesh().coordinates()]),\
-                        max([x[d] for x in fFS.mesh().coordinates()])) for d in range(fFS.mesh().topology().dim())]
-        GenericFunction.__init__(self, domain_dim, codomain_dim, domain=domain)
-        self.fFS = fFS
-        self.DfFS = DfFS
+        if function:
+            self.f = function
+            self.fFS = function.function_space()
+        else:
+            self.function = None
+            self.fFS = None
+        if Dfunction:
+            self.Df = Dfunction
+            self.DfFS = Dfunction.function_space()
+        else:
+            self.Dfunction = None
+            self.DfFS = None
 
-        if not self.DfFS:
-            # construct "natural" derivative space
+        if not domain and self.fFS:
+            # determine domain from mesh coordinates
+            domain = [(min([x[d] for x in self.fFS.mesh().coordinates()]),\
+                       max([x[d] for x in self.fFS.mesh().coordinates()]))\
+                      for d in range(self.fFS.mesh().topology().dim())]
+
+        GenericFunction.__init__(self, domain_dim, codomain_dim, domain=domain)
+
+        if not self.DfFS and self.fFS:
+            # construct "natural" gradient space
             self.DfFS = VectorFunctionSpace(self.fFS.mesh(), self.fFS.ufl_element().family(),\
                                                 self.fFS.ufl_element().degree())
 
         # prepare function expression
-        if fexpression:
-            if isinstance(fexpression, FEniCSExpression):
-                self.fex = fexpression.f
+        if not function:
+            if fexpression:
+                if isinstance(fexpression, FEniCSExpression):
+                    self.fex = fexpression.fex
+                else:
+                    self.fex = fexpression
             else:
-                self.fex = fexpression
-        else:
-            self.fex = Expression(fstr)
+                assert fstr
+                self.fex = Expression(fstr)
 
         # prepare derivative expression
-        if Dfexpression:
-            if isinstance(Dfexpression, FEniCSExpression):
-                self.Dfex = Dfexpression.f
+        if not Dfunction:
+            if Dfexpression:
+                if isinstance(Dfexpression, FEniCSExpression):
+                    self.Dfex = Dfexpression.Dfex
+                else:
+                    self.Dfex = Dfexpression
             else:
-                self.Dfex = Dfexpression
-        else:
-            if Dfstr:
-                self.Dfex = Expression(Dfstr)
-            elif fexpression.Df:
-                self.Dfex = fexpression.Df
-            else:
-                self.Dfex = None
+                if Dfstr:
+                    self.Dfex = Expression(Dfstr)
+                elif isinstance(fexpression, FEniCSExpression) and fexpression.Dfex:
+                    self.Dfex = fexpression.Dfex
+                else:
+                    self.Dfex = None
 
         # interpolate function and derivative on FunctionSpaces
-        self.f = interpolate(self.fex, self.fFS)
-        if self.Dfex:
-            self.Df = interpolate(self.Dfex, self.DfFS)
-        elif numericalDf:
-            self.Df = project(grad(self.f), self.DfFS)
+        if not function:
+            self.f = interpolate(self.fex, self.fFS)
+        if not Dfunction:
+            if self.Dfex:
+                self.Df = interpolate(self.Dfex, self.DfFS)
+            elif numericalDf:
+                self.Df = project(grad(self.f), self.DfFS)
 
     def eval(self, *x):
         """Function evaluation.
@@ -93,3 +126,9 @@ class FEniCSFunction(GenericFunction):
         
             Return function of interpolated explicit or numerical derivative"""
         return self.Df
+
+    def function_space(self):
+        """Return (fenics) FunctionSpace for Function."""
+
+        assert self.f
+        return self.f.function_space()

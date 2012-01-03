@@ -15,12 +15,15 @@ class FEniCSBasis(FEMBasis):
 
     def __init__(self, mesh=None, family='CG', degree=1, functionspace=None):
         """initialise discrete basis on mesh"""
-        if functionspace != None:
+        if functionspace:
             assert mesh==None and isinstance(functionspace, FunctionSpaceBase)
+            self._functionspace = functionspace
             UFL = functionspace.ufl_element()
             family = UFL.family()
             degree = UFL.degree()
             mesh = functionspace.mesh()
+        else:
+            self._functionspace = None
             
         assert mesh!=None
         self.family = family
@@ -32,8 +35,10 @@ class FEniCSBasis(FEMBasis):
             self._mesh = FEniCSMesh(mesh)
         else:
             raise TypeError
-        self._functionspace = FunctionSpace(mesh, family, degree)
-        self._dim = self.__functionspace.dim()
+
+        if not self._functionspace:
+            self._functionspace = FunctionSpace(mesh, family, degree)
+        self._dim = self._functionspace.dim()
 
     def refine(self, cells=None):
         """refines mesh of basis uniformly or wrt cells, return new (FEniCSBasis,prolongate,restrict)"""
@@ -48,8 +53,7 @@ class FEniCSBasis(FEMBasis):
         """Project vector vec to this basis.
         
             vec can either be a FEniCSVector (in which case vecbasis has to be None) or an array
-            (in which case vecbasis has to be provided as dolfin FunctionSpace)."""
-            
+            (in which case vecbasis has to be provided as dolfin FunctionSpace)."""            
         import spuq.fem.fenics.fenics_vector   # NOTE: from ... import FEniCSVector does not work (cyclic dependencies require module imports)
         if ptype == self.PROJECTION.INTERPOLATION:
             T = interpolate
