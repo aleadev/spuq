@@ -36,7 +36,7 @@ class ProjectionCache(object):
         if mu_src not in self._projected_wN.keys():
             self._projected_wN[mu_src] = MultiVector()
         if mu_dest not in self._projected_wN[mu_src].keys():
-            self._projected_wN[mu_src][mu_dest] = self.wN[mu_dest].functionspace.project(self.wN[mu_src], self._ptype)
+            self._projected_wN[mu_src][mu_dest] = self.wN[mu_dest].basis.project(self.wN[mu_src], ptype=self._ptype)
 
         # return projected vector
         if not with_back_projection:
@@ -46,7 +46,7 @@ class ProjectionCache(object):
         if mu_src not in self._projected_back_wN.keys():
             self._projected_back_wN[mu_src] = MultiVector()        
         if mu_dest not in self._projected_back_wN[mu_src].keys():
-            self._projected_back_wN[mu_src][mu_dest] = self.wN[mu_src].functionspace.project(self._projected_wN[mu_src][mu_dest], self._ptype)
+            self._projected_back_wN[mu_src][mu_dest] = self.wN[mu_src].basis.project(self._projected_wN[mu_src][mu_dest], ptype=self._ptype)
 
         # return projected vector and back projection
         if not with_back_projection:

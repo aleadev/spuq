@@ -30,7 +30,9 @@ class FEniCSExpression(GenericFunction):
 
 
 class FEniCSFunction(GenericFunction):
-    """Wrapper for discrete FEniCS function"""
+    """Wrapper for discrete FEniCS function (i.e. a Function instance) and optionally its gradient function.
+
+        Initialised with either fenics Expressions or Functions."""
     
 #    @takes(any, function=Function, Dfunction=optional(Function), fexpression=optional(Expression,FEniCSExpression), Dfexpression=optional(Expression,FEniCSExpression), fstr=optional(str), Dfstr=optional(list_of(str)), domain_dim=int, codomain_dim=int, domain=optional(list_of(int)), numericalDf=optional(bool))
     def __init__(self, function=None, Dfunction=None, fexpression=None, Dfexpression=None, fstr=None, Dfstr=None,\
@@ -54,12 +56,14 @@ class FEniCSFunction(GenericFunction):
             f3 = FEniCSFunction(fstr="x[0]*sin(10.*x[1])")
         """
         if function:
+            assert isinstance(function, Function)
             self.f = function
             self.fFS = function.function_space()
         else:
             self.function = None
             self.fFS = None
         if Dfunction:
+            assert isinstance(Dfunction, Function)
             self.Df = Dfunction
             self.DfFS = Dfunction.function_space()
         else:
@@ -122,13 +126,32 @@ class FEniCSFunction(GenericFunction):
 
 
     def diff(self):
-        """Return derivative.
+        """Return derivative as FEniCSFunction.
         
             Return function of interpolated explicit or numerical derivative"""
         return self.Df
 
     def function_space(self):
         """Return (fenics) FunctionSpace for Function."""
+        return self.fFS
 
-        assert self.f
-        return self.f.function_space()
+    def array(self):
+        """Return numpy array (copy) of coefficients"""
+        return self.f.vector().array()
+
+    @property
+    def functionspace(self):
+        """Return fenics FunctionSpace"""
+        return self.fFS
+
+    @property
+    def basis(self):
+        """Return FEniCSBasis"""
+        if not hasattr(self, 'fbasis'):
+            self.fbasis = FEniCSBasis(functionspace=self.functionspace)
+        return self.fbasis
+
+    @property
+    def coeffs(self):
+        """Return fenics coefficient vector (assignable with numpy arrays)"""
+        return self.f.vector()

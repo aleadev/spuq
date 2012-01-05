@@ -40,8 +40,11 @@ class MultiVector(object):
         self.mi2vec[mi] = val
     
     def active_indices(self):
+        return self.keys()
+
+    def keys(self):
         return self.mi2vec.keys()
-    
+
     def __add__(self, other):
 #        assert self.active_indices() == other.active_indices()
         newvec = MultiVector(other)

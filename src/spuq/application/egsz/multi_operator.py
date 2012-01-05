@@ -65,12 +65,12 @@ class MultiOperator(Operator):
                 cur_wN = -beta[0]*wN[mu]
 
                 # mu+1
-                mu1 = mu.add( (m,1) )
+                mu1 = mu.add(m, 1)
                 if mu1 in Delta:
                     cur_wN += beta[1] * wN_cache[mu1, mu, False]
 
                 # mu-1
-                mu2 = mu.add( (m,-1) )
+                mu2 = mu.add(m, -1)
                 if mu2 in Delta:
                     cur_wN += beta[-1] * wN_cache[mu2, mu, False]
 

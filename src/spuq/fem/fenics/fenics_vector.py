@@ -6,7 +6,9 @@ from dolfin.cpp import GenericFunction
 from numpy import empty
 
 class FEniCSVector(FEMVector):
-    '''Wrapper for FEniCS/dolfin Function'''
+    '''Wrapper for FEniCS/dolfin Function.
+
+        Provides a FEniCSBasis and a '''
     
     def __init__(self, coeffs=None, basis=None, function=None):
         '''Initialise with coefficient vector and FEMBasis'''
@@ -16,7 +18,6 @@ class FEniCSVector(FEMVector):
                 assert isinstance(basis, FunctionSpaceBase)
                 basis = FEniCSBasis(functionspace=basis)
             self._basis = basis
-            self._coeffs = coeffs
             self._F = FEniCSFunction(Function(basis.functionspace, coeffs))
         else:
             assert function!=None and isinstance(function, (Function, FEniCSFunction))
@@ -30,11 +31,34 @@ class FEniCSVector(FEMVector):
     
     @property
     def F(self):
+        '''return FEniCSFunction'''
         return self._F
     
     @property
     def function(self):
+        '''return underlying fenics Function'''
         return self._F.f
+
+    @property
+    def basis(self):
+        '''return FEniCSBasis'''
+        if not hasattr(self, '_FBasis'):
+            self._FBasis = FEniCSBasis(functionspace=self.functionspace)
+        return self._FBasis
+
+    @property
+    def functionspace(self):
+        '''return fenics FunctionSpace'''
+        return self._F.function_space()
+
+    @property
+    def coeffs(self):
+        '''return (assignable) fenics coefficient vector of Function'''
+        return self._F.coeffs
+
+    def array(self):
+        '''return copy of coefficient vector as numpy array'''
+        return self._F.array()
 
     def evaluate(self, x):
         val = empty([0,0])

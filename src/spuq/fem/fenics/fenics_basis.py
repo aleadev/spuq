@@ -64,8 +64,9 @@ class FEniCSBasis(FEMBasis):
                 
         if isinstance(vec, spuq.fem.fenics.fenics_vector.FEniCSVector):
             assert(vecbasis is None)
-            F = T(vec.F, self.functionspace)
-            newvec = spuq.fem.fenics.fenics_vector.FEniCSVector(F.vector(), F.function_space())
+            F = T(vec.function, self.functionspace)
+            newvec = spuq.fem.fenics.fenics_vector.FEniCSVector(function=F)
+#            newvec = spuq.fem.fenics.fenics_vector.FEniCSVector(F.vector(), F.function_space())
             return newvec
         else:
             F = T(Function(vecbasis, vec), self.functionspace)
