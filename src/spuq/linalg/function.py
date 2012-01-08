@@ -74,7 +74,7 @@ class GenericFunction(object):
     def __div__(self, g):
         return _mul(self, g, dodiv=True)
 
-    def __rmul__(self, g):
+    def __rdiv__(self, g):
         return _mul(ConstFunction(g, domain_dim=self.domain_dim, codomain_dim=self.codomain_dim), self, dodiv=True)
 
     def __pow__(self, g):

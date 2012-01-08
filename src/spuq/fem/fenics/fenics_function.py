@@ -1,21 +1,30 @@
 """FEniCS discrete function wrapper"""
 
-from dolfin import FunctionSpace, VectorFunctionSpace, Function, Expression, interpolate, project, grad
+from dolfin import FunctionSpace, VectorFunctionSpace, Function, Expression, Constant, interpolate, project, grad
 from spuq.utils.type_check import *
 from spuq.linalg.function import GenericFunction
 
 class FEniCSExpression(GenericFunction):
     """Wrapper for FEniCS Expressions"""
     
-    def __init__(self, fstr=None, fexpression=None, Dfstr=None, Dfexpression=None, domain_dim=2, codomain_dim=1):
+    def __init__(self, fstr=None, fexpression=None, Dfstr=None, Dfexpression=None, domain_dim=2, codomain_dim=1, constant=False):
         GenericFunction.__init__(self, domain_dim, codomain_dim)
         if fstr:
-            self.fex = Expression(fstr)
+            if not constant:
+                self.fex = Expression(fstr)
+            else:
+                self.fex = Constant(fstr)
         else:
             assert fexpression
             self.fex = fexpression
-        if Dfstr:
-            self.Dfex = Expression(Dfstr)
+        if Dfstr or constant:
+            if not constant:
+                self.Dfex = Expression(Dfstr)
+            else:
+                if Dfstr:
+                    self.Dfex = Constant(Dfstr)
+                else:
+                    self.Dfex = Constant("0.")
         elif Dfexpression:
             self.Dfex = Dfexpression
         else:
