@@ -1,23 +1,26 @@
 from spuq.fem.fem_vector import FEMVector
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.fem.fenics.fenics_function import FEniCSFunction
-from dolfin import Function, FunctionSpaceBase, GenericVector
+from dolfin import Function, FunctionSpaceBase, GenericVector, Vector
 from dolfin.cpp import GenericFunction
 from numpy import empty
 
 class FEniCSVector(FEMVector):
     '''Wrapper for FEniCS/dolfin Function.
 
-        Provides a FEniCSBasis and a '''
+        Provides a FEniCSBasis and a FEniCSFunction (with the respective coefficient vector).'''
     
     def __init__(self, coeffs=None, basis=None, function=None):
         '''Initialise with coefficient vector and FEMBasis'''
-        if basis != None:
-            assert function==None and isinstance(coeffs, GenericVector)
+        if basis:
+            assert function==None
             if not isinstance(basis, FEniCSBasis):
                 assert isinstance(basis, FunctionSpaceBase)
                 basis = FEniCSBasis(functionspace=basis)
             self._basis = basis
+            if coeffs == None:
+                coeffs = Vector(basis.functionspace.dim)
+            assert isinstance(coeffs, GenericVector)
             self._F = FEniCSFunction(Function(basis.functionspace, coeffs))
         else:
             assert function!=None and isinstance(function, (Function, FEniCSFunction))
@@ -42,14 +45,19 @@ class FEniCSVector(FEMVector):
     @property
     def basis(self):
         '''return FEniCSBasis'''
-        if not hasattr(self, '_FBasis'):
-            self._FBasis = FEniCSBasis(functionspace=self.functionspace)
-        return self._FBasis
+#        if not hasattr(self, '_FBasis'):
+#            self._FBasis = FEniCSBasis(functionspace=self.functionspace)
+        return self._basis
 
     @property
     def functionspace(self):
         '''return fenics FunctionSpace'''
         return self._F.function_space()
+
+    @property
+    def dim(self):
+        '''return dimension of function space'''
+        return self.functionspace.dim()
 
     @property
     def coeffs(self):

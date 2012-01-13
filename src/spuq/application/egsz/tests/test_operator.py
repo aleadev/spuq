@@ -21,7 +21,7 @@ class TestOperator(TestCase):
         m = 2
         p = 3
         mi = MultiindexSet.createCompleteOrderSet(m, p)
-        # init multivector
+        # init MultiVector
         mesh = UnitSquare(5,5)
         degree = 1
         V = FunctionSpace(mesh, "CG", degree)

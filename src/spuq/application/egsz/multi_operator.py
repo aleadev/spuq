@@ -47,11 +47,13 @@ class MultiOperator(Operator):
         v = MultiVector()           # result vector
         Delta = wN.active_indices()
         for mu in Delta:
+            print "XXXX mu ", mu
             # deterministic part
             a0_f, _ = self._CF[0]
             A0 = self._FEM.assemble_operator( {'a':a0_f}, wN[mu].basis )
             v[mu] = A0.array() * wN[mu]
             for m in range(1, self._maxm):
+                print "XXXX m ", m
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
                 Am = self._FEM.assemble_operator( {'a':am_f}, wN[mu].basis )
@@ -62,20 +64,27 @@ class MultiOperator(Operator):
                 beta = (a/b, 1/b, c/b)
 
                 # mu
+                print "XXXX 1"
                 cur_wN = -beta[0]*wN[mu]
 
                 # mu+1
+                print "XXXX 2"
                 mu1 = mu.add(m, 1)
                 if mu1 in Delta:
                     cur_wN += beta[1] * wN_cache[mu1, mu, False]
 
                 # mu-1
+                print "XXXX 3"
                 mu2 = mu.add(m, -1)
                 if mu2 in Delta:
+                    print "XXXX 3a"
                     cur_wN += beta[-1] * wN_cache[mu2, mu, False]
+                    print "XXXX 3b"
 
                 # apply discrete operator
+                print "XXXX 4"
                 v[mu] = Am.array() * cur_wN
+                print "XXXX 5"
         return v
         
     def domain(self):
