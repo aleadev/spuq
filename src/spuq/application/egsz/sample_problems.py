@@ -33,22 +33,20 @@ class SampleProblem(object):
 
     @classmethod
     def createCF(cls, cftype, cfsize):
-        def tuplegen():
-            for m in count():
-                for n in range(0,m+1):
-                    yield (m,n)
-
         if cf[0]=="EF":
             f = lambda a,b: Expression("sin(A*pi*x[0])*sin(B*pi*x[1])",A=a,B=b)
-            Df = lambda a,b: Expression("A*B*sin(A*pi*x[0])*sin(B*pi*x[1])",A=a,B=b)
+            Df = lambda a,b: Expression(("A*pi*cos(A*pi*x[0])*sin(B*pi*x[1])",
+                                         "B*pi*sin(A*pi*x[0])*cos(B*pi*x[1])"),
+                                        A=a,B=b)
         elif cf[0]=="monomials":
-            f = lambda a,b: Expression("*".join(["x[0]" for _ in range(a)])+"+"\
-                                        +"*".join(["x[1]" for _ in range(b)]))
-            Df = lambda a,b: Expression(str(a)+"*"+"*".join(["x[0]" for _ in range(a)])+"+"\
-                                       +str(b)+"+"+"*".join(["x[1]" for _ in range(b)]))
+            f = lambda a,b: Expression("*".join(["x[0]" for _ in range(a)])+"+"
+                                       +"*".join(["x[1]" for _ in range(b)]))
+            Df = lambda a,b: Expression((str(a)+"*"+"*".join(["x[0]" for _ in range(a-1)]),
+                                         str(b)+"+"+"*".join(["x[1]" for _ in range(b-1)])))
         else:
             raise TypeError('unsupported function type')
 
-        F = [FEniCSExpression(fexpression=f(a,b), Dfexpression=Df(a,b)) for a,b in restrict(tuplegen(), cfsize)]
+        F = [FEniCSExpression(fexpression=f(a,b), Dfexpression=Df(a,b)) 
+             for a in range(4) for b in range(3) if a+b<4]
         RV = NormalRV()
         return CoefficientField(F, RV)

@@ -32,7 +32,7 @@ class TestOperator(TestCase):
         F = list()
         for i, j in enumerate(mi.arr.tolist()):
             ex1 = Expression('x[0]*x[0]+A*sin(10.*x[1])', A=i)
-            Dex1 = Expression('2.*x[0]+A*10.*sin(10.*x[1])', A=i)
+            Dex1 = Expression(('2.*x[0]', 'A*10.*cos(10.*x[1])'), A=i)
             F.append(FEniCSExpression(fexpression=ex1, Dfexpression=Dex1))
         CF1 = CoefficientField(F, (NormalRV(),))
         MO1 = MultiOperator(FEM, CF1, 3)

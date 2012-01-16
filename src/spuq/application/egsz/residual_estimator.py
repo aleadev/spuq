@@ -113,6 +113,7 @@ class ResidualEstimator(object):
         R_E = a0_f * grad(wN[mu].f)
         
         # iterate m
+        Delta = wN.active_indices()
         for m in range(self.maxm):
             am_f, am_rv = self.CF[m]
 
@@ -122,16 +123,23 @@ class ResidualEstimator(object):
             (a, b, c) = am_p.recurrence_coefficients(mu[m])
             beta = (a/b, 1/b, c/b)
 
+            # mu
+            res = -beta[0]*wN[mu]
+
             # mu+1
             mu1 = mu.add( (m,1) )
-            wNmu1 = wN_cache[mu1, mu, False]
-            
+            if mu1 in Delta:
+                wNmu1 = wN_cache[mu1, mu, False]
+                res += beta[1]*wNmu1
+
             # mu-1
             mu2 = mu.add( (m,-1) )
-            wNmu2 = wN_cache[mu2, mu, False]
+            if mu2 in Delta:
+                wNmu2 = wN_cache[mu2, mu, False]
+                res += beta[-1]*wNmu2
+
 
             # add volume contribution for m
-            res = beta[1]*wNmu1 - beta[0]*wN[mu] + beta[-1]*wNmu2
             r_t = dot( grad(am_f), grad(res) ) 
             R_T = R_T + r_t 
             # add edge contribution for m
