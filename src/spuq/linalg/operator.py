@@ -289,8 +289,15 @@ class MatrixOperator(BaseOperator):
             arr = np.array(arr, dtype=float)
         if domain is None:
             domain = CanonicalBasis(arr.shape[1])
+        elif domain.dim != arr.shape[1]:
+            raise TypeError( 'size of domain basis does not match '
+                             'matrix dimensions')
+            
         if codomain is None:
             codomain = CanonicalBasis(arr.shape[0])
+        elif codomain.dim != arr.shape[0]:
+            raise TypeError( 'size of domain basis does not match '
+                             'matrix dimensions')
 
         self._arr = arr
         super(MatrixOperator, self).__init__(domain, codomain)
@@ -310,7 +317,14 @@ class MatrixOperator(BaseOperator):
                             self.domain)
 
     def __eq__(self, other):
-        return super(MatrixOperator,self).__eq__(other)
+        return (type(self) is type(other) and 
+                self.domain == other.domain and
+                self.codomain == other.codomain and
+                (self._arr == other._arr).all())
+        
+def with_equality(cls):
+    cls.__ne__ = ne
+    cls.__eq__ = eq
 
 class DiagonalMatrixOperator(BaseOperator):
     @takes(anything, np.ndarray, Basis)
