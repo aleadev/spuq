@@ -24,8 +24,9 @@
 # def foo(a, b, **kwargs):                         # bar may be int or missing
 #     ...
 #
-# Note: @takes for positional arguments, @takes for keyword arguments and @returns
-# all support the same checker syntax, for example for the following declaration
+# Note: @takes for positional arguments, @takes for keyword arguments
+# and @returns all support the same checker syntax, for example for
+# the following declaration
 # 
 # @takes(C)
 # def foo(x):
@@ -359,8 +360,8 @@ def takes(*args, **kwargs):
     
                 # append the default parameters
 
-                if method_defaults is not None and len(method_defaults) > 0 \
-                and len(method_args) - len(method_defaults) <= len(args) < len(method_args):
+                if False and method_defaults is not None and len(method_defaults) > 0 \
+                        and len(method_args) - len(method_defaults) <= len(args) < len(method_args):
                     args += method_defaults[len(args) - len(method_args):]
 
                 # check the types of the actual call parameters
