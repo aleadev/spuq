@@ -1,8 +1,8 @@
 """generic function interface, a simple function class and a const function class"""
 
+from __future__ import division
 from numpy import ones, infty
 from abc import ABCMeta, abstractmethod
-from types import MethodType
 from spuq.utils.decorators import copydocs
 from spuq.utils.type_check import *
 
@@ -65,16 +65,26 @@ class GenericFunction(object):
     def __rsub__(self, g):
         return _BinaryFunction(g, self, "sub")
 
+    def __pos__(self):
+        return self
+
+    def __neg__(self):
+        return _BinaryFunction(0, self, "sub")
+
     def __mul__(self, g):
         return _BinaryFunction(self, g, "mul")
 
     def __rmul__(self, g):
         return _BinaryFunction(g, self, "mul")
 
-    def __div__(self, g):
+    #def __div__(self, g):
+    #    return _BinaryFunction(self, g, "div")
+    def __truediv__(self, g):
         return _BinaryFunction(self, g, "div")
 
-    def __rdiv__(self, g):
+    #def __rdiv__(self, g):
+    #    return _BinaryFunction(g, self, "div")
+    def __rtruediv__(self, g):
         return _BinaryFunction(g, self, "div")
 
     def __pow__(self, g):
@@ -130,15 +140,15 @@ class _BinaryFunction(GenericFunction):
     def _Dfsub(self):
         return self.f.diff() - self.g.diff()
 
-    def _fdiv(self, *x):
-        return self.f(*x) / self.g(*x)
-    def _Dfdiv(self):
-        return (self.f.diff() * self.g + self.f * self.g.diff()) / (self.g ** 2)
-
     def _fmul(self, *x):
         return self.f(*x) * self.g(*x)
     def _Dfmul(self):
         return self.f.diff() * self.g + self.f * self.g.diff()
+
+    def _fdiv(self, *x):
+        return self.f(*x) / (self.g(*x))
+    def _Dfdiv(self):
+        return (self.f.diff() * self.g - self.f * self.g.diff()) / (self.g ** 2)
 
     def _fpow(self, *x):
         return self.f(*x) ** self.g(*x)
@@ -159,11 +169,11 @@ class _BinaryFunction(GenericFunction):
             self._eval = self._fsub
             self.diff = self._Dfsub
         elif op == "mul":
-            self._eval = self._fdiv
-            self.diff = self._Dfdiv
-        elif op == "div":
             self._eval = self._fmul
             self.diff = self._Dfmul
+        elif op == "div":
+            self._eval = self._fdiv
+            self.diff = self._Dfdiv
         elif op == "pow":
             self._eval = self._fpow
             if isinstance(self.f, ConstFunction):

@@ -1,5 +1,7 @@
+from __future__ import division
 from spuq.linalg.function import SimpleFunction, ConstFunction
 from spuq.utils.testing import *
+from numpy import log
 
 f = SimpleFunction(f=lambda x: x ** 2, Df=lambda x: 2 * x)
 g = SimpleFunction(f=lambda x: 2 * x, Df=lambda x: 2)
@@ -20,49 +22,86 @@ def test_function_operators():
     assert_equal(g.D(3), 2)
     assert_equal(c3.D(3), 0)
 
-def test_function_addition_and_multiplication():
-    # 
-    print 'add/mult'
+
+def test_function_add_and_sub():
+    assert_equal((+f)(3), f(3))
     assert_equal((f + g)(3), f(3) + g(3))
-    assert_equal((f - g)(3), f(3) - g(3))
     assert_equal((f + 2)(3), f(3) + 2)
     assert_equal((2 + f)(3), 2 + f(3))
+
+    assert_equal((-f)(3), -f(3))
+    assert_equal((f - g)(3), f(3) - g(3))
     assert_equal((f - 2)(3), f(3) - 2)
     assert_equal((2 - f)(3), 2 - f(3))
 
-def foooo():
 
-    assert_equal((2 + f - g)(3), 5)
-    assert_equal((2 * f + g)(3), 24)
-    assert_equal((f * g)(3), 54)
-    assert_equal((2 * f * g)(3), 108)
-    assert_equal((2 * f * g / 2)(3), 54)
-    assert_equal((f / 2 + f ** 3)(3), 4 + 9 ** 3)
-    assert_equal((f / 2.0 + f ** 3)(3), 4.5 + 9 ** 3)
+def test_derivative_add_and_sub():
+    assert_equal((f + g).D(3), f.D(3) + g.D(3))
+    assert_equal((f + 2).D(3), f.D(3))
+    assert_equal((2 + f).D(3), f.D(3))
+
+    assert_equal((f - g).D(3), f.D(3) - g.D(3))
+    assert_equal((f - 2).D(3), f.D(3))
+    assert_equal((2 - f).D(3), -f.D(3))
+
+
+def test_function_mul_and_div():
+    assert_equal((f * g)(3), f(3) * g(3))
+    assert_equal((f * 2)(3), f(3) * 2)
+    assert_equal((2 * f)(3), 2 * f(3))
+
+    assert_equal((f / g)(3), f(3) / float(g(3)))
+    assert_equal((f / 2)(3), f(3) / 2.0)
+    assert_equal((2 / f)(3), 2.0 / f(3))
+
+
+def test_derivative_mul_and_div():
+    assert_equal((f * g).D(3), f.D(3) * g(3) + f(3) * g.D(3))
+    assert_equal((f * 2).D(3), 2 * f.D(3))
+    assert_equal((2 * f).D(3), 2 * f.D(3))
+
+    assert_equal((f / g).D(3), (f.D(3) * g(3) - f(3) * g.D(3)) / (g(3) ** 2))
+    assert_equal((f / 2).D(3), f.D(3) / 2.0)
+    assert_equal((2 / f).D(3), -2.0 * f.D(3) / f(3) ** 2)
+
+
+def test_function_pow():
+    assert_equal((f ** g)(3), f(3) ** g(3))
+    assert_equal((f ** 3)(3), f(3) ** 3)
+    assert_equal((f ** -3)(3), f(3) ** -3.0)
+    assert_equal((f ** 0.3)(3), f(3) ** 0.3)
+    assert_equal((3 ** f)(3), 3 ** f(3))
+
+
+def test_derivative_pow():
+    #assert_equal((f ** g).D(3), f(3) ** g(3))
+    assert_equal((f ** 3).D(3), 3 * f.D(3) * f(3) ** 2)
+    assert_equal((f ** -3).D(3), -3 * f.D(3) * f(3) ** -4.0)
+    assert_equal((f ** 0.3).D(3), 0.3 * f.D(3) * f(3) ** -0.7)
+    #assert_equal((3 ** f).D(3), log(3) * f.D(3) * 3 ** f(3))
+
 
 def test_function_compose():
     # composition
-    assert_equal(f(g)(3), 36)
-    assert_equal(g(f)(3), 18)
-    assert_equal(f(f(f)(3)), 3 ** 8)
-    assert_equal(g(g(g)(3)), 24)
+    assert_equal(f(g)(3), f(g(3)))
+    assert_equal(g(f)(3), g(f(3)))
+    assert_equal(f(f(f))(3), f(f(f(3))))
+    assert_equal(g(g(g))(3), g(g(g(3))))
+    assert_equal((f << g << f)(3), f(g(f(3))))
 
-def test_function_exponentiation():
-    assert_equal((f ** g)(3), 9 ** 6)
-    assert_equal((g ** f)(3), 6 ** 9)
-    h1 = f ** g
-    h2 = g ** f
-    # FIXME
-#        print 'D3---',(h1**h2)(5,7,5,7), 350*490
 
-def foobar():
-    # tensorisation
-    print 'tensor'
-    print 'E1---', (f % g)(5, 7), 350
-    print 'E2---', (f % g)(7, 5), 490
+def test_derivative_compose():
+    # composition
+    assert_equal(f(g).D(3), f.D(g(3)) * g.D(3))
+    assert_equal(f(f(f)).D(3), f.D(f(f(3))) * f.D(f(3)) * f.D(3))
+
+
+def test_function_tensorise():
     h1 = f % g
     h2 = g % f
-    print 'E3---', (h1 % h2)(5, 7, 5, 7), 350 * 490
+    assert_equal(h1(5, 7), f(5) * g(7))
+    assert_equal(h2(6, 8), f(8) * g(6))
+    assert_equal((h1 % h2)(5, 7, 6, 8), h1(5, 7) * h2(6, 8))
 
 
 #    def test_function_vectorisation(self):
