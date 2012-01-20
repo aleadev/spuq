@@ -1,22 +1,6 @@
 """Common decorators for spuq."""  
 
 
-def _find_doc(cls, attrname):
-    """Helper function for copydoc/copydocs"""
-    attr = getattr(cls, attrname, None)
-    func = getattr(attr, "__func__", None) 
-    doc = getattr(func, "__doc__", None) 
-    if doc is not None:
-        return doc
-
-    for b in cls.__bases__:
-        doc = _find_doc(b, attrname)
-        if doc is not None:
-            return doc
-
-    return doc
-
-
 def copydocs(cls):
     """A decorators that copies docstrings of functions from base
     classes.
@@ -33,6 +17,22 @@ def copydocs(cls):
     docstrings from base classes if none were specified. The lookup is
     depth first through the inheritance tree.
     """
+
+    def _find_doc(cls, attrname):
+        """Helper function for copydoc/copydocs"""
+        attr = getattr(cls, attrname, None)
+        func = getattr(attr, "__func__", None) 
+        doc = getattr(func, "__doc__", None) 
+        if doc is not None:
+            return doc
+
+        for b in cls.__bases__:
+            doc = _find_doc(b, attrname)
+            if doc is not None:
+                return doc
+
+        return doc
+
     for attrname in cls.__dict__:
         attr = getattr(cls, attrname)
         func = getattr(attr, "__func__", None) 
@@ -41,46 +41,28 @@ def copydocs(cls):
     return cls
 
 
-def copydoc(meth):
-    """A decorators that copies docstrings of a method from base
-    classes.
-
-    `copydoc` copies the docstring of an overridden method from the
-    method definition in the a base class. The lookup is depth first
-    through the inheritance tree.
-    """
-    #func = meth.__func__
-    func = meth
-    funcname = func.__name__
-    if getattr(func, "__doc__") is None:
-        func.__doc__ = _find_doc(func.__class__, funcname)
-    return func
-
-
-
-import _decorator_contrib
-
-copydoc = _decorator_contrib.inherits_docstring
-
-
-
-class IntCache:
-    Empty = object()
-
-    def __init__(self, func, size):
-        self.func = func
-        self.cache = size * [self.Empty]
-    def __call__(self, n):
-        if n < 0 or n >= len(self.cache):
-            return self.func(n)
-        if self.cache[n] is self.Empty:
-            self.cache[n] = self.func(n)
-        return self.cache[n]
 
 def simple_int_cache(size):
+    class IntCache:
+        Empty = object()
+
+        def __init__(self, func, size):
+            self.func = func
+            self.cache = size * [self.Empty]
+        def __call__(self, n):
+            if n < 0 or n >= len(self.cache):
+                return self.func(n)
+            if self.cache[n] is self.Empty:
+                self.cache[n] = self.func(n)
+            return self.cache[n]
+
     def decorator(func):
         return IntCache(func, size)
     return decorator
+
+
+
+
 
 
 
