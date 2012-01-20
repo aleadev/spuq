@@ -2,7 +2,7 @@ import numpy as np
 
 from spuq.utils.testing import *
 from spuq.utils.decorators import *
-
+import inspect
 
 class TestCopyDocs(TestCase):
     
@@ -68,6 +68,7 @@ def test_int_cache():
     call_count = 0
     @simple_int_cache(10)
     def foo(n):
+        """foo docu"""
         global call_count
         call_count = call_count + 1
         return 10*n
@@ -92,6 +93,40 @@ def test_int_cache():
     assert_equal(foo(10), 100)
     assert_equal(call_count, 7)
 
+    # make sure decorator copies the docu
+    assert_equal( foo.__doc__, "foo docu")
+    def foo2(n): pass
+    assert_equal( inspect.getargspec(foo), inspect.getargspec(foo2))
+
+
+
+def test_cache():
+    global call_count
+    call_count = 0
+    @cache
+    def foo(s, n, d):
+        """foo docu"""
+        global call_count
+        call_count += 1
+        return "%s %s %s" % (s, n, d)
+
+    # first pass, evaluate some arguments within and without range
+    assert_equal(foo("x", 1, 4.5), "x 1 4.5")
+    assert_equal(foo("x", 2, 5.5), "x 2 5.5")
+
+    # second pass, call_count should only increase for values outside range
+    assert_equal(call_count, 2)
+    assert_equal(foo("x", 1, 4.5), "x 1 4.5")
+    assert_equal(call_count, 2)
+    assert_equal(foo("x", 2, 5.5), "x 2 5.5")
+    assert_equal(call_count, 2)
+    assert_equal(foo("x", 3, 5.5), "x 3 5.5")
+    assert_equal(call_count, 3)
+
+    # make sure decorator copies the docu
+    assert_equal( foo.__doc__, "foo docu")
+    def foo2(s, n, d): pass
+    assert_equal( inspect.getargspec(foo), inspect.getargspec(foo2))
 
 
 test_main()

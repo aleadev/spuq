@@ -1,5 +1,6 @@
 """Common decorators for spuq."""  
 
+from decorator import decorator, getattr_
 
 def copydocs(cls):
     """A decorators that copies docstrings of functions from base
@@ -40,27 +41,34 @@ def copydocs(cls):
             func.__doc__ = _find_doc(cls, attrname)
     return cls
 
+@decorator
+def cache(func, *args):
+    cache_dict = getattr_(func, "cache_dict", dict) 
+    # cache_dict is created at the first call
+    if args in cache_dict:
+        return cache_dict[args]
+    else:
+        result = func(*args)
+        cache_dict[args] = result
+        return result
 
 
 def simple_int_cache(size):
-    class IntCache:
-        Empty = object()
+    Empty = object()
+    def mk_int_cache():
+        return size * [Empty]
 
-        def __init__(self, func, size):
-            self.func = func
-            self.cache = size * [self.Empty]
-        def __call__(self, n):
-            if n < 0 or n >= len(self.cache):
-                return self.func(n)
-            if self.cache[n] is self.Empty:
-                self.cache[n] = self.func(n)
-            return self.cache[n]
+    @decorator
+    def cached_func(func, n):
+        int_cache = getattr_(func, "int_cache", mk_int_cache) 
 
-    def decorator(func):
-        return IntCache(func, size)
-    return decorator
+        if not (0<= n < size):
+            return func(n)
+        if int_cache[n] is Empty:
+            int_cache[n] = func(n)
+        return int_cache[n]
 
-
+    return cached_func
 
 
 
