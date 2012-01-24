@@ -1,9 +1,13 @@
-from exceptions import TypeError
-from spuq.utils.hashable_ndarray import hashable_ndarray  
-from spuq.utils.type_check import *
-from numpy import ndarray
+import numpy as np
 
-class MultiVector(object):
+from spuq.linalg.vector import Vector
+from spuq.math_utils.multiindex import Multiindex
+from spuq.math_utils.multiindex_set import MultiindexSet
+from spuq.utils.type_check import *
+
+__all__ = ["MultiVector"]
+
+class MultiVector(Vector):
     """Accommodates tuples of type (MultiindexSet, Vector/Object).
     
     This class manages a set of Vectors associated to MultiindexSet instances.
@@ -11,39 +15,57 @@ class MultiVector(object):
     Note that the type of the second value of the tuple is not restricted to
     anything specific."""
 
-    def __init__(self, multiindex=None, initvector=None):
+    @takes(anything)
+    def __init__(self):
         self.mi2vec = dict()
-        # initialise
-        if multiindex:
-            assert initvector
-            for mi in multiindex:
-                self[mi] = initvector
 
-    @staticmethod
-    @takes("MultiVector")
-    def create(multivec):
-        MV = MultiVector()
-        # setup
-        MV.mi2vec = multivec.mi2vec
+    @property
+    def basis(self):  # pragma: no cover
+        """Implementation of Basis too complicated for MultiVector"""
+        raise NotImplementedError
 
+    @property
+    def coeffs(self):  # pragma: no cover
+        """Not defined for MultiVector"""
+        raise NotImplementedError
+
+    def as_array(self):  # pragma: no cover
+        """Not defined for MultiVector"""
+        raise NotImplementedError
+
+    @takes(anything, Multiindex)
     def __getitem__(self, mi):
-        if isinstance(mi, hashable_ndarray):
-            return self.mi2vec[mi]
-        else:
-            assert(isinstance(mi, ndarray))
-            return self.mi2vec[hashable_ndarray(mi)]
+        return self.mi2vec[mi]
     
+    @takes(anything, Multiindex, Vector)
     def __setitem__(self, mi, val):
-        if not isinstance(mi, hashable_ndarray):
-            assert(isinstance(mi, ndarray))
-            mi = hashable_ndarray(mi)
         self.mi2vec[mi] = val
     
+    def keys(self):
+        return self.mi2vec.keys()
+
     def active_indices(self):
         return self.keys()
 
-    def keys(self):
-        return self.mi2vec.keys()
+
+    @takes(anything)
+    def copy(self):
+        mv = MultiVector()
+        for mi in self.keys():
+            mv[mi] = self[mi].copy()
+        return mv
+
+    @takes(anything, MultiindexSet, Vector)
+    def set_defaults(self, multiindex_set, init_vector):
+        # initialise
+        for mi in multiindex_set:
+            self[Multiindex(mi)] = init_vector.copy()
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.mi2vec == other.mi2vec)
+        
+
 
     def __add__(self, other):
 #        assert self.active_indices() == other.active_indices()

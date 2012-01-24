@@ -9,6 +9,7 @@ def test_init():
     # list, but not from floats
     Multiindex([0, 1, 3, 0])
     Multiindex(np.array([0, 1, 3, 0]))
+    Multiindex()
     Multiindex([0, 0])
     assert_raises(TypeError, Multiindex, [0, 1.3, 3, 0])
     assert_raises(TypeError, Multiindex, np.array([0, 1.3, 3, 0]))

@@ -3,15 +3,17 @@ from hashlib import sha1
 
 import numpy as np
 
-from spuq.utils.type_check import takes, anything, list_of
+from spuq.utils.type_check import takes, anything, list_of, optional
 
 __all__ = ["Multiindex"]
 
 
 class Multiindex(object):
-    @takes(anything, (np.ndarray, list_of(int)))
-    def __init__(self, arr):
+    @takes(anything, optional(np.ndarray, list_of(int)))
+    def __init__(self, arr=None):
         # create numpy array or make a copy if it already is
+        if arr is None:
+            arr = [0]
         arr = np.array(arr)
         if not issubclass(arr.dtype.type, int):
             raise TypeError
