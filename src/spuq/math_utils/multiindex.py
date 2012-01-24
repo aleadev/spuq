@@ -20,8 +20,12 @@ class Multiindex(object):
         self.__hash = None
 
     def _normalise(self):
-        l = np.max(np.nonzero(self._arr))
-        self._arr = self._arr[:l + 1]
+        nz = np.nonzero(self._arr)[0]
+        if len(nz):
+            l = np.max(nz)
+            self._arr = self._arr[:l + 1]
+        else:
+            self._arr = np.resize(self._arr, 0)
 
     def __eq__(self, other):
         return (type(self) is type(other) and
