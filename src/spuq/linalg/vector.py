@@ -15,16 +15,20 @@ class Vector(object):
     @abstractproperty
     def basis(self):  # pragma: no cover
         """Return basis of this vector"""
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractproperty
     def coeffs(self):  # pragma: no cover
         """Return cofficients of this vector w.r.t. the basis"""
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def as_array(self):  # pragma: no cover
-        return NotImplemented
+        raise NotImplementedError
+
+    @abstractmethod
+    def copy(self):  # pragma: no cover
+        raise NotImplementedError
 
     @abstractmethod
     def __add__(self, other):  # pragma: no cover
@@ -73,13 +77,13 @@ class FlatVector(Vector):
     def as_array(self):
         return self.coeffs
 
-    def _create_copy(self, coeffs=None):
+    def copy(self):
+        return self._create_copy(self._coeffs.copy())
+
+    def _create_copy(self, coeffs):
         """Creates a copy of this vector with new coefficients, but
         the same class and basis."""
-        if coeffs!=None:
-            return self.__class__(coeffs, self.basis)
-        else:
-            return self.__class__(self.coeffs, self.basis)
+        return self.__class__(coeffs, self.basis)
 
     @takes(anything, "FlatVector")
     def __add__(self, other):

@@ -24,10 +24,12 @@ def test_flatvec_init():
     assert_raises(TypeError, FlatVector, ["str", "str"])
     assert_raises(TypeError, FlatVector, [1, 2, 3], object)
 
+
 def test_flatvec_as_array():
     fv1 = FlatVector([1, 2, 3])
     assert_equal(fv1.as_array(), np.array([1.0, 2, 3]))
     assert_is_instance(fv1.as_array()[0], float)
+
 
 def test_flatvec_equals():
     fv1 = FlatVector([1, 2, 3])
@@ -49,15 +51,28 @@ def test_flatvec_equals():
     assert_not_equal(fv1, fv5)
     assert_equal(fv5, fv5)
 
+
+def test_flatvec_copy():
+    arr = np.array([1.0, 2, 3])
+    fv1 = FlatVector(arr)
+    fv2 = fv1.copy()
+    assert_equal(fv1, fv2)
+    fv1.coeffs[1] = 5
+    assert_not_equal(fv1, fv2)
+
+
 def test_flatvec_add():
     fv1 = FlatVector(np.array([1.0, 2, 3]))
-    fv2 = FlatVector(np.array([2, 4, 6]))
-    assert_equal(fv1 + fv1, fv2)
+    fv2 = FlatVector(np.array([7.0, 2, 5]))
+    fv3 = FlatVector(np.array([8.0, 4, 8]))
+    assert_equal(fv1 + fv2, fv3)
+    fv1 += fv2
+    assert_equal(fv1, fv3)
 
-    fv3 = FlatVector([1, 2])
-    fv4 = FlatVector([1, 2, 3], FooBasis(3))
-    assert_raises(BasisMismatchError, lambda: fv1 + fv3)
+    fv4 = FlatVector([1, 2])
+    fv5 = FlatVector([1, 2, 3], FooBasis(3))
     assert_raises(BasisMismatchError, lambda: fv1 + fv4)
+    assert_raises(BasisMismatchError, lambda: fv1 + fv5)
 
 def test_flatvec_sub():
     b = FooBasis(3)
