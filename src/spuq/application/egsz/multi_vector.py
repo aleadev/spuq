@@ -36,16 +36,16 @@ class MultiVector(Vector):
     @takes(anything, Multiindex)
     def __getitem__(self, mi):
         return self.mi2vec[mi]
-    
+
     @takes(anything, Multiindex, Vector)
     def __setitem__(self, mi, val):
         self.mi2vec[mi] = val
-    
+
     def keys(self):
         return self.mi2vec.keys()
 
     def active_indices(self):
-        return self.keys()
+        return sorted(self.keys())
 
 
     @takes(anything)
@@ -64,26 +64,38 @@ class MultiVector(Vector):
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.mi2vec == other.mi2vec)
-        
 
+    def __iadd__(self, other):
+        assert self.active_indices() == other.active_indices()
+        for mi in self.active_indices():
+            self[mi] += other[mi]
+        return self
 
     def __add__(self, other):
-#        assert self.active_indices() == other.active_indices()
-        newvec = MultiVector(other)
-        for mi in self.active_indices():
-            try:
-                nv = newvec[mi]
-                newvec[mi] = self[mi] + nv
-            except:
-                newvec[mi] = self[mi]
-        return newvec
-    
-    def __mul__(self):
+        return self.copy().__iadd__(other)
+
+    def __radd__(self, other):
+        return self.copy().__iadd__(other)
+
+    def __imul__(self, other):
+        assert isinstance(other, (int, float))
+        for mi in self.keys():
+            self[mi] *= other
+        return self
+
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            return self.copy().__imul__(other)
         return NotImplemented
-    
+
+    def __rmul__(self, other):
+        if isinstance(other, (int, float)):
+            return self.copy().__imul__(other)
+        return NotImplemented
+
     def __sub__(self):
         return NotImplemented
 
     def __repr__(self):
-        return "MultiVector("+str(self.mi2vec.keys())+")"
+        return "MultiVector(" + str(self.mi2vec.keys()) + ")"
 #        return "MultiVector("+str(self.mi2vec)+")"
