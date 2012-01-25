@@ -77,3 +77,28 @@ def test_inc_dec():
     assert_equal(beta.dec(4, 7), alpha)
     assert_equal(alpha.dec(0, 1), None)
     assert_equal(alpha.dec(8, 1), None)
+
+
+def test_le():
+    alpha1 = Multiindex(np.array([0, 1, 3, 0]))
+    alpha2 = Multiindex(np.array([0, 1, 3]))
+    alpha3 = Multiindex(np.array([1, 3, 0]))
+    alpha4 = Multiindex(np.array([0, 1, 4]))
+    alpha5 = Multiindex(np.array([1, 4]))
+    assert_true(alpha1 <= alpha2)
+    assert_true(alpha2 <= alpha1)
+    assert_true(alpha2 <= alpha3)
+    assert_true(alpha2 <= alpha4)
+    assert_true(alpha3 <= alpha4)
+    assert_true(alpha3 <= alpha5)
+    assert_true(alpha4 <= alpha5)
+
+    assert_false(alpha1 > alpha2)
+    assert_false(alpha2 > alpha1)
+    assert_false(alpha2 > alpha3)
+    assert_false(alpha2 > alpha4)
+    assert_false(alpha3 > alpha4)
+    assert_false(alpha3 > alpha5)
+    assert_false(alpha4 > alpha5)
+
+test_main()

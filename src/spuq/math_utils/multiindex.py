@@ -1,13 +1,13 @@
 #from abc import ABCMeta, abstractmethod, abstractproperty
 from hashlib import sha1
-
+from functools import total_ordering
 import numpy as np
 
 from spuq.utils.type_check import takes, anything, list_of, optional
 
 __all__ = ["Multiindex"]
 
-
+@total_ordering
 class Multiindex(object):
     @takes(anything, optional(np.ndarray, list_of(int)))
     def __init__(self, arr=None):
@@ -36,6 +36,23 @@ class Multiindex(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def cmp_by_order(self, other):
+        assert type(self) is type(other)
+        sa = self._arr
+        oa = other._arr
+        cmpval = cmp(sum(sa), sum(oa))
+        if not cmpval:
+            l = min(len(sa), len(oa))
+            for i in xrange(l):
+                cmpval = cmp(sa[i], oa[i])
+                if cmpval:
+                    break
+        return cmpval
+
+    def __le__(self, other):
+        cmpval = self.cmp_by_order(other)
+        return cmpval <= 0
 
     def __hash__(self):
         if self.__hash is None:
