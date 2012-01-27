@@ -11,52 +11,69 @@ where the coefficients :math:`(\alpha^m_{n-1},\alpha^m_n,\alpha^m_{n+1})` are ob
         \alpha_{n-1} &:= c_n/b_n \\
         \alpha_n &:= a_n/b_n \\
         \alpha_{n+1} &:= 1/b_n
+
+
+
+
+
+# init
+FEM = FEMPoisson()
+mo = MultiOperator( CF, FEM.assemble_operator )
+
+
+# ....
+ptype = FEniCSBasis.PROJECTION.INTERPOLATION
+if wN_projection_cache:
+    assert wN==None or wN==wN_projection_cache.wN
+    wN = wN_projection_cache.wN
+    wN_cache = wN_projection_cache
+else:
+    wN_cache = ProjectionCache(wN, ptype=ptype)
+        
+mo.set_project( lambda mu1: wN_cache[mu1, mu, False])
+mo.apply(self, wN)
+
 """
 
 from spuq.linalg.operator import Operator
 from spuq.utils.type_check import *
 from spuq.application.egsz.coefficient_field import CoefficientField 
 from spuq.application.egsz.projection_cache import ProjectionCache 
-from spuq.fem.multi_vector import MultiVector
+from spuq.application.egsz.multi_vector import MultiVector
+
 from spuq.fem.fem_discretisation import FEMDiscretisation
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.stochastics.random_variable import RandomVariable
 from numpy import dot
 
 class MultiOperator(Operator):
-    """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials"""
+    """Discrete operator according to EGSZ (2.6), generalised for spuq
+    orthonormal polynomials"""
     
 #    @takes(any, "FEMDiscretisation", "CoefficientField", int)
-    def __init__(self, FEM, CF, maxm=10, domain=None, codomain=None):
-        """Initialise discrete operator with FEM discretisation and coefficient field of the diffusion coefficient"""
-        self._FEM = FEM
+    def __init__(self, CF, assemble, project, domain=None, codomain=None):
+        """Initialise discrete operator with FEM discretisation and
+        coefficient field of the diffusion coefficient"""
+        self._assemble = assemble
         self._CF = CF
-        self._maxm = maxm
 
 #    @takes(any, "MultiVector", "ProjectionCache")
-    def apply(self, wN=None, wN_projection_cache=None, ptype=FEniCSBasis.PROJECTION.INTERPOLATION):
-        """Apply operator to vector which has to live in the same domain"""
+    def apply(self, wN):
+        """Apply operator to vector which has to live in the same
+        domain"""
 
-        if wN_projection_cache:
-            assert wN==None or wN==wN_projection_cache.wN
-            wN = wN_projection_cache.wN
-            wN_cache = wN_projection_cache
-        else:
-            wN_cache = ProjectionCache(wN, ptype=ptype)
-        
         v = MultiVector()           # result vector
         Delta = wN.active_indices()
         for mu in Delta:
             print "XXXX mu ", mu
             # deterministic part
             a0_f, _ = self._CF[0]
-            A0 = self._FEM.assemble_operator( {'a':a0_f}, wN[mu].basis )
+            A0 = self._assemble( {'a':a0_f}, wN[mu].basis )
             v[mu] = A0.array() * wN[mu]
-            for m in range(1, self._maxm):
-                print "XXXX m ", m
+            for m in range(1, len(mu)):
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
-                Am = self._FEM.assemble_operator( {'a':am_f}, wN[mu].basis )
+                Am = self._assemble( {'a':am_f}, wN[mu].basis )
 
                 # prepare polynom coefficients
                 p = am_rv.orth_polys
@@ -64,35 +81,32 @@ class MultiOperator(Operator):
                 beta = (a/b, 1/b, c/b)
 
                 # mu
-                print "XXXX 1"
                 cur_wN = -beta[0]*wN[mu]
 
                 # mu+1
-                print "XXXX 2"
                 mu1 = mu.add(m, 1)
                 if mu1 in Delta:
                     cur_wN += beta[1] * wN_cache[mu1, mu, False]
 
                 # mu-1
-                print "XXXX 3"
                 mu2 = mu.add(m, -1)
                 if mu2 in Delta:
-                    print "XXXX 3a"
                     cur_wN += beta[-1] * wN_cache[mu2, mu, False]
-                    print "XXXX 3b"
 
                 # apply discrete operator
-                print "XXXX 4"
                 v[mu] = Am.array() * cur_wN
-                print "XXXX 5"
         return v
         
     def domain(self):
         """Returns the basis of the domain"""
-        # TODO: this could be extracted from the discrete domains (meshes) of the vectors or provided by the user
+        # TODO: this could be extracted from the discrete domains
+        # (meshes) of the vectors or provided by the user
         raise NotImplementedError
 
     def codomain(self):
         """Returns the basis of the codomain"""
         # TODO
         raise NotImplementedError
+
+
+
