@@ -3,7 +3,7 @@ import numpy as np
 from spuq.utils.testing import *
 
 from spuq.stochastics.stochastic_basis import *
-from spuq.utils.multiindex_set import *
+from spuq.math_utils.multiindex_set import MultiindexSet, createCompleteOrderSet
 from spuq.stochastics.random_variable import *
 
 
@@ -17,7 +17,7 @@ class TestPolynomialBasis(TestCase):
 class TestMultiindexBasis(TestCase):
 
     def test_init(self):
-        I = MultiindexSet.createCompleteOrderSet(2, 4)
+        I = createCompleteOrderSet(2, 4)
         #m = MultiindexBasis( I, [1, 2, 3])
 
 class TestGPCBasis(TestCase):

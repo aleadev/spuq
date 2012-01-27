@@ -1,6 +1,6 @@
 import numpy as np
 
-from spuq.linalg.vector import Vector
+from spuq.linalg.vector import Scalar, Vector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import *
@@ -77,14 +77,17 @@ class MultiVector(Vector):
             self[mi] += other[mi]
         return self
 
+    def __isub__(self, other):
+        assert self.active_indices() == other.active_indices()
+        for mi in self.active_indices():
+            self[mi] -= other[mi]
+        return self
+
     def __imul__(self, other):
-        assert isinstance(other, (int, float))
+        assert isinstance(other, Scalar)
         for mi in self.keys():
             self[mi] *= other
         return self
-
-    #def __sub__(self):
-    #    return NotImplemented
 
     def __repr__(self):
         return "MultiVector(" + str(self.mi2vec.keys()) + ")"

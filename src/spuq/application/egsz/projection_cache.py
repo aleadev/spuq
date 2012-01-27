@@ -1,4 +1,4 @@
-from spuq.fem.multi_vector import MultiVector
+from spuq.application.egsz.multi_vector import MultiVector
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import *
