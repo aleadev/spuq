@@ -129,4 +129,23 @@ def test_cache():
     assert_equal( inspect.getargspec(foo), inspect.getargspec(foo2))
 
 
+def test_total_ordering():
+    @total_ordering
+    class Foo(object):
+        def __init__(self,a):
+            self.a = a
+        def __le__(self, other):
+            return self.a<=other.a
+    foo_1a = Foo(1)
+    foo_1b = Foo(1)
+    foo_2 = Foo(2)
+    assert_true(foo_1a <= foo_1b)
+    assert_true(foo_1a >= foo_1b)
+    assert_true(not foo_1a < foo_1b)
+    assert_true(not foo_1a > foo_1b)
+    assert_true(foo_1a <= foo_2)
+    assert_true(not foo_1a >= foo_2)
+    assert_true(foo_1a < foo_2)
+    assert_true(not foo_1a > foo_2)
+
 test_main()

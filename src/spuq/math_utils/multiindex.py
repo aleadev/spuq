@@ -1,8 +1,9 @@
 #from abc import ABCMeta, abstractmethod, abstractproperty
 from hashlib import sha1
-from functools import total_ordering
 import numpy as np
 
+from spuq.utils import strclass
+from spuq.utils.decorators import total_ordering
 from spuq.utils.type_check import takes, anything, list_of, optional
 
 __all__ = ["Multiindex"]
@@ -54,6 +55,9 @@ class Multiindex(object):
         cmpval = self.cmp_by_order(other)
         return cmpval <= 0
 
+    #def __gt__(self, other):
+    #    return not self<=other
+
     def __hash__(self):
         if self.__hash is None:
             self.__hash = int(sha1(self._arr).hexdigest(), 16)
@@ -63,7 +67,8 @@ class Multiindex(object):
         return len(self._arr)
 
     def __repr__(self):
-        return "<mi %s>" % self._arr
+        return "<%s inds=%s>" % \
+               (strclass(self.__class__), self._arr)
 
     @property
     def order(self):

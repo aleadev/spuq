@@ -71,6 +71,44 @@ def simple_int_cache(size):
     return cached_func
 
 
+# Class decorator to fill 
+# 
+def total_ordering(cls):
+    """Class decorator that fills-in missing ordering methods.
+
+    Taken from http://code.activestate.com/recipes/576685/ with small modifications.
+
+    This one still has problems: see
+    http://regebro.wordpress.com/2010/12/13/python-implementing-rich-comparison-the-correct-way/
+    """
+    convert = {
+        '__lt__': [('__gt__', lambda self, other: other < self),
+                   ('__le__', lambda self, other: not other < self),
+                   ('__ge__', lambda self, other: not self < other)],
+        '__le__': [('__ge__', lambda self, other: other <= self),
+                   ('__lt__', lambda self, other: not other <= self),
+                   ('__gt__', lambda self, other: not self <= other)],
+        '__gt__': [('__lt__', lambda self, other: other > self),
+                   ('__ge__', lambda self, other: not other > self),
+                   ('__le__', lambda self, other: not self > other)],
+        '__ge__': [('__le__', lambda self, other: other >= self),
+                   ('__gt__', lambda self, other: not other >= self),
+                   ('__lt__', lambda self, other: not self >= other)]
+    }
+    if False and hasattr(object, '__lt__'):
+        # this doesn't seem to work in Python 2.6
+        roots = [op for op in convert if getattr(cls, op) is not getattr(object, op)]
+    else:
+        roots = set(dir(cls)) & set(convert)
+    assert roots, 'must define at least one ordering operation: < > <= >='
+    root = max(roots)       # prefer __lt __ to __le__ to __gt__ to __ge__
+    for opname, opfunc in convert[root]:
+        if opname not in roots:
+            opfunc.__name__ = opname
+            opfunc.__doc__ = getattr(int, opname).__doc__
+            setattr(cls, opname, opfunc)
+    return cls
+
 
 
 
