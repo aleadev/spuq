@@ -65,17 +65,17 @@ class MultiVector(Vector):
         return (type(self) == type(other) and
                 self.mi2vec == other.mi2vec)
 
+    def __neg__(self):
+        new = self.copy()
+        for mi in self.active_indices():
+            new[mi] = -self[mi]
+        return new
+
     def __iadd__(self, other):
         assert self.active_indices() == other.active_indices()
         for mi in self.active_indices():
             self[mi] += other[mi]
         return self
-
-    def __add__(self, other):
-        return self.copy().__iadd__(other)
-
-    def __radd__(self, other):
-        return self.copy().__iadd__(other)
 
     def __imul__(self, other):
         assert isinstance(other, (int, float))
@@ -83,18 +83,8 @@ class MultiVector(Vector):
             self[mi] *= other
         return self
 
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return self.copy().__imul__(other)
-        return NotImplemented
-
-    def __rmul__(self, other):
-        if isinstance(other, (int, float)):
-            return self.copy().__imul__(other)
-        return NotImplemented
-
-    def __sub__(self):
-        return NotImplemented
+    #def __sub__(self):
+    #    return NotImplemented
 
     def __repr__(self):
         return "MultiVector(" + str(self.mi2vec.keys()) + ")"

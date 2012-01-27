@@ -61,6 +61,13 @@ def test_flatvec_copy():
     assert_not_equal(fv1, fv2)
 
 
+def test_flatvec_neg():
+    fv1 = FlatVector([1.0, 2, 3])
+    fv2 = FlatVector([-1.0, -2, -3])
+    assert_equal(-fv1, fv2)
+    assert_equal(fv1.coeffs[0], 1.0)
+
+
 def test_flatvec_add():
     fv1 = FlatVector(np.array([1.0, 2, 3]))
     fv2 = FlatVector(np.array([7.0, 2, 5]))
@@ -74,6 +81,7 @@ def test_flatvec_add():
     assert_raises(BasisMismatchError, lambda: fv1 + fv4)
     assert_raises(BasisMismatchError, lambda: fv1 + fv5)
 
+
 def test_flatvec_sub():
     b = FooBasis(3)
     fv1 = FlatVector(np.array([5, 7, 10]), b)
@@ -81,9 +89,11 @@ def test_flatvec_sub():
     fv3 = FlatVector(np.array([3, 3, 4]), b)
     assert_equal(fv1 - fv2, fv3)
 
-    # test the __sub__ method of the base class
-    del FlatVector.__sub__
+    isub=FlatVector.__isub__
+    del FlatVector.__isub__
     assert_equal(fv1 - fv2, fv3)
+    FlatVector.__isub__ = isub
+
 
 def test_flatvec_mul():
     fv1 = FlatVector(np.array([1.0, 2, 3]))
@@ -99,6 +109,7 @@ def test_flatvec_mul():
     fv5 = FlatVector([2, 4, 6], FooBasis(3))
     assert_equal(fv4 * 2, fv5)
     assert_equal(2 * fv4, fv5)
+
 
 def test_flatvec_repr():
     fv1 = FlatVector(np.array([1.0, 2, 3]))
