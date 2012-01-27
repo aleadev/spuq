@@ -83,3 +83,5 @@ def test_main():
         else:
             print "Could not determine the file name of the current file. Probably this function has been called by execfile."
             
+skip_if = dec.skipif
+slow = dec.slow

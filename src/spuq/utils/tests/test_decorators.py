@@ -73,6 +73,10 @@ def test_int_cache():
         call_count = call_count + 1
         return 10*n
 
+    @simple_int_cache(10)
+    def foo2(n):
+        return 20*n
+
     # first pass, evaluate some arguments within and without range
     assert_equal(foo(-1), -10)
     assert_equal(foo(0), 0)
@@ -92,6 +96,12 @@ def test_int_cache():
     assert_equal(call_count, 6)
     assert_equal(foo(10), 100)
     assert_equal(call_count, 7)
+
+    assert_equal(foo(5), 50)
+    assert_equal(foo2(5), 100)
+    assert_equal(foo2(6), 120)
+    assert_equal(foo(6), 60)
+
 
     # make sure decorator copies the docu
     assert_equal( foo.__doc__, "foo docu")

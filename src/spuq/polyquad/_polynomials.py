@@ -140,6 +140,7 @@ def sqnorm_from_rc(rc_func, n):
         h *= c
     return h
 
+
 def rc_shift_scale(rc_func, shift, scale):
     """Return a function that computes recurrence coefficients for
     polynomials with a weight function that's shifted and scaled.
@@ -159,6 +160,7 @@ def rc_window_trans(rc_func, old_domain, new_domain):
     shift = 0.5 * ((a1 + b1) - (a0 + b0))
     scale = float(a1 - b1) / (a0 - b0)
     return rc_shift_scale(rc_func, shift, scale)
+
 
 def compute_poly(rc_func, n, x):
     f = [_0(x), _1(x)]

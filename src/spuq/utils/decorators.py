@@ -53,21 +53,21 @@ def cache(func, *args):
         return result
 
 
+class EmptySlot(object):
+    pass
+Empty = EmptySlot()
 def simple_int_cache(size):
-    Empty = object()
     def mk_int_cache():
         return size * [Empty]
 
     @decorator
     def cached_func(func, n):
         int_cache = getattr_(func, "int_cache", mk_int_cache) 
-
-        if not (0<= n < size):
+        if not (0 <= n < size):
             return func(n)
         if int_cache[n] is Empty:
             int_cache[n] = func(n)
         return int_cache[n]
-
     return cached_func
 
 

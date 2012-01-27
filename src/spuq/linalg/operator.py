@@ -5,7 +5,7 @@ import numpy as np
 from spuq.utils import strclass, with_equality
 from spuq.utils.type_check import takes, returns, anything, optional, list_of
 from spuq.linalg.basis import Basis, CanonicalBasis, BasisMismatchError
-from spuq.linalg.vector import Vector, FlatVector
+from spuq.linalg.vector import Scalar, Vector, FlatVector
 
 @with_equality
 class Operator(object):
@@ -60,28 +60,30 @@ class Operator(object):
         """Return the operator in matrix form """
         return NotImplemented
 
-    @takes(anything, (Vector, "Operator", int, float))
+    @takes(anything, (Scalar, Vector, "Operator"))
     def __mul__(self, other):
         """Multiply the operator with a scalar, with another operator,
         meaning composition of the two operators, or with any other
         object meaning operator application"""
         if isinstance(other, Operator):
             return ComposedOperator(other, self)
-        elif (np.isscalar(other)):
+        elif isinstance(other, Scalar):
             return SummedOperator(operators=(self,), factors=(other,))
         else:
             return self.apply(other)
 
+    @takes(anything, Scalar)
     def __rmul__(self, other):
         """Multiplication from the right works only if the other
         object is a scalar"""
-        assert(np.isscalar(other))
         return self.__mul__(other)
 
+    @takes(anything, "Operator")
     def __add__(self, other):
         """Sum two operators"""
         return SummedOperator(operators=(self, other))
 
+    @takes(anything, "Operator")
     def __sub__(self, other):
         """Subtract two operators"""
         return SummedOperator(operators=(self, other), factors=(1, -1))
@@ -282,7 +284,7 @@ class SummedOperator(Operator):
 
 class MatrixOperator(BaseOperator):
 
-    @takes(anything, (np.ndarray,list_of(list_of((int,float)))), 
+    @takes(anything, (np.ndarray,list_of(list_of(Scalar))), 
                       optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
         if not isinstance(arr, np.ndarray):
