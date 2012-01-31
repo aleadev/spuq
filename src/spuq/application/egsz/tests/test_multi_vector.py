@@ -81,6 +81,17 @@ def test_add():
     mv3.set_defaults(mis1, FlatVector([9, 12, 17]))
     assert_equal(mv1 + mv2, mv3)
 
+
+def test_neg():
+    mv1 = MultiVector()
+    mi1 = Multiindex([1, 2, 1])
+    mis1 = createCompleteOrderSet(3, 4)
+    mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
+    mv = -mv1
+    assert_equal(mv[Multiindex(mis1[-1])], FlatVector([-3, -4, -5]))
+    assert_equal(mv1[Multiindex(mis1[-1])], FlatVector([3, 4, 5]))
+
+
 def test_mul():
     mv1 = MultiVector()
     mv2 = MultiVector()
@@ -93,11 +104,24 @@ def test_mul():
     assert_equal(2.0 * mv1, mv2)
     assert_equal(mv1 * 2.0, mv2)
     assert_equal(mv1[Multiindex()], FlatVector([3, 4, 5]))
+    assert_equal(mv1[Multiindex([1, 2, 1])], FlatVector([3, 4, 5]))
     mv1 *= 2.0
     assert_equal(mv1, mv2)
 
 
 def test_sub():
-    pass
+    mv1 = MultiVector()
+    mv2 = MultiVector()
+    mi1 = Multiindex([1, 2, 1])
+    mi2 = Multiindex([3, 2, 1, 7])
+    mis1 = createCompleteOrderSet(3, 4)
+    mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
+    mv2.set_defaults(mis1, FlatVector([6, 8, 10]))
+    mv1[mi2] = FlatVector([7, 10, 6])
+    mv2[mi2] = FlatVector([2, 6, 13])
+    mv3 = mv1 - mv2
+    assert_equal(mv3[mi1], FlatVector([-3, -4, -5]))
+    assert_equal(mv3[mi2], FlatVector([5, 4, -7]))
+
 
 test_main()
