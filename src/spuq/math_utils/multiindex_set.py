@@ -3,7 +3,7 @@
 import numpy as np
 import scipy as sp
 
-__all__ = ["MultiindexSet", "createCompleteOrderSet"]
+__all__ = ["MultiindexSet"]
 
 
 class MultiindexSet(object):
@@ -41,24 +41,20 @@ class MultiindexSet(object):
     def factorial(self):
         return sp.factorial(self.arr).prod(1)
 
-    #@property
-    #def is_zero(self):
-    #    return bool(len(sp.nonzero(self.arr)[0]))
-
-
-def createCompleteOrderSet(m, p):
-    def create(m, p):
-        if m == 0:
-            return np.zeros((1, 0), np.int8)
-        else:
-            I = np.zeros((0, m), np.int8)
-            for q in xrange(0, p + 1):
-                J = create(m - 1, q)
-                Jn = q - J.sum(1).reshape((J.shape[0], 1))
-                I = np.vstack((I, np.hstack((J, Jn))))
-            return I
-    arr = create(m, p)
-    return MultiindexSet(arr)
+    @classmethod
+    def createCompleteOrderSet(cls, m, p):
+        def create(m, p):
+            if m == 0:
+                return np.zeros((1, 0), np.int8)
+            else:
+                I = np.zeros((0, m), np.int8)
+                for q in xrange(0, p + 1):
+                    J = create(m - 1, q)
+                    Jn = q - J.sum(1).reshape((J.shape[0], 1))
+                    I = np.vstack((I, np.hstack((J, Jn))))
+                return I
+        arr = create(m, p)
+        return cls(arr)
 
 # createFullTensorSet(m, p)
 # createAnisoFullTensorSet(p)

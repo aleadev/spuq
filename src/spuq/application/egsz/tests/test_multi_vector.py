@@ -3,7 +3,7 @@ import numpy as np
 from spuq.utils.testing import *
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 from spuq.math_utils.multiindex import Multiindex
-from spuq.math_utils.multiindex_set import MultiindexSet, createCompleteOrderSet
+from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.linalg.vector import FlatVector
 
 def test_init():
@@ -52,7 +52,7 @@ def test_copy():
 
 def test_set_defaults():
     mv = MultiVector()
-    mis = createCompleteOrderSet(3, 4)
+    mis = MultiindexSet.createCompleteOrderSet(3, 4)
     mv.set_defaults(mis, FlatVector([3, 4, 5]))
     assert_equal(mv[Multiindex([1, 2, 1])], FlatVector([3, 4, 5]))
     assert_equal(mv[Multiindex()], FlatVector([3, 4, 5]))
@@ -64,8 +64,8 @@ def test_equality():
     mv2 = MultiVector()
     mv3 = MultiVector()
     mv4 = MultiVector()
-    mis1 = createCompleteOrderSet(3, 4)
-    mis2 = createCompleteOrderSet(3, 5)
+    mis1 = MultiindexSet.createCompleteOrderSet(3, 4)
+    mis2 = MultiindexSet.createCompleteOrderSet(3, 5)
     mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv2.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv3.set_defaults(mis2, FlatVector([3, 4, 5]))
@@ -81,7 +81,7 @@ def test_add():
     mv1 = MultiVector()
     mv2 = MultiVector()
     mv3 = MultiVector()
-    mis1 = createCompleteOrderSet(3, 4)
+    mis1 = MultiindexSet.createCompleteOrderSet(3, 4)
     mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv2.set_defaults(mis1, FlatVector([6, 8, 12]))
     mv3.set_defaults(mis1, FlatVector([9, 12, 17]))
@@ -91,7 +91,7 @@ def test_add():
 def test_neg():
     mv1 = MultiVector()
     mi1 = Multiindex([1, 2, 1])
-    mis1 = createCompleteOrderSet(3, 4)
+    mis1 = MultiindexSet.createCompleteOrderSet(3, 4)
     mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv = -mv1
     assert_equal(mv[Multiindex(mis1[-1])], FlatVector([-3, -4, -5]))
@@ -101,8 +101,8 @@ def test_neg():
 def test_mul():
     mv1 = MultiVector()
     mv2 = MultiVector()
-    mis1 = createCompleteOrderSet(3, 4)
-    #mis2 = createCompleteOrderSet(3, 5)
+    mis1 = MultiindexSet.createCompleteOrderSet(3, 4)
+    #mis2 = MultiindexSet.createCompleteOrderSet(3, 5)
     mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv2.set_defaults(mis1, FlatVector([6, 8, 10]))
     assert_equal(2 * mv1, mv2)
@@ -120,7 +120,7 @@ def test_sub():
     mv2 = MultiVector()
     mi1 = Multiindex([1, 2, 1])
     mi2 = Multiindex([3, 2, 1, 7])
-    mis1 = createCompleteOrderSet(3, 4)
+    mis1 = MultiindexSet.createCompleteOrderSet(3, 4)
     mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv2.set_defaults(mis1, FlatVector([6, 8, 10]))
     mv1[mi2] = FlatVector([7, 10, 6])
@@ -140,7 +140,7 @@ def test_mvwp_copy():
     # compares equal to copied MultiVectorWP but not to MultiVector 
     mv0 = MultiVector()
     mv1 = MultiVectorWithProjection()
-    mis1 = createCompleteOrderSet(3, 4)
+    mis1 = MultiindexSet.createCompleteOrderSet(3, 4)
     mv0.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv2 = mv1.copy()

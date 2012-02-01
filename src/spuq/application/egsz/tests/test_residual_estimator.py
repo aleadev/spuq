@@ -1,6 +1,6 @@
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.math_utils.multiindex_set import MultiindexSet, createCompleteOrderSet
+from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.stochastics.random_variable import NormalRV
 from spuq.utils.testing import *
 
@@ -18,7 +18,7 @@ def test_estimator(self):
     # MultiindexSet
     m = 2
     p = 3
-    mi = createCompleteOrderSet(m, p)
+    mi = MultiindexSet.createCompleteOrderSet(m, p)
 
     # define articifial coefficient field
     F = list()

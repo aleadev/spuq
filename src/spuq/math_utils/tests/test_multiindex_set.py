@@ -11,27 +11,27 @@ def test_init():
 
 
 def test_create_comp_order():
-    mi = createCompleteOrderSet(1,  1)
+    mi = MultiindexSet.createCompleteOrderSet(1,  1)
     assert_equal(mi.m, 1)
     assert_equal(mi.p, 1)
     assert_equal(mi.count, 2)
 
-    mi = createCompleteOrderSet(2,  3)
+    mi = MultiindexSet.createCompleteOrderSet(2,  3)
     assert_equal(mi.m, 2)
     assert_equal(mi.p, 3)
     assert_equal(mi.count, 10)
 
-    mi = createCompleteOrderSet(0,  2)
+    mi = MultiindexSet.createCompleteOrderSet(0,  2)
     assert_equal(mi.m, 0)
     assert_equal(mi.p, 0)
     assert_equal(mi.count, 1)
 
-    mi = createCompleteOrderSet(5,  0)
+    mi = MultiindexSet.createCompleteOrderSet(5,  0)
     assert_equal(mi.m, 5)
     assert_equal(mi.p, 0)
     assert_equal(mi.count, 1)
 
-    mi = createCompleteOrderSet(7,  5)
+    mi = MultiindexSet.createCompleteOrderSet(7,  5)
     assert_equal(mi.count, 792)
 
 
@@ -54,7 +54,7 @@ def test_factorial():
 
 
 def test_repr():
-    mi = createCompleteOrderSet(2,  3)
+    mi = MultiindexSet.createCompleteOrderSet(2,  3)
     repr = str(mi)
     assert_true(repr.startswith("<MISet m=2, p=3, arr=[[0 0]"))
 
