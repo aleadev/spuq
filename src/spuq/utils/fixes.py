@@ -17,7 +17,8 @@ least for 0.7.2).
 
 import scipy.special
 
-if scipy.version.version < "0.9.0":
+if True or scipy.version.version < "0.9.0":
+    # still happens in 0.9.0 now (I thougt it was fixed there, need to check that later)
     old_btdtri = scipy.special.btdtri
     def my_btdtri(alpha, beta, q):
         if alpha == 0.5 and beta == 0.5 and q == 0.5:

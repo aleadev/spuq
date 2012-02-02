@@ -13,9 +13,6 @@ where the coefficients :math:`(\alpha^m_{n-1},\alpha^m_n,\alpha^m_{n+1})` are ob
         \alpha_{n+1} &:= 1/b_n
 
 
-
-
-
 # init
 FEM = FEMPoisson()
 mo = MultiOperator( CF, FEM.assemble_operator )
@@ -35,68 +32,63 @@ mo.apply(self, wN)
 
 """
 
+from spuq.linalg.basis import Basis
 from spuq.linalg.operator import Operator
-from spuq.utils.type_check import *
-from spuq.application.egsz.coefficient_field import CoefficientField 
-from spuq.application.egsz.projection_cache import ProjectionCache 
-from spuq.application.egsz.multi_vector import MultiVector
+from spuq.utils.type_check import takes, anything, optional
+from spuq.application.egsz.coefficient_field import CoefficientField
+from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 
-from spuq.fem.fem_discretisation import FEMDiscretisation
-from spuq.fem.fenics.fenics_basis import FEniCSBasis
-from spuq.stochastics.random_variable import RandomVariable
-from numpy import dot
 
 class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq
     orthonormal polynomials"""
-    
-#    @takes(any, "FEMDiscretisation", "CoefficientField", int)
-    def __init__(self, CF, assemble, project, domain=None, codomain=None):
+
+    @takes(anything, CoefficientField, callable, optional(Basis), optional(Basis))
+    def __init__(self, CF, assemble, domain=None, codomain=None):
         """Initialise discrete operator with FEM discretisation and
         coefficient field of the diffusion coefficient"""
         self._assemble = assemble
         self._CF = CF
 
-#    @takes(any, "MultiVector", "ProjectionCache")
+    @takes(any, MultiVectorWithProjection)
     def apply(self, wN):
         """Apply operator to vector which has to live in the same
         domain"""
 
-        v = MultiVector()           # result vector
+        v = 0 * wN
         Delta = wN.active_indices()
         for mu in Delta:
-            print "XXXX mu ", mu
             # deterministic part
             a0_f, _ = self._CF[0]
-            A0 = self._assemble( {'a':a0_f}, wN[mu].basis )
-            v[mu] = A0.array() * wN[mu]
+            A0 = self._assemble({'a':a0_f}, wN[mu].basis)
+            v[mu] = A0 * wN[mu]
             for m in range(1, len(mu)):
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
-                Am = self._assemble( {'a':am_f}, wN[mu].basis )
+                Am = self._assemble({'a':am_f}, wN[mu].basis)
 
                 # prepare polynom coefficients
                 p = am_rv.orth_polys
                 (a, b, c) = p.recurrence_coefficients(mu[m])
-                beta = (a/b, 1/b, c/b)
+                beta = (a / b, 1 / b, c / b)
 
                 # mu
-                cur_wN = -beta[0]*wN[mu]
+                cur_wN = -beta[0] * wN[mu]
 
                 # mu+1
                 mu1 = mu.add(m, 1)
                 if mu1 in Delta:
-                    cur_wN += beta[1] * wN_cache[mu1, mu, False]
+                    cur_wN += beta[1] * wN.get_projection(mu1, mu)
 
                 # mu-1
                 mu2 = mu.add(m, -1)
                 if mu2 in Delta:
-                    cur_wN += beta[-1] * wN_cache[mu2, mu, False]
+                    cur_wN += beta[-1] * wN.get_projection(mu2, mu)
 
                 # apply discrete operator
-                v[mu] = Am.array() * cur_wN
+                v[mu] = Am * cur_wN
         return v
-        
+
     def domain(self):
         """Returns the basis of the domain"""
         # TODO: this could be extracted from the discrete domains
