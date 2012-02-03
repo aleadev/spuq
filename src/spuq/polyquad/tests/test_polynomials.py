@@ -4,8 +4,6 @@ import numpy as np
 from spuq.utils.testing import *
 from spuq.polyquad.polynomials import *
 
-_DO_CONSISTENCY_TEST = True
-
 def _check_poly_consistency(p, dist):
     #Check whether the polynomials are truly orthonormal for the given
     #distribution
@@ -14,20 +12,20 @@ def _check_poly_consistency(p, dist):
         def foo(x):
             return f(dist.ppf(x))
         return quad(foo, 0, 1, epsabs=1e-5, **kwargs)[0]
-    
+
     def polyprod(p, i, j):
         return lambda x: p.eval(i, x) * p.eval(j, x)
-    
-    assert_almost_equal(dist_integrate(dist, p[1]*p[3]), 0)
+
+    assert_almost_equal(dist_integrate(dist, p[1] * p[3]), 0)
     assert_almost_equal(dist_integrate(dist, polyprod(p, 0, 1)), 0)
     assert_almost_equal(dist_integrate(dist, polyprod(p, 2, 3)), 0)
     assert_almost_equal(dist_integrate(dist, polyprod(p, 3, 4)), 0)
 
-    assert_approx_equal(dist_integrate(dist, polyprod(p, 0, 0)), 
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 0, 0)),
                         p.norm(0, False))
-    assert_approx_equal(dist_integrate(dist, polyprod(p, 3, 3)), 
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 3, 3)),
                         p.norm(3, False))
-    assert_approx_equal(dist_integrate(dist, polyprod(p, 4, 4)), 
+    assert_approx_equal(dist_integrate(dist, polyprod(p, 4, 4)),
                         p.norm(4, False))
 
 
@@ -62,7 +60,7 @@ def test_norm():
     assert_equal(p.norm(3, True), math.sqrt(p.norm(3, False)))
     # should be default
     assert_equal(p.norm(3, True), p.norm(3))
-        
+
 
 
 def test_legendre():
@@ -92,7 +90,6 @@ def test_legendre_integrate():
     #assert_approx_equal(integ(P1 * P1), 1.0)
     #assert_approx_equal(integ(P3 * P3), 1.0)
 
-@skip_if(not _DO_CONSISTENCY_TEST)
 @slow
 def test_legendre_consistency():
     import scipy.stats as stats
@@ -104,7 +101,7 @@ def test_legendre_consistency():
     dist = stats.uniform(2, 5 - 2)
     _check_poly_consistency(p, dist)
 
-    p = LegendrePolynomials(a=-2.5, b=-1.2, normalised=True)
+    p = LegendrePolynomials(a= -2.5, b= -1.2, normalised=True)
     assert_equal(p.norm(4, False), 1)
     dist = stats.uniform(-2.5, -1.2 - -2.5)
     _check_poly_consistency(p, dist)
@@ -127,7 +124,6 @@ def test_hermite():
     assert_almost_equal(p.eval(5, x), (x ** 5 - 10 * x ** 3 + 15 * x) /
                         math.sqrt(120.0))
 
-@skip_if(not _DO_CONSISTENCY_TEST)
 @slow
 def test_hermite_consistency():
     import scipy.stats as stats
@@ -141,7 +137,7 @@ def test_hermite_consistency():
     assert_false(p.normalised)
     _check_poly_consistency(p, dist)
 
-    p = StochasticHermitePolynomials(mu=-2.5, sigma=1.2, normalised=True)
+    p = StochasticHermitePolynomials(mu= -2.5, sigma=1.2, normalised=True)
     assert_equal(p.norm(4, False), 1)
     dist = stats.norm(-2.5, 1.2)
     assert_true(p.normalised)
@@ -152,35 +148,35 @@ def test_jacobi():
     x = JacobiPolynomials.x
     # test the standard JacobiPolynomials for alpha=1, beta=1  
     p = JacobiPolynomials(alpha=1.0, beta=1.0, normalised=False)
-    assert_array_almost_equal(p.eval(0, x), x**0)
+    assert_array_almost_equal(p.eval(0, x), x ** 0)
     assert_array_almost_equal(p.eval(1, x), 2 * x)
-    assert_array_almost_equal(p.eval(2, x), 15.0 / 4  * x ** 2 - 3.0 / 4)
+    assert_array_almost_equal(p.eval(2, x), 15.0 / 4 * x ** 2 - 3.0 / 4)
     assert_array_almost_equal(p.eval(3, x), 7 * x ** 3 - 3 * x)
 
     # test the standard JacobiPolynomials for alpha=0, beta=2 (unsymmetric), and check the norm  
     p = JacobiPolynomials(alpha=0.0, beta=2.0, normalised=False)
     assert_array_almost_equal(p.eval(1, x), 2 * x - 1)
-    assert_array_almost_equal(p.eval(2, x), 3.75  * x ** 2 - 2.5 * x - 0.25)
-    assert_array_almost_equal(p.eval(3, x), 
-                              7 * x ** 3 - 5.25 * x **2 - 1.5 * x + 0.75)
+    assert_array_almost_equal(p.eval(2, x), 3.75 * x ** 2 - 2.5 * x - 0.25)
+    assert_array_almost_equal(p.eval(3, x),
+                              7 * x ** 3 - 5.25 * x ** 2 - 1.5 * x + 0.75)
 
-    assert_equal(p.norm(0, False), 3.0/3.0)
-    assert_equal(p.norm(1, False), 3.0/5.0)
-    assert_approx_equal(p.norm(2, False), 3.0/7.0)
-    assert_approx_equal(p.norm(3, False), 3.0/9.0)
-    assert_approx_equal(p.norm(4, False), 3.0/11.0)
-    assert_approx_equal(p.norm(5, False), 3.0/13.0)
+    assert_equal(p.norm(0, False), 3.0 / 3.0)
+    assert_equal(p.norm(1, False), 3.0 / 5.0)
+    assert_approx_equal(p.norm(2, False), 3.0 / 7.0)
+    assert_approx_equal(p.norm(3, False), 3.0 / 9.0)
+    assert_approx_equal(p.norm(4, False), 3.0 / 11.0)
+    assert_approx_equal(p.norm(5, False), 3.0 / 13.0)
 
     # test the normalised JacobiPolynomials for alpha=0, beta=2  
     p = JacobiPolynomials(alpha=0, beta=2, normalised=True)
-    assert_array_almost_equal(p.eval(3, x), (7 * x ** 3 - 5.25 * x **2 - 1.5 * x + 0.75) / math.sqrt(1/3.0))
+    assert_array_almost_equal(p.eval(3, x), (7 * x ** 3 - 5.25 * x ** 2 - 1.5 * x + 0.75) / math.sqrt(1 / 3.0))
 
-    p = JacobiPolynomials(alpha=0.5, beta=-0.5, normalised=False)
-    assert_array_almost_equal(p.eval(0, x), x**0)
+    p = JacobiPolynomials(alpha=0.5, beta= -0.5, normalised=False)
+    assert_array_almost_equal(p.eval(0, x), x ** 0)
     assert_array_almost_equal(p.eval(1, x), x + 0.5)
 
     p = JacobiPolynomials(alpha=0.0, beta=0.0, normalised=False)
-    assert_array_almost_equal(p.eval(0, x), x**0)
+    assert_array_almost_equal(p.eval(0, x), x ** 0)
     assert_array_almost_equal(p.eval(1, x), x)
     assert_array_almost_equal(p.eval(3, x), 2.5 * x ** 3 - 1.5 * x)
 
@@ -189,25 +185,42 @@ def test_cmp_jacobi_legendre():
     # the Legendre polynomials 
     p = JacobiPolynomials(alpha=0, beta=0, a=3, b=7, normalised=True)
     q = LegendrePolynomials(a=3, b=7, normalised=True)
-    assert_array_almost_equal( p[0], q[0])
-    assert_array_almost_equal( p[1], q[1])
-    assert_array_almost_equal( p[2], q[2])
-    assert_array_almost_equal( p[3], q[3])
-    assert_array_almost_equal( p[4], q[4])
+    assert_array_almost_equal(p[0], q[0])
+    assert_array_almost_equal(p[1], q[1])
+    assert_array_almost_equal(p[2], q[2])
+    assert_array_almost_equal(p[3], q[3])
+    assert_array_almost_equal(p[4], q[4])
 
-@skip_if(not _DO_CONSISTENCY_TEST)
 @slow
 def test_jacobi_consistency():
     import scipy.stats as stats
-    dist = stats.beta(2, 3, loc=-1, scale=2)
-    p = JacobiPolynomials(alpha=2, beta=1, a=-1, b=1, normalised=False)
+    dist = stats.beta(2, 3, loc= -1, scale=2)
+    p = JacobiPolynomials(alpha=2, beta=1, a= -1, b=1, normalised=False)
     assert_false(p.normalised)
     _check_poly_consistency(p, dist)
 
-    dist = stats.beta(2, 1.5, loc=-2, scale=5)
-    p = JacobiPolynomials(alpha=0.5, beta=1, a=-2, b=3)
+    dist = stats.beta(2, 1.5, loc= -2, scale=5)
+    p = JacobiPolynomials(alpha=0.5, beta=1, a= -2, b=3)
     assert_true(p.normalised)
     _check_poly_consistency(p, dist)
+
+
+def test_beta():
+    def do_test(p, n):
+        beta = p.get_beta(n)
+        assert_array_almost_equal(p.x * p[n], beta[1] * p[n + 1] - beta[0] * p[n] + beta[-1] * p[n - 1])
+    p = JacobiPolynomials(alpha=0.5, beta=1, a= -2, b=3)
+    do_test(p, 4)
+    do_test(p, 0)
+    p = LegendrePolynomials(normalised=True)
+    do_test(p, 3)
+    do_test(p, 0)
+    p = LegendrePolynomials(a=2, b=4, normalised=False)
+    do_test(p, 3)
+    do_test(p, 0)
+    p = StochasticHermitePolynomials(normalised=False)
+    do_test(p, 5)
+    do_test(p, 0)
 
 
 test_main()

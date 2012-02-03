@@ -22,28 +22,34 @@ class PolynomialFamily(object):
         """Return specific structure coefficient"""
         return NotImplemented
 
-    def eval(self, n,  x):
+    def eval(self, n, x):
         """Evaluate polynomial of degree ``n`` at points ``x``"""
         return _p.compute_poly(self.recurrence_coefficients, n, x)[-1]
 
     def __getitem__(self, n):
         x = np.poly1d([1, 0])
-        return self.eval(n,  x)
+        return self.eval(n, x)
 
     def get_coefficients(self, n):
         """Return coefficients of the polynomial with degree ``n`` of
         the family."""
         x = np.poly1d([1, 0])
-        l = self.eval(n,  x)
+        l = self.eval(n, x)
         return l.coeffs[::-1]
+
+    def get_beta(self, n):
+        """Return the coefficients beta needed to multiply a polynomial by x such that
+        p.x * p[n] == beta[1] * p[n + 1] - beta[0] * p[n] + beta[-1] * p[n - 1]"""
+        (a, b, c) = self.recurrence_coefficients(n)
+        return (a / b, 1 / b, c / b)
 
     def get_structure_coefficients(self, n):
         """Return structure coefficients of indices up to ``n``"""
-        
+
         structcoeffs = getattr(self, "_structcoeffs", np.empty((0, 0, 0)))
 
         if n > structcoeffs.shape[0]:
-            structcoeffs = np.array( 
+            structcoeffs = np.array(
                 [[[self.get_structure_coefficient(a, b, c)
                    for a in xrange(n)]
                   for b in xrange(n)]
@@ -66,11 +72,11 @@ class BasePolynomialFamily(PolynomialFamily):
     """ """
 
     def __init__(self, rc_func, sqnorm_func=None, sc_func=None, normalised=False, cache_size=1000):
-        if cache_size>0:
+        if cache_size > 0:
             cache = _dec.simple_int_cache(cache_size)
         else:
-            cache = lambda func: func 
-            
+            cache = lambda func: func
+
         self._rc_func = cache(rc_func)
 
         if sqnorm_func is None:
@@ -114,7 +120,7 @@ class BasePolynomialFamily(PolynomialFamily):
 
 class LegendrePolynomials(BasePolynomialFamily):
 
-    def __init__(self, a=-1.0, b=1.0, normalised=True):
+    def __init__(self, a= -1.0, b=1.0, normalised=True):
         rc_func = _p.rc_legendre
         sqnorm_func = _p.sqnorm_legendre
         if a != -1.0 or b != 1.0:
@@ -142,8 +148,8 @@ class StochasticHermitePolynomials(BasePolynomialFamily):
 
 class JacobiPolynomials(BasePolynomialFamily):
 
-    def __init__(self, alpha, beta, a=-1.0, b=1.0, normalised=True):
-        if alpha<=-1 or beta<=-1:
+    def __init__(self, alpha, beta, a= -1.0, b=1.0, normalised=True):
+        if alpha <= -1 or beta <= -1:
             raise TypeError("alpha and beta must be larger than -1")
         rc_func = lambda n: _p.rc_jacobi(n, alpha, beta)
         sqnorm_func = None
@@ -157,7 +163,7 @@ class JacobiPolynomials(BasePolynomialFamily):
 
 class ChebyshevT(BasePolynomialFamily):
 
-    def __init__(self, a=-1.0, b=1.0, normalised=True):
+    def __init__(self, a= -1.0, b=1.0, normalised=True):
         rc_func = _p.rc_chebyshev_t
         sqnorm_func = None
         if a != -1.0 or b != 1.0:
@@ -170,7 +176,7 @@ class ChebyshevT(BasePolynomialFamily):
 
 class ChebyshevU(BasePolynomialFamily):
 
-    def __init__(self, a=-1.0, b=1.0, normalised=True):
+    def __init__(self, a= -1.0, b=1.0, normalised=True):
         rc_func = _p.rc_chebyshev_u
         sqnorm_func = None
         if a != -1.0 or b != 1.0:
