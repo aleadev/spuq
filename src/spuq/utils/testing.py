@@ -1,10 +1,11 @@
 import sys
+import os.path as op
 
 from numpy.testing import *
-
+from numpy.testing.nosetester import import_nose
 
 class TestCase(TestCase):
-    
+
     def myAssertIsInstance(self, obj, cls, msg=None):
         """Same as self.assertTrue(isinstance(obj, cls)), with a nicer
         default message."""
@@ -12,8 +13,8 @@ class TestCase(TestCase):
             #standardMsg = '%r is not an instance of %r' % (obj, cls)
             #self.fail(self._formatMessage(msg, standardMsg))
             # TODO: remove this ugly hack
-            assert_true(type(obj)==cls)
-            
+            assert_true(type(obj) == cls)
+
     def failUnlessRaises(self, excClass, callableObj, *args, **kwargs):
         """Fail unless an exception of class excClass is thrown
            by callableObj when invoked with arguments args and keyword
@@ -27,7 +28,7 @@ class TestCase(TestCase):
         except excClass, e:
             return e
         else:
-            if hasattr(excClass,'__name__'): excName = excClass.__name__
+            if hasattr(excClass, '__name__'): excName = excClass.__name__
             else: excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
@@ -71,17 +72,47 @@ if sys.hexversion >= 0x02070000:
     assert_not_regexp_matches = _tc.assertNotRegexpMatches
     assert_items_equal = _tc.assertItemsEqual
 
+def get_base_module(fullfile):
+    # get module name from filename
+    (path, filename) = op.split(op.abspath(fullfile))
+    if not (filename.startswith("test_") and
+            filename.endswith(".py")):
+        return None
+    modname = filename[5:-3]
+
+    (path, dirname) = op.split(path)
+    if dirname != "tests":
+        return None
+
+    packlist = []
+    while True:
+        (path, dirname) = op.split(path)
+        if dirname == "src":
+            break
+        if not dirname:
+            return None
+        packlist.insert(0, dirname)
+    return ".".join(packlist) + "." + modname
+
 @dec.setastest(False)
-def test_main():
+def test_main(with_coverage=True):
     """``main`` function for test modules"""
     frame = sys._getframe(1)
     mod_name = frame.f_locals.get('__name__', None)
     if mod_name == "__main__":
         file_to_run = frame.f_locals.get('__file__', None)
         if file_to_run is not None:
-            run_module_suite(file_to_run)
+            argv = ['', file_to_run, '-vv']
+            if with_coverage:
+                module = get_base_module(file_to_run)
+                if module is not None:
+                    argv = argv + ['--with-coverage', '--cover-package', module]
+                    # unload module so it can be instrumented by coverage 
+                    sys.modules.pop(module, None)
+            import_nose().run(argv=argv)
+            #run_module_suite(file_to_run)
         else:
             print "Could not determine the file name of the current file. Probably this function has been called by execfile."
-            
+
 skip_if = dec.skipif
 slow = dec.slow
