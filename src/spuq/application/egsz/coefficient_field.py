@@ -11,43 +11,44 @@ class CoefficientField(object):
     def __init__(self, funcs, rvs):
         """initialise with list of functions and list of random variables
         
-            The first function is the mean field for which no random variable is required, i.e. len(funcs)=len(rvs)+1.
-            Alternatively, just one random variable can be provided for all expansion coefficients.
-            Usually, the functions should be wrapped FEniCS Expressions or Functions, i.e. FEniCSExpression or FEniCSFunction.
+        The first function is the mean field for which no random
+        variable is required, i.e. len(funcs)=len(rvs)+1.
+
+        Alternatively, just one random variable can be provided for
+        all expansion coefficients.
+
+        Usually, the functions should be wrapped FEniCS Expressions or
+        Functions, i.e. FEniCSExpression or FEniCSFunction.
         """
-        assert len(rvs) == 1 or len(funcs)-1 == len(rvs)
-        self._funcs = funcs
+        assert len(funcs)-1 == len(rvs), (
+            "Need one more function than random variable (for the deterministic case)")
+        self._funcs = list(funcs)
+        # first function is deterministic mean field
+        self._funcs.insert(0, None)
         self._rvs = rvs
-        self._length = len(funcs)
+
+    @classmethod
+    def createWithIidRVs(cls, func, rv):
+        rvs = [rv] * (len(func)-1)
+        return cls(func, rv)
         
     def coefficients(self):
         """return expansion iterator for (Function,RV) pairs"""
         def coeff_iter(self):
             """expansion iterator"""
             assert bool(self._funcs) and bool(self._rvs)
-            yield self._funcs[0], None                  # first function is deterministic mean field
-            for i in xrange(len(self._funcs)-1):
-                if len(self._rvs) == 1:
-                    yield self._funcs[i+1], self._rvs
-                else:
-                    yield self._funcs[i+1], self._rvs[i]
+            for i in xrange(len(self._funcs)):
+                yield self._funcs[i], self._rvs[i]
                 
         return coeff_iter
 
     def __getitem__(self, i):
         assert i < len(self._funcs), "invalid index"
-        if i == 0:
-            return self._funcs[0], None
-        else:
-            if len(self._rvs) == 1:
-                return self._funcs[i], self._rvs[0]
-            else:
-                return self._funcs[i], self._rvs[i-1]
+        return self._funcs[i], self._rvs[i]
 
     def __repr__(self):
-        return "CoefficientField(funcs={0},rvs={1})".format(self._funcs,self._rvs)
+        return "CoefficientField(funcs={0},rvs={1})".format(self._funcs[1:],self._rvs)
 
-    @property
-    def length(self):
-        """length of coefficient field expansion"""
-        return self._length
+    def __len__(self):
+        """Length of coefficient field expansion"""
+        return len(self._funcs)

@@ -20,15 +20,15 @@ mo = MultiOperator( CF, FEM.assemble_operator )
 
 # ....
 ptype = FEniCSBasis.PROJECTION.INTERPOLATION
-if wN_projection_cache:
-    assert wN==None or wN==wN_projection_cache.wN
-    wN = wN_projection_cache.wN
-    wN_cache = wN_projection_cache
+if w_projection_cache:
+    assert w==None or w==w_projection_cache.w
+    w = w_projection_cache.w
+    w_cache = w_projection_cache
 else:
-    wN_cache = ProjectionCache(wN, ptype=ptype)
+    w_cache = ProjectionCache(w, ptype=ptype)
         
-mo.set_project( lambda mu1: wN_cache[mu1, mu, False])
-mo.apply(self, wN)
+mo.set_project( lambda mu1: w_cache[mu1, mu, False])
+mo.apply(self, w)
 
 """
 
@@ -50,22 +50,25 @@ class MultiOperator(Operator):
         self._assemble = assemble
         self._CF = CF
 
+        # fem = FEMPoisson()
+        # assemble = lambda a, basis: fem.assemble_operator({'a':a}, basis)
+
     @takes(any, MultiVectorWithProjection)
-    def apply(self, wN):
+    def apply(self, w):
         """Apply operator to vector which has to live in the same
         domain"""
 
-        v = 0 * wN
-        Delta = wN.active_indices()
+        v = 0 * w
+        Delta = w.active_indices()
         for mu in Delta:
             # deterministic part
             a0_f, _ = self._CF[0]
-            A0 = self._assemble({'a':a0_f}, wN[mu].basis)
-            v[mu] = A0 * wN[mu]
+            A0 = self._assemble(a0_f, w[mu].basis)
+            v[mu] = A0 * w[mu]
             for m in range(1, len(mu)):
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
-                Am = self._assemble({'a':am_f}, wN[mu].basis)
+                Am = self._assemble(am_f, w[mu].basis)
 
                 # prepare polynom coefficients
                 p = am_rv.orth_polys
@@ -73,20 +76,20 @@ class MultiOperator(Operator):
                 beta = (a / b, 1 / b, c / b)
 
                 # mu
-                cur_wN = -beta[0] * wN[mu]
+                cur_w = -beta[0] * w[mu]
 
                 # mu+1
                 mu1 = mu.add(m, 1)
                 if mu1 in Delta:
-                    cur_wN += beta[1] * wN.get_projection(mu1, mu)
+                    cur_w += beta[1] * w.get_projection(mu1, mu)
 
                 # mu-1
                 mu2 = mu.add(m, -1)
                 if mu2 in Delta:
-                    cur_wN += beta[-1] * wN.get_projection(mu2, mu)
+                    cur_w += beta[-1] * w.get_projection(mu2, mu)
 
                 # apply discrete operator
-                v[mu] = Am * cur_wN
+                v[mu] = Am * cur_w
         return v
 
     def domain(self):

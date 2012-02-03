@@ -1,23 +1,25 @@
+import numpy as np
+
 from spuq.utils.testing import *
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.stochastics.random_variable import NormalRV
 from spuq.application.egsz.multi_vector import MultiVector
+from spuq.application.egsz.multi_operator import MultiOperator
+from spuq.application.egsz.coefficient_field import CoefficientField
 
 try:
     from dolfin import UnitSquare, FunctionSpace, Function, Expression
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_function import FEniCSExpression
     from spuq.application.egsz.sample_problems import SampleProblem
-    from spuq.application.egsz.multi_operator import MultiOperator
     from spuq.application.egsz.fem_discretisation import FEMPoisson
-    from spuq.application.egsz.coefficient_field import CoefficientField
     HAVE_FENICS=True
 except:
     HAVE_FENICS=False
 
 
 @skip_if(not HAVE_FENICS, "Fenics not installed.")
-def test_multioperator():
+def test_multioperator_fenics():
     # instantiate discretisation
     FEM = FEMPoisson()
 
@@ -58,5 +60,23 @@ def test_multioperator():
     CF3 = SampleProblem.createCF("monomial", 10)
     MO3 = MultiOperator(FEM, CF3, 3)
     uN3 = MO3.apply(wN3)
+
+
+
+from spuq.linalg.function import ConstFunction, SimpleFunction
+from spuq.stochastics.random_variable import NormalRV, UniformRV
+
+def test_multioperator():
+    a = [ConstFunction(1), SimpleFunction(np.sin), SimpleFunction(np.cos)]
+    a = [ConstFunction(1), SimpleFunction(np.sin)]
+    rvs = [UniformRV(), NormalRV()]
+    coeff_field = CoefficientField(a, rvs)
+    assemble = lambda a: DiagonalOperator(a)
+    A = MultiOperator(coeff_field, assemble)
+
+    #A*mv
+
+    
+
 
 test_main()
