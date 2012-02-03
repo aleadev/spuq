@@ -136,7 +136,7 @@
 #
 ################################################################################
 
-__all__ = [ "takes", "InputParameterError", "returns", "ReturnValueError", 
+__all__ = [ "takes", "InputParameterError", "returns", "ReturnValueError",
             "optional", "nothing", "anything", "list_of", "tuple_of", "dict_of",
             "by_regex", "with_attr", "one_of", "set_of" ]
 
@@ -147,13 +147,14 @@ no_check = False # set this to True to turn all checks off
 from inspect import getargspec, isclass #, isbuiltin, isfunction
 from types import NoneType
 from re import compile as regex
+import collections
 
 ################################################################################
 
 def base_names(C):
     "Returns list of base class names for a given class"
     return [ x.__name__ for x in C.__mro__ ]
-    
+
 ################################################################################
 
 def type_name(v):
@@ -198,7 +199,7 @@ class StrChecker(Checker):
     def check(self, value):
         value_base_names = base_names(type(value))
         return self.reference in value_base_names or "instance" in value_base_names
-   
+
 Checker._registered.append((lambda x: isinstance(x, str), StrChecker))
 
 ################################################################################
@@ -213,10 +214,10 @@ class TupleChecker(Checker):
 
 Checker._registered.append((lambda x: isinstance(x, tuple) and not
                                       filter(lambda y: Checker.create(y) is None,
-                                             x), 
+                                             x),
                             TupleChecker))
 
-optional = lambda *args: args + (NoneType, )
+optional = lambda * args: args + (NoneType,)
 
 ################################################################################
 
@@ -230,7 +231,7 @@ class CallableChecker(Checker):
 
 Checker._registered.append((callable, CallableChecker))
 
-anything = lambda *args: True
+anything = lambda * args: True
 
 ################################################################################
 
@@ -243,7 +244,7 @@ class ListOfChecker(Checker):
         return isinstance(value, list) and \
                not filter(lambda e: not self.reference.check(e), value)
 
-list_of = lambda *args: ListOfChecker(*args).check
+list_of = lambda * args: ListOfChecker(*args).check
 
 ################################################################################
 
@@ -256,7 +257,7 @@ class TupleOfChecker(Checker):
         return isinstance(value, tuple) and \
                not filter(lambda e: not self.reference.check(e), value)
 
-tuple_of = lambda *args: TupleOfChecker(*args).check
+tuple_of = lambda * args: TupleOfChecker(*args).check
 
 ################################################################################
 
@@ -269,7 +270,21 @@ class SetOfChecker(Checker):
         return isinstance(value, set) and \
                not filter(lambda e: not self.reference.check(e), value)
 
-set_of = lambda *args: SetOfChecker(*args).check
+set_of = lambda * args: SetOfChecker(*args).check
+
+################################################################################
+
+class SequenceOfChecker(Checker):
+
+    def __init__(self, reference):
+        self.reference = Checker.create(reference)
+
+    def check(self, value):
+        return isinstance(value, collections.Sequence) and \
+               not filter(lambda e: not self.reference.check(e), value)
+
+sequence_of = lambda * args: SequenceOfChecker(*args).check
+
 
 ################################################################################
 
@@ -284,7 +299,7 @@ class DictOfChecker(Checker):
                not filter(lambda e: not self.key_reference.check(e), value.iterkeys()) and \
                not filter(lambda e: not self.value_reference.check(e), value.itervalues())
 
-dict_of = lambda *args: DictOfChecker(*args).check
+dict_of = lambda * args: DictOfChecker(*args).check
 
 ################################################################################
 
@@ -296,7 +311,7 @@ class RegexChecker(Checker):
     def check(self, value):
         return isinstance(value, basestring) and self.reference.match(value)
 
-by_regex = lambda *args: RegexChecker(*args).check
+by_regex = lambda * args: RegexChecker(*args).check
 
 ################################################################################
 
@@ -308,7 +323,7 @@ class AttrChecker(Checker):
     def check(self, value):
         return reduce(lambda r, c: r and c, map(lambda a: hasattr(value, a), self.attrs), True)
 
-with_attr = lambda *args: AttrChecker(*args).check
+with_attr = lambda * args: AttrChecker(*args).check
 
 ################################################################################
 
@@ -320,7 +335,7 @@ class OneOfChecker(Checker):
     def check(self, value):
         return value in self.values
 
-one_of = lambda *args: OneOfChecker(*args).check
+one_of = lambda * args: OneOfChecker(*args).check
 
 ################################################################################
 
@@ -348,16 +363,16 @@ def takes(*args, **kwargs):
     if no_check: # no type checking is performed, return decorated method itself
 
         def takes_proxy(method):
-            return method        
+            return method
 
     else:
 
         def takes_proxy(method):
-            
+
             method_args, method_defaults = getargspec(method)[0::3]
 
             def takes_invocation_proxy(*args, **kwargs):
-    
+
                 # append the default parameters
 
                 if False and method_defaults is not None and len(method_defaults) > 0 \
@@ -370,21 +385,21 @@ def takes(*args, **kwargs):
                     if not checker.check(arg):
                         raise InputParameterError("%s() got invalid parameter "
                                                   "%d of type %s" %
-                                                  (method.__name__, i + 1, 
+                                                  (method.__name__, i + 1,
                                                    type_name(arg)))
 
                 for kwname, checker in kwcheckers.iteritems():
                     if not checker.check(kwargs.get(kwname, None)):
                         raise InputParameterError("%s() got invalid parameter "
                                                   "%s of type %s" %
-                                                  (method.__name__, kwname, 
+                                                  (method.__name__, kwname,
                                                    type_name(kwargs.get(kwname, None))))
 
                 return method(*args, **kwargs)
 
             takes_invocation_proxy.__name__ = method.__name__
             return takes_invocation_proxy
-    
+
     return takes_proxy
 
 class InputParameterError(TypeError): pass
@@ -409,21 +424,21 @@ def returns(sometype):
     else:
 
         def returns_proxy(method):
-            
+
             def returns_invocation_proxy(*args, **kwargs):
-                
+
                 result = method(*args, **kwargs)
-                
+
                 if not checker.check(result):
                     raise ReturnValueError("%s() has returned an invalid "
-                                           "value of type %s" % 
+                                           "value of type %s" %
                                            (method.__name__, type_name(result)))
 
                 return result
-    
+
             returns_invocation_proxy.__name__ = method.__name__
             return returns_invocation_proxy
-        
+
     return returns_proxy
 
 class ReturnValueError(TypeError): pass
