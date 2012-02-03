@@ -102,7 +102,7 @@ def test_main(with_coverage=True):
     if mod_name == "__main__":
         file_to_run = frame.f_locals.get('__file__', None)
         if file_to_run is not None:
-            argv = ['', file_to_run, '-vv']
+            argv = ['', file_to_run, '-vv', '-s']
             if with_coverage:
                 module = get_base_module(file_to_run)
                 if module is not None:

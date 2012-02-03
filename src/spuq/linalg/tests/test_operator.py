@@ -81,19 +81,19 @@ def test_compose_value():
     assert_equal(B * (A * x), y)
     assert_equal((B * A) * x, y)
 
-    assert_equal((B*A).as_matrix(), B.as_matrix()*A.as_matrix())
+    assert_equal((B * A).as_matrix(), B.as_matrix() * A.as_matrix())
 
 def test_compose_transpose():
     A = MatrixOperator(1 + rand(3, 5))
     B = MatrixOperator(1 + rand(7, 3))
     C = B * A
 
-    AT=A.transpose()
-    BT=B.transpose()
-    CT=C.transpose()
+    AT = A.transpose()
+    BT = B.transpose()
+    CT = C.transpose()
 
-    y = FlatVector(rand(CT.domain.dim,1 ))
-    assert_equal(CT*y, AT*(BT*y))
+    y = FlatVector(rand(CT.domain.dim, 1))
+    assert_equal(CT * y, AT * (BT * y))
 
 
 def test_add_sub_operators():
@@ -101,11 +101,21 @@ def test_add_sub_operators():
     B = MatrixOperator(1 + rand(3, 5))
     x = FlatVector(rand(5, 1))
 
-    assert_equal((A+B)*x, A*x+B*x)
-    assert_equal((A-B)*x, A*x-B*x)
-    assert_equal((2.5*A)*x, 2.5*(A*x))
-    assert_equal((25*A)*x, 25*(A*x))
-    assert_equal((A*25)*x, 25*(A*x))
+    assert_equal((A + B) * x, A * x + B * x)
+    assert_equal((A - B) * x, A * x - B * x)
+    assert_equal((2.5 * A) * x, 2.5 * (A * x))
+    assert_equal((25 * A) * x, 25 * (A * x))
+    assert_equal((A * 25) * x, 25 * (A * x))
+
+
+def test_diag_operator_apply():
+    diag = np.array([1, 2, 3])
+    x = FlatVector([3, 4, 5])
+    y = FlatVector([3, 8, 15])
+    A = DiagonalMatrixOperator(diag)
+    assert_equal(A * x, y)
+
+
 
 
 test_main()

@@ -71,9 +71,7 @@ class MultiOperator(Operator):
                 Am = self._assemble(am_f, w[mu].basis)
 
                 # prepare polynom coefficients
-                p = am_rv.orth_polys
-                (a, b, c) = p.recurrence_coefficients(mu[m])
-                beta = (a / b, 1 / b, c / b)
+                beta = am_rv.orth_polys.get_beta(mu[m])
 
                 # mu
                 cur_w = -beta[0] * w[mu]

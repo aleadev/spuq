@@ -16,11 +16,10 @@ class GenericFunction(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, domain_dim=1, codomain_dim=1, factor=1, domain=(-infty, infty)):
+    def __init__(self, domain_dim=1, codomain_dim=1, factor=1):
         self.domain_dim = domain_dim
         self.codomain_dim = codomain_dim
         self.factor = factor
-        self._domain = [domain for _ in range(self.domain_dim)]
 
     def __call__(self, *x):
         if len(x) == 1 and isinstance(x[0], GenericFunction):
@@ -33,7 +32,7 @@ class GenericFunction(object):
             return self.eval(*x)
 
     @abstractmethod
-    def eval(self, *x):
+    def eval(self, *x):  # pragma: no coverage
         """function evaluation
            return evaluated function at x or function string if x in not set"""
         return NotImplemented
@@ -45,13 +44,9 @@ class GenericFunction(object):
             self._diff = self.diff()
         return self._diff
 
-    def diff(self):
+    def diff(self):  # pragma: no coverage
         """return derivative GenericFunction"""
         return NotImplemented
-
-    @property
-    def domain(self):
-        return self._domain
 
     def __add__(self, g):
         return _BinaryFunction(self, g, "add")
@@ -183,7 +178,7 @@ class _BinaryFunction(GenericFunction):
             else:
                 self.diff = self._Dfpow
         else:
-            assert False
+            assert False # pragma: no coverage
 
 
 def _compose(f, g):
@@ -193,8 +188,10 @@ def _compose(f, g):
             GenericFunction.__init__(self, g.domain_dim, f.codomain_dim)
             self.f = f
             self.g = g
+
         def eval(self, *x):
             return self.f(self.g(x))
+
         def diff(self):
             return self.f.D(self.g) * self.g.D
 
@@ -208,10 +205,12 @@ def _tensorise(f, g):
                                      f.codomain_dim)
             self.f = f
             self.g = g
+
         def eval(self, *x):
             x1 = x[:self.f.domain_dim]
             x2 = x[self.f.domain_dim:]
             return self.f(*x1) * self.g(*x2)
+
         def diff(self):
             return TensorisedFunction(self.f.diff(), self.g.diff())
 

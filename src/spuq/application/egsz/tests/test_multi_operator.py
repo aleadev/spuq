@@ -6,77 +6,45 @@ from spuq.stochastics.random_variable import NormalRV
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.coefficient_field import CoefficientField
-
-try:
-    from dolfin import UnitSquare, FunctionSpace, Function, Expression
-    from spuq.fem.fenics.fenics_vector import FEniCSVector
-    from spuq.fem.fenics.fenics_function import FEniCSExpression
-    from spuq.application.egsz.sample_problems import SampleProblem
-    from spuq.application.egsz.fem_discretisation import FEMPoisson
-    HAVE_FENICS=True
-except:
-    HAVE_FENICS=False
-
-
-@skip_if(not HAVE_FENICS, "Fenics not installed.")
-def test_multioperator_fenics():
-    # instantiate discretisation
-    FEM = FEMPoisson()
-
-    # set initial solution and set of active indices Lambda
-    # MultiindexSet
-    m = 2
-    p = 3
-    mi = MultiindexSet.createCompleteOrderSet(m, p)
-    # init MultiVector
-    mesh = UnitSquare(5,5)
-    degree = 1
-    V = FunctionSpace(mesh, "CG", degree)
-    f = Function(V)
-    initvector = FEniCSVector(function=f)
-    wN1 = MultiVector(mi, initvector)
-    # init test coefficient field
-    F = list()
-    for i, j in enumerate(mi.arr.tolist()):
-        ex1 = Expression('x[0]*x[0]+A*sin(10.*x[1])', A=i)
-        Dex1 = Expression(('2.*x[0]', 'A*10.*cos(10.*x[1])'), A=i)
-        F.append(FEniCSExpression(fexpression=ex1, Dfexpression=Dex1))
-    CF1 = CoefficientField(F, (NormalRV(),))
-    MO1 = MultiOperator(FEM, CF1, 3)
-    uN1 = MO1.apply(wN1)
-
-    # create test case with identical 5x5 meshes (order 1 spaces)
-    M2 = SampleProblem.createMeshes("square",("uniform",(5,5)),mi.count)
-    V2 = FEniCSVector.create(M2, "CG", degree)
-    wN2 = MultiVector(mi, V2)
-    CF2 = SampleProblem.createCF("EF", 10)
-    MO2 = MultiOperator(FEM, CF2, 3)
-    uN2 = MO2.apply(wN2)
-
-    # create test case with random meshes (order 1 spaces)
-    M3 = SampleProblem.createMeshes("square",("random",(5,10),(5,10)),mi.count)
-    V3 = FEniCSVector.create(M3, "CG", degree)
-    wN3 = MultiVector(mi, V3)
-    CF3 = SampleProblem.createCF("monomial", 10)
-    MO3 = MultiOperator(FEM, CF3, 3)
-    uN3 = MO3.apply(wN3)
-
-
-
+from spuq.linalg.vector import FlatVector
+from spuq.linalg.operator import DiagonalMatrixOperator
 from spuq.linalg.function import ConstFunction, SimpleFunction
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 
-def test_multioperator():
-    a = [ConstFunction(1), SimpleFunction(np.sin), SimpleFunction(np.cos)]
-    a = [ConstFunction(1), SimpleFunction(np.sin)]
+N = 4
+
+def diag_assemble(func):
+    import sys
+    x = np.linspace(0, 1, N)
+    diag = np.array([np.abs(func(y)) for y in x])
+    return DiagonalMatrixOperator(diag)
+
+def test_init():
+    a = [ConstFunction(1.0), SimpleFunction(np.sin), SimpleFunction(np.cos)]
     rvs = [UniformRV(), NormalRV()]
     coeff_field = CoefficientField(a, rvs)
-    assemble = lambda a: DiagonalOperator(a)
-    A = MultiOperator(coeff_field, assemble)
+
+    A = MultiOperator(coeff_field, diag_assemble)
+    assert_raises(TypeError, 3, diag_assemble)
+    assert_raises(TypeError, coeff_field, 7)
+
+def test_apply():
+    a = [ConstFunction(1.0), SimpleFunction(np.sin), SimpleFunction(np.cos)]
+    rvs = [UniformRV(), NormalRV()]
+    coeff_field = CoefficientField(a, rvs)
+
+    A = MultiOperator(coeff_field, diag_assemble)
+    vec1 = FlatVector(np.random.rand(N, 1))
+    vec2 = FlatVector(np.random.rand(N, 1))
+
+    print vec1
+    print diag_assemble(a[2]) * vec1
+    print vec2
+    print diag_assemble(a[1]) * vec2
 
     #A*mv
 
-    
+
 
 
 test_main()

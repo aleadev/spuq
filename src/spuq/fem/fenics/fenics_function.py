@@ -3,10 +3,11 @@
 from dolfin import FunctionSpace, VectorFunctionSpace, Function, Expression, Constant, interpolate, project, grad
 from spuq.utils.type_check import *
 from spuq.linalg.function import GenericFunction
+from spuq.fem.fenics.fenics_basis import FEniCSBasis
 
 class FEniCSExpression(GenericFunction):
     """Wrapper for FEniCS Expressions"""
-    
+
     def __init__(self, fstr=None, fexpression=None, Dfstr=None, Dfexpression=None, domain_dim=2, codomain_dim=1, constant=False):
         GenericFunction.__init__(self, domain_dim, codomain_dim)
         if fstr:
@@ -29,10 +30,10 @@ class FEniCSExpression(GenericFunction):
             self.Dfex = Dfexpression
         else:
             self.Dfex = None
-            
+
     def eval(self, *x):
         return self.fex(*x)
-        
+
     def diff(self):
         assert self.Dfex
         return FEniCSExpression(fexpression=self.Dfex)
@@ -42,9 +43,9 @@ class FEniCSFunction(GenericFunction):
     """Wrapper for discrete FEniCS function (i.e. a Function instance) and optionally its gradient function.
 
         Initialised with either fenics Expressions or Functions."""
-    
+
 #    @takes(any, function=Function, Dfunction=optional(Function), fexpression=optional(Expression,FEniCSExpression), Dfexpression=optional(Expression,FEniCSExpression), fstr=optional(str), Dfstr=optional(list_of(str)), domain_dim=int, codomain_dim=int, domain=optional(list_of(int)), numericalDf=optional(bool))
-    def __init__(self, function=None, Dfunction=None, fexpression=None, Dfexpression=None, fstr=None, Dfstr=None,\
+    def __init__(self, function=None, Dfunction=None, fexpression=None, Dfexpression=None, fstr=None, Dfstr=None, \
                     domain_dim=2, codomain_dim=1, domain=None, numericalDf=True):
         """Initialise (discrete) function.
         
@@ -81,7 +82,7 @@ class FEniCSFunction(GenericFunction):
 
         if not domain and self.fFS:
             # determine domain from mesh coordinates
-            domain = [(min([x[d] for x in self.fFS.mesh().coordinates()]),\
+            domain = [(min([x[d] for x in self.fFS.mesh().coordinates()]), \
                        max([x[d] for x in self.fFS.mesh().coordinates()]))\
                       for d in range(self.fFS.mesh().topology().dim())]
 
@@ -89,7 +90,7 @@ class FEniCSFunction(GenericFunction):
 
         if not self.DfFS and self.fFS:
             # construct "natural" gradient space
-            self.DfFS = VectorFunctionSpace(self.fFS.mesh(), self.fFS.ufl_element().family(),\
+            self.DfFS = VectorFunctionSpace(self.fFS.mesh(), self.fFS.ufl_element().family(), \
                                                 self.fFS.ufl_element().degree())
 
         # prepare function expression
