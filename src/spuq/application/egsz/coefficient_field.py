@@ -1,13 +1,14 @@
 """The expansion of a coefficient field."""
 
-from spuq.utils.type_check import *
+from spuq.utils.type_check import takes, anything, sequence_of
 from spuq.linalg.function import GenericFunction
-from spuq.stochastics.random_variable import RandomVariable
+from spuq.stochastics.random_variable import RandomVariable, DeterministicPseudoRV
+from spuq.utils import strclass
 
 class CoefficientField(object):
     """expansion of a coefficient field according to EGSZ (1.2)"""
-    
-#    @takes((list_of(FEniCSFunction),tuple_of(FEniCSFunction),list_of(FEniCSExpression),tuple_of(FEniCSExpression)), (list_of(RandomVariable),tuple_of(RandomVariable)))
+
+    @takes(anything, sequence_of(GenericFunction), sequence_of(RandomVariable))
     def __init__(self, funcs, rvs):
         """initialise with list of functions and list of random variables
         
@@ -20,34 +21,32 @@ class CoefficientField(object):
         Usually, the functions should be wrapped FEniCS Expressions or
         Functions, i.e. FEniCSExpression or FEniCSFunction.
         """
-        assert len(funcs)-1 == len(rvs), (
+        assert len(funcs) == len(rvs) + 1, (
             "Need one more function than random variable (for the deterministic case)")
         self._funcs = list(funcs)
         # first function is deterministic mean field
-        self._funcs.insert(0, None)
-        self._rvs = rvs
+        self._rvs = list(rvs)
+        self._rvs.insert(0, DeterministicPseudoRV)
 
     @classmethod
-    def createWithIidRVs(cls, func, rv):
-        rvs = [rv] * (len(func)-1)
-        return cls(func, rv)
-        
+    @takes(anything, sequence_of(GenericFunction), RandomVariable)
+    def createWithIidRVs(cls, funcs, rv):
+        # random variables are stateless, so we can just use the same n times 
+        rvs = [rv] * (len(funcs) - 1)
+        return cls(funcs, rvs)
+
     def coefficients(self):
         """return expansion iterator for (Function,RV) pairs"""
-        def coeff_iter(self):
-            """expansion iterator"""
-            assert bool(self._funcs) and bool(self._rvs)
-            for i in xrange(len(self._funcs)):
-                yield self._funcs[i], self._rvs[i]
-                
-        return coeff_iter
+        for i in xrange(len(self._funcs)):
+            yield self._funcs[i], self._rvs[i]
 
     def __getitem__(self, i):
         assert i < len(self._funcs), "invalid index"
         return self._funcs[i], self._rvs[i]
 
     def __repr__(self):
-        return "CoefficientField(funcs={0},rvs={1})".format(self._funcs[1:],self._rvs)
+        return "<%s funcs=%s, rvs=%s>" % \
+               (strclass(self.__class__), self._funcs[1:], self._rvs)
 
     def __len__(self):
         """Length of coefficient field expansion"""

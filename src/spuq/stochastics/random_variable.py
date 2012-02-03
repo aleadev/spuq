@@ -153,8 +153,8 @@ class NormalRV(ScipyRandomVariable):
 
     @property
     def orth_polys(self):
-        return polys.StochasticHermitePolynomials(self.mu, 
-                                                  self.sigma, 
+        return polys.StochasticHermitePolynomials(self.mu,
+                                                  self.sigma,
                                                   normalised=True)
 
     def __repr__(self):
@@ -164,7 +164,7 @@ class NormalRV(ScipyRandomVariable):
 
 class UniformRV(ScipyRandomVariable):
 
-    def __init__(self, a=-1, b=1):
+    def __init__(self, a= -1, b=1):
         self.a = float(min(a, b))
         self.b = float(max(a, b))
         loc = a
@@ -190,7 +190,7 @@ class UniformRV(ScipyRandomVariable):
 
 
 class BetaRV(ScipyRandomVariable):
-    
+
     def __init__(self, alpha, beta, a=0, b=1):
         if alpha <= 0 or beta <= 0:
             raise TypeError("alpha and beta must be positive")
@@ -200,7 +200,7 @@ class BetaRV(ScipyRandomVariable):
         self.beta = float(beta)
         loc = self.a
         scale = (self.b - self.a)
-        super(BetaRV, self).__init__(scipy.stats.beta(self.alpha, self.beta, 
+        super(BetaRV, self).__init__(scipy.stats.beta(self.alpha, self.beta,
                                                       loc, scale))
 
     def shift(self, delta):
@@ -215,7 +215,7 @@ class BetaRV(ScipyRandomVariable):
     def orth_polys(self):
         # Note: the meaning of alpha and beta in the standard formulation of the Beta distribution and 
         # of the Jacobi polynomials is shifted by 1 and reversed in the meaning
-        return polys.JacobiPolynomials(alpha=self.beta-1, beta=self.alpha-1, 
+        return polys.JacobiPolynomials(alpha=self.beta - 1, beta=self.alpha - 1,
                                        a=self.a, b=self.b, normalised=True)
 
     def __repr__(self):
@@ -225,7 +225,7 @@ class BetaRV(ScipyRandomVariable):
 
 class SemicircularRV(ScipyRandomVariable):
 
-    def __init__(self, a=-1, b=1):
+    def __init__(self, a= -1, b=1):
         self.a = float(min(a, b))
         self.b = float(max(a, b))
         rv = scipy.stats.semicircular(loc=0.5 * (self.a + self.b), scale=0.5 * (self.b - self.a))
@@ -275,3 +275,5 @@ class ArcsineRV(ScipyRandomVariable):
     def __repr__(self):
         return ("<%s a=%s b=%s>" %
                 (strclass(self.__class__), self.a, self.b))
+
+DeterministicPseudoRV = NormalRV(1, 0)
