@@ -142,7 +142,7 @@ class FlatVector(Vector):
                 self._basis == other._basis and
                 (self._coeffs == other._coeffs).all())
 
-    @takes(anything, "FlatVector")
+    @takes(anything)
     def __neg__(self):
         return self._create_copy(-self._coeffs)
 

@@ -200,6 +200,9 @@ class StrChecker(Checker):
         value_base_names = base_names(type(value))
         return self.reference in value_base_names or "instance" in value_base_names
 
+    def __str__(self):
+        return "%s" % str(self.reference)
+
 Checker._registered.append((lambda x: isinstance(x, str), StrChecker))
 
 ################################################################################
@@ -244,6 +247,9 @@ class ListOfChecker(Checker):
         return isinstance(value, list) and \
                not filter(lambda e: not self.reference.check(e), value)
 
+    def __str__(self):
+        return "list_of(%s)" % str(self.reference)
+
 list_of = lambda * args: ListOfChecker(*args).check
 
 ################################################################################
@@ -256,6 +262,9 @@ class TupleOfChecker(Checker):
     def check(self, value):
         return isinstance(value, tuple) and \
                not filter(lambda e: not self.reference.check(e), value)
+
+    def __str__(self):
+        return "tuple_of(%s)" % str(reference)
 
 tuple_of = lambda * args: TupleOfChecker(*args).check
 
@@ -270,6 +279,9 @@ class SetOfChecker(Checker):
         return isinstance(value, set) and \
                not filter(lambda e: not self.reference.check(e), value)
 
+    def __str__(self):
+        return "set_of(%s)" % str(self.reference)
+
 set_of = lambda * args: SetOfChecker(*args).check
 
 ################################################################################
@@ -282,6 +294,10 @@ class SequenceOfChecker(Checker):
     def check(self, value):
         return isinstance(value, collections.Sequence) and \
                not filter(lambda e: not self.reference.check(e), value)
+
+    def __str__(self):
+        return "sequence_of(%s)" % str(self.reference)
+        
 
 sequence_of = lambda * args: SequenceOfChecker(*args).check
 
@@ -299,6 +315,9 @@ class DictOfChecker(Checker):
                not filter(lambda e: not self.key_reference.check(e), value.iterkeys()) and \
                not filter(lambda e: not self.value_reference.check(e), value.itervalues())
 
+    def __str__(self):
+        return "dict_of(%s:%s)" % (str(self.key_reference), str(self.value_reference))
+
 dict_of = lambda * args: DictOfChecker(*args).check
 
 ################################################################################
@@ -310,6 +329,9 @@ class RegexChecker(Checker):
 
     def check(self, value):
         return isinstance(value, basestring) and self.reference.match(value)
+
+    def __str__(self):
+        return "by_regex(%s)" % str(self.reference)
 
 by_regex = lambda * args: RegexChecker(*args).check
 
@@ -323,6 +345,10 @@ class AttrChecker(Checker):
     def check(self, value):
         return reduce(lambda r, c: r and c, map(lambda a: hasattr(value, a), self.attrs), True)
 
+    def __str__(self):
+        return "with_attr(%s)" % str(self.attrs)
+
+
 with_attr = lambda * args: AttrChecker(*args).check
 
 ################################################################################
@@ -334,6 +360,9 @@ class OneOfChecker(Checker):
 
     def check(self, value):
         return value in self.values
+
+    def __str__(self):
+        return "one_of(%s)" % str(self.values)
 
 one_of = lambda * args: OneOfChecker(*args).check
 
@@ -384,16 +413,18 @@ def takes(*args, **kwargs):
                 for i, (arg, checker) in enumerate(zip(args, checkers)):
                     if not checker.check(arg):
                         raise InputParameterError("%s() got invalid parameter "
-                                                  "%d of type %s" %
+                                                  "%d of type %s "
+                                                  "instead of type %s" %
                                                   (method.__name__, i + 1,
-                                                   type_name(arg)))
+                                                   type_name(arg), str(checker)))
 
                 for kwname, checker in kwcheckers.iteritems():
                     if not checker.check(kwargs.get(kwname, None)):
                         raise InputParameterError("%s() got invalid parameter "
-                                                  "%s of type %s" %
+                                                  "%d of type %s "
+                                                  "instead of type %s" %
                                                   (method.__name__, kwname,
-                                                   type_name(kwargs.get(kwname, None))))
+                                                   type_name(kwargs.get(kwname, None)), str(checker)))
 
                 return method(*args, **kwargs)
 
@@ -431,8 +462,9 @@ def returns(sometype):
 
                 if not checker.check(result):
                     raise ReturnValueError("%s() has returned an invalid "
-                                           "value of type %s" %
-                                           (method.__name__, type_name(result)))
+                                           "value %d of type %s "
+                                           "instead of type %s" %
+                                           (method.__name__, result, type_name(result)), str(checker))
 
                 return result
 
