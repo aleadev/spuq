@@ -301,6 +301,7 @@ class MatrixOperator(BaseOperator):
             raise TypeError( 'size of domain basis does not match '
                              'matrix dimensions')
 
+        assert(arr.ndim==2)
         self._arr = arr
         super(MatrixOperator, self).__init__(domain, codomain)
 
@@ -332,9 +333,10 @@ class DiagonalMatrixOperator(BaseOperator):
     @takes(anything, np.ndarray, Basis)
     def __init__(self, diag, domain=None):
         assert(isinstance(diag, np.ndarray))
+        assert(diag.ndim==1)
         if domain is None:
             domain = CanonicalBasis(diag.shape[0])
-
+        
         self._diag = diag
         BaseOperator.__init__(self, domain, domain)
 

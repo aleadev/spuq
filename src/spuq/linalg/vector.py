@@ -111,6 +111,7 @@ class FlatVector(Vector):
         if basis is None:
             basis = CanonicalBasis(coeffs.shape[0])
         assert(basis.dim == coeffs.shape[0])
+        assert(coeffs.ndim==1)
         self._coeffs = coeffs
         self._basis = basis
 
