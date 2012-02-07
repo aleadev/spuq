@@ -21,6 +21,14 @@ def test_normalised():
     assert_array_equal(alpha.as_array, np.array([0, 1, 3]))
 
 
+def test_getitem():
+    alpha = Multiindex(np.array([2, 1, 3]))
+    assert_equal(alpha[0], 2)
+    assert_equal(alpha[2], 3)
+    assert_equal(alpha[-1], 0)
+    assert_equal(alpha[3], 0)
+
+
 def test_copy():
     # make sure the result is copied
     arr = [0, 1, 3, 0]

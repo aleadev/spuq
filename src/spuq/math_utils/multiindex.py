@@ -55,8 +55,8 @@ class Multiindex(object):
         cmpval = self.cmp_by_order(other)
         return cmpval <= 0
 
-    #def __gt__(self, other):
-    #    return not self<=other
+    def __gt__(self, other):
+        return not self<=other
 
     def __hash__(self):
         if self.__hash is None:
@@ -69,6 +69,12 @@ class Multiindex(object):
     def __repr__(self):
         return "<%s inds=%s>" % \
                (strclass(self.__class__), self._arr)
+
+    def __getitem__(self, i):
+        if 0 <= i < len(self._arr):
+            return self._arr[i]
+        else:
+            return 0
 
     @property
     def order(self):
@@ -93,6 +99,13 @@ class Multiindex(object):
     def dec(self, pos, by=1):
         return self.inc(pos, -by)
 
+    @staticmethod
+    def createCompleteOrderSet(m, p):
+        from multiindex_set import MultiindexSet
+        class MultiindexSetEx(MultiindexSet):
+            def __getitem__(self, i):
+                return Multiindex(MultiindexSet.__getitem__(self, i))
+        return MultiindexSetEx.createCompleteOrderSet(m, p)
 
 
 # class MultiindexSet(object):
