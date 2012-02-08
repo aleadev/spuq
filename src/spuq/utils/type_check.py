@@ -188,6 +188,9 @@ class TypeChecker(Checker):
     def check(self, value):
         return isinstance(value, self.reference)
 
+    def __str__(self):
+        return "%s" % str(self.reference)
+
 Checker._registered.append((isclass, TypeChecker))
 
 nothing = NoneType
@@ -225,6 +228,12 @@ optional = lambda * args: args + (NoneType,)
 ################################################################################
 
 class CallableChecker(Checker):
+
+    def __init__(self, reference):
+        # be lenient with the typical bug to write 'any' instead of 'anything'
+        if reference==any:
+            reference=anything
+        Checker.__init__(self, reference)
 
     def check(self, value):
         return self.reference(value)

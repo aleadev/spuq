@@ -15,20 +15,9 @@ where the coefficients :math:`(\alpha^m_{n-1},\alpha^m_n,\alpha^m_{n+1})` are ob
 
 # init
 FEM = FEMPoisson()
-mo = MultiOperator( CF, FEM.assemble_operator )
-
-
-# ....
-ptype = FEniCSBasis.PROJECTION.INTERPOLATION
-if w_projection_cache:
-    assert w==None or w==w_projection_cache.w
-    w = w_projection_cache.w
-    w_cache = w_projection_cache
-else:
-    w_cache = ProjectionCache(w, ptype=ptype)
-        
-mo.set_project( lambda mu1: w_cache[mu1, mu, False])
-mo.apply(self, w)
+assemble = lambda a, basis: FEM.assemble_operator({'a':a}, basis)
+CF = ...
+mo = MultiOperator( CF, assemble )
 
 """
 
@@ -49,9 +38,6 @@ class MultiOperator(Operator):
         coefficient field of the diffusion coefficient"""
         self._assemble = assemble
         self._CF = CF
-
-        # fem = FEMPoisson()
-        # assemble = lambda a, basis: fem.assemble_operator({'a':a}, basis)
 
     @takes(any, MultiVectorWithProjection)
     def apply(self, w):
@@ -77,17 +63,17 @@ class MultiOperator(Operator):
                 cur_w = -beta[0] * w[mu]
 
                 # mu+1
-                mu1 = mu.add(m, 1)
+                mu1 = mu.inc(m - 1, 1)
                 if mu1 in Delta:
                     cur_w += beta[1] * w.get_projection(mu1, mu)
 
                 # mu-1
-                mu2 = mu.add(m, -1)
+                mu2 = mu.inc(m - 1, -1)
                 if mu2 in Delta:
                     cur_w += beta[-1] * w.get_projection(mu2, mu)
 
                 # apply discrete operator
-                v[mu] = Am * cur_w
+                v[mu] += Am * cur_w
         return v
 
     def domain(self):
