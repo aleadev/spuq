@@ -14,12 +14,10 @@ class CoefficientField(object):
         
         The first function is the mean field for which no random
         variable is required, i.e. len(funcs)=len(rvs)+1.
+        DeterministicPseudoRV is associated with the mean field implicitly.
 
         Alternatively, just one random variable can be provided for
-        all expansion coefficients.
-
-        Usually, the functions should be wrapped FEniCS Expressions or
-        Functions, i.e. FEniCSExpression or FEniCSFunction.
+        all expansion coefficients with method createWithIidRVs.
         """
         assert len(funcs) == len(rvs) + 1, (
             "Need one more function than random variable (for the deterministic case)")

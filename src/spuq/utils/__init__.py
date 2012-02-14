@@ -1,5 +1,5 @@
-def strclass(cls, with_mod=False):
-    if with_mod:
+def strclass(cls, with_module=False):
+    if with_module:
         return "%s.%s" % (cls.__module__, cls.__name__)
     else:
         return "%s" % cls.__name__

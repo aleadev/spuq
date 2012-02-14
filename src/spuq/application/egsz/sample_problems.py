@@ -1,14 +1,14 @@
 from __future__ import division
 
 from spuq.application.egsz.coefficient_field import CoefficientField
+from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.fem.fenics.fenics_function import FEniCSExpression, FEniCSFunction
-from spuq.fem.multi_vector import MultiVector
 from spuq.stochastics.random_variable import NormalRV
 
-from dolfin import UnitSquare, UnitCircle
+from dolfin import UnitSquare, Expression
 from exceptions import TypeError
 from itertools import repeat
-from numpy import array
+from numpy import array, random
 
 
 class SampleProblem(object):
@@ -18,7 +18,7 @@ class SampleProblem(object):
         if params[0]=="uniform":
             M = [m for m in repeat(UnitSquare(params[1][0],params[1][1])), params[2]]
         elif params[0]=="random":
-            r = array(map(int, 10*rand(params[2]*2)))
+            r = array(map(int, 10*random(params[2]*2)))
             r.shape = params[2], 2
             size1 = params[1][0]
             size2 = params[1][1]
@@ -33,12 +33,12 @@ class SampleProblem(object):
 
     @classmethod
     def createCF(cls, cftype, cfsize):
-        if cf[0]=="EF":
+        if cftype[0]=="EF":
             f = lambda a,b: Expression("sin(A*pi*x[0])*sin(B*pi*x[1])",A=a,B=b)
             Df = lambda a,b: Expression(("A*pi*cos(A*pi*x[0])*sin(B*pi*x[1])",
                                          "B*pi*sin(A*pi*x[0])*cos(B*pi*x[1])"),
                                         A=a,B=b)
-        elif cf[0]=="monomials":
+        elif cftype[0]=="monomials":
             f = lambda a,b: Expression("*".join(["x[0]" for _ in range(a)])+"+"
                                        +"*".join(["x[1]" for _ in range(b)]))
             Df = lambda a,b: Expression((str(a)+"*"+"*".join(["x[0]" for _ in range(a-1)]),
