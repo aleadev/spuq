@@ -39,7 +39,7 @@ class FEniCSVector(FEMVector):
     
     @property
     def function(self):
-        '''return underlying fenics Function'''
+        '''return underlying FEniCS Function'''
         return self._F.f
 
     @property
@@ -51,7 +51,7 @@ class FEniCSVector(FEMVector):
 
     @property
     def functionspace(self):
-        '''return fenics FunctionSpace'''
+        '''return FEniCS FunctionSpace'''
         return self._F.function_space()
 
     @property

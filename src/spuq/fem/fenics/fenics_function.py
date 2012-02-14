@@ -5,9 +5,15 @@ from spuq.utils.type_check import *
 from spuq.linalg.function import GenericFunction
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 
-class FEniCSExpression(GenericFunction):
+
+class FEniCSGenericFunction(GenericFunction):
+    pass
+
+
+class FEniCSExpression(FEniCSGenericFunction):
     """Wrapper for FEniCS Expressions"""
 
+    @takes(...)
     def __init__(self, fstr=None, fexpression=None, Dfstr=None, Dfexpression=None, domain_dim=2, codomain_dim=1, constant=False):
         GenericFunction.__init__(self, domain_dim, codomain_dim)
         if fstr:
@@ -39,12 +45,12 @@ class FEniCSExpression(GenericFunction):
         return FEniCSExpression(fexpression=self.Dfex)
 
 
-class FEniCSFunction(GenericFunction):
+class FEniCSFunction(FEniCSGenericFunction):
     """Wrapper for discrete FEniCS function (i.e. a Function instance) and optionally its gradient function.
 
         Initialised with either fenics Expressions or Functions."""
 
-#    @takes(any, function=Function, Dfunction=optional(Function), fexpression=optional(Expression,FEniCSExpression), Dfexpression=optional(Expression,FEniCSExpression), fstr=optional(str), Dfstr=optional(list_of(str)), domain_dim=int, codomain_dim=int, domain=optional(list_of(int)), numericalDf=optional(bool))
+    @takes(any, function=Function, Dfunction=optional(Function), fexpression=optional(Expression,FEniCSExpression), Dfexpression=optional(Expression,FEniCSExpression), fstr=optional(str), Dfstr=optional(list_of(str)), domain_dim=int, codomain_dim=int, domain=optional(list_of(int)), numericalDf=optional(bool))
     def __init__(self, function=None, Dfunction=None, fexpression=None, Dfexpression=None, fstr=None, Dfstr=None, \
                     domain_dim=2, codomain_dim=1, domain=None, numericalDf=True):
         """Initialise (discrete) function.

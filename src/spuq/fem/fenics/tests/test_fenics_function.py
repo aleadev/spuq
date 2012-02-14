@@ -5,12 +5,12 @@ try:
     from dolfin import UnitSquare, FunctionSpace
     from spuq.fem.fenics.fenics_function import *
     from spuq.fem.fenics.fenics_vector import FEniCSVector
-    HAVE_FENICS=True
+    HAVE_FENICS = True
 except:
-    HAVE_FENICS=False
+    HAVE_FENICS = False
 
 
-@skip_if(not HAVE_FENICS, "Fenics not installed.")
+@skip_if(not HAVE_FENICS, "FEniCS not installed.")
 def test_function():
     # setup mesh [0,1]^2 and scalar P1 FEM space
     degree = 1

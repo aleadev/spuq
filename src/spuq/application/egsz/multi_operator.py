@@ -38,6 +38,8 @@ class MultiOperator(Operator):
         coefficient field of the diffusion coefficient"""
         self._assemble = assemble
         self._CF = CF
+        self._domain = domain
+        self._codomain = codomain
 
     @takes(any, MultiVectorWithProjection)
     def apply(self, w):
@@ -78,14 +80,8 @@ class MultiOperator(Operator):
 
     def domain(self):
         """Returns the basis of the domain"""
-        # TODO: this could be extracted from the discrete domains
-        # (meshes) of the vectors or provided by the user
-        raise NotImplementedError
+        return self._domain
 
     def codomain(self):
         """Returns the basis of the codomain"""
-        # TODO
-        raise NotImplementedError
-
-
-
+        return self._codomain
