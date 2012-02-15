@@ -26,6 +26,7 @@ from spuq.linalg.operator import Operator
 from spuq.utils.type_check import takes, anything, optional
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
+from spuq.math_utils.multiindex import Multiindex
 
 
 class MultiOperator(Operator):
@@ -53,13 +54,13 @@ class MultiOperator(Operator):
             a0_f, _ = self._CF[0]
             A0 = self._assemble(a0_f, w[mu].basis)
             v[mu] = A0 * w[mu]
-            for m in range(1, len(mu)):
+            for m in range(1, len(self._CF)):
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
                 Am = self._assemble(am_f, w[mu].basis)
 
                 # prepare polynom coefficients
-                beta = am_rv.orth_polys.get_beta(mu[m])
+                beta = am_rv.orth_polys.get_beta(mu[m - 1])
 
                 # mu
                 cur_w = -beta[0] * w[mu]
@@ -78,10 +79,12 @@ class MultiOperator(Operator):
                 v[mu] += Am * cur_w
         return v
 
+    @property
     def domain(self):
         """Returns the basis of the domain"""
         return self._domain
 
+    @property
     def codomain(self):
         """Returns the basis of the codomain"""
         return self._codomain

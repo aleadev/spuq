@@ -74,6 +74,8 @@ Stoch. Hermite He_n(x), [ - inf, inf], w(x) = 1, (sqrt(2 * pi)n!), (1, 0, 1, n)
 
 import scipy
 
+from spuq.utils.type_check import takes, anything
+
 _0 = lambda x: 0 * x
 _1 = lambda x: 0 * x + 1
 
@@ -117,6 +119,7 @@ def normalise_rc(rc_func, sqnorm_func=None):
     return rc_norm_func
 
 
+@takes(anything, int)
 def sqnorm_from_rc(rc_func, n):
     """Compute norm of the n-th polynomial from the recurrence coefficients.
     
@@ -130,7 +133,6 @@ def sqnorm_from_rc(rc_func, n):
     (Apr., 1975), pp. 505 - 507
     URL: http://www.jstor.org/stable/2040291
     """
-    assert type(n) == type(1)
 
     b0 = rc_func(0)[1]
     bn = rc_func(n)[1]
@@ -244,10 +246,10 @@ def stc_stoch_hermite(a, b, c, triple=False):
         return 0
     s /= 2
     fac = scipy.factorial
-    factor = 1.0/sqnorm_stoch_hermite(c) if not triple else 1.0
+    factor = 1.0 / sqnorm_stoch_hermite(c) if not triple else 1.0
     return float(fac(a) * fac(b) * fac(c) * factor /
                  (fac(s - a) * fac(s - b) * fac(s - c)))
-            
+
 
 # Legendre polynomials
 def rc_legendre(n):
@@ -270,19 +272,19 @@ def sqnorm_legendre(n):
     AS page 782 (divided by 2, s.t. h0 == 1)"""
     return 1.0 / (2.0 * n + 1.0)
 
-    
+
 def rc_jacobi(n, alpha, beta):
     """AS page 782 """
-    if n==0:
-        a = (alpha - beta) / 2.0 
-        b = (alpha + beta + 2) / 2.0 
+    if n == 0:
+        a = (alpha - beta) / 2.0
+        b = (alpha + beta + 2) / 2.0
         c = 0
-        return (a, b, c) 
+        return (a, b, c)
 
     a1 = 2 * (n + 1) * (n + alpha + beta + 1) * (2 * n + alpha + beta)
-    a2 = (2 * n + alpha + beta + 1) * (alpha**2 - beta**2) 
-    a3 = (2 * n + alpha + beta + 1) * (2 * n + alpha + beta) * (2 * n + alpha + beta + 2) 
-    a4 = 2 * (n + alpha) * (n + beta) * (2 * n + alpha + beta + 2) 
+    a2 = (2 * n + alpha + beta + 1) * (alpha ** 2 - beta ** 2)
+    a3 = (2 * n + alpha + beta + 1) * (2 * n + alpha + beta) * (2 * n + alpha + beta + 2)
+    a4 = 2 * (n + alpha) * (n + beta) * (2 * n + alpha + beta + 2)
     return rc4_to_rc3((a1, a2, a3, a4))
 
 def sqnorm_jacobi(n, alpha, beta):
@@ -292,12 +294,12 @@ def sqnorm_jacobi(n, alpha, beta):
     def _sqnorm(n, alpha, beta):
         from scipy.special import gamma
         return (2.0 ** (alpha + beta + 1) /
-                (2 * n + alpha + beta + 1) * 
-                gamma(n + alpha + 1) * 
+                (2 * n + alpha + beta + 1) *
+                gamma(n + alpha + 1) *
                 gamma(n + beta + 1) /
                 scipy.factorial(n) /
                 gamma(n + alpha + beta + 1)) / sqnorm_jacobi(0, alpha, beta)
-    if n==0:
+    if n == 0:
         return 1
     return _sqnorm(n, alpha, beta) / _sqnorm(0, alpha, beta)
 
@@ -306,7 +308,7 @@ def rc_chebyshev_t(n):
     """Chebyshev polynomials of the first kind on [-1,1]
     
     see AS page 782 """
-    if n==0:
+    if n == 0:
         return (0.0, 1.0, 0.0)
     return (0.0, 2.0, 1)
 
@@ -314,6 +316,6 @@ def rc_chebyshev_u(n):
     """Chebyshev polynomials of the second kind on [-1,1]
     
     see AS page 782 """
-    if n==0:
+    if n == 0:
         return (0.0, 2.0, 0.0)
     return (0.0, 2.0, 1.0)

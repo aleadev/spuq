@@ -328,14 +328,17 @@ class MatrixOperator(BaseOperator):
 
 class DiagonalMatrixOperator(BaseOperator):
     @takes(anything, np.ndarray, Basis)
-    def __init__(self, diag, domain=None):
+    def __init__(self, diag, domain=None, codomain=None):
         assert(isinstance(diag, np.ndarray))
         assert(diag.ndim == 1)
         if domain is None:
             domain = CanonicalBasis(diag.shape[0])
+        if codomain is None:
+            codomain = domain
+        assert domain.dim == codomain.dim
 
         self._diag = diag
-        BaseOperator.__init__(self, domain, domain)
+        BaseOperator.__init__(self, domain, codomain)
 
     @takes(anything, FlatVector)
     def apply(self, vec):

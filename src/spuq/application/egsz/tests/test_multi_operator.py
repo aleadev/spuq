@@ -7,10 +7,12 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.coefficient_field import CoefficientField
+from spuq.linalg.basis import Basis, CanonicalBasis
 from spuq.linalg.vector import FlatVector
 from spuq.linalg.operator import DiagonalMatrixOperator
 from spuq.linalg.function import ConstFunction, SimpleFunction
 from spuq.stochastics.random_variable import NormalRV, UniformRV
+from spuq.polyquad.polynomials import LegendrePolynomials, StochasticHermitePolynomials
 
 def fem1d_assemble(func, basis):
     """setup 1d FEM stiffness matrix with uniformly distributed nodes in [0,1] and piecewise constant coefficient (evaluated at element centers)"""
@@ -26,9 +28,14 @@ def fem1d_interpolate(func, N):
     Ifunc = np.array([func(y) for y in x])
     return Ifunc
 
+class SimpleProjectBasis(CanonicalBasis):
+    def project_onto(self, vec):
+        assert self.dim == vec.basis.dim
+        return vec.copy()
+
 def diag_assemble(func, basis):
     diag = np.array([np.abs(func(x)) for x in np.linspace(0, 1, basis.dim)])
-    return DiagonalMatrixOperator(diag)
+    return DiagonalMatrixOperator(diag, domain=basis, codomain=basis)
 
 def test_init():
     a = [ConstFunction(1.0), SimpleFunction(np.sin), SimpleFunction(np.cos)]
@@ -39,11 +46,18 @@ def test_init():
     assert_raises(TypeError, MultiOperator, 3, diag_assemble)
     assert_raises(TypeError, MultiOperator, coeff_field, 7)
 
+    domain = CanonicalBasis(3)
+    codomain = CanonicalBasis(5)
+    A = MultiOperator(coeff_field, diag_assemble, domain, codomain)
+    assert_equal(A.domain, domain)
+    assert_equal(A.codomain, codomain)
+
+
 def test_apply():
     N = 4
     #a = [ConstFunction(1.0), SimpleFunction(np.sin), SimpleFunction(np.cos)]
     a = [ConstFunction(2.0), ConstFunction(3.0), ConstFunction(4.0)]
-    rvs = [UniformRV(), NormalRV()]
+    rvs = [UniformRV(), NormalRV(mu=0.5)]
     coeff_field = CoefficientField(a, rvs)
 
     A = MultiOperator(coeff_field, diag_assemble)
@@ -51,33 +65,27 @@ def test_apply():
            Multiindex([1]),
            Multiindex([0, 1]),
            Multiindex([0, 2])]
-    vecs = [FlatVector(np.random.random(N)),
-            FlatVector(np.random.random(N)),
-            FlatVector(np.random.random(N)),
-            FlatVector(np.random.random(N))]
+    vecs = [FlatVector(np.random.random(N), SimpleProjectBasis(N)),
+            FlatVector(np.random.random(N), SimpleProjectBasis(N)),
+            FlatVector(np.random.random(N), SimpleProjectBasis(N)),
+            FlatVector(np.random.random(N), SimpleProjectBasis(N))]
 
     w = MultiVectorWithProjection()
     for i in range(len(mis)):
         w[mis[i]] = vecs[i]
-    print w
     v = A * w
 
-    from spuq.polyquad.polynomials import LegendrePolynomials, StochasticHermitePolynomials
     L = LegendrePolynomials(normalised=True)
-    H = StochasticHermitePolynomials(normalised=True)
+    H = StochasticHermitePolynomials(mu=0.5, normalised=True)
     v0_ex = (2 * vecs[0] +
-              0 * 3 * (L.get_beta(0)[1] * vecs[1] + L.get_beta(0)[0] * vecs[0]) +
-              0 * 4 * (H.get_beta(0)[1] * vecs[2] + H.get_beta(0)[0] * vecs[0]))
-    print
-    print
-    print v[mis[0]]
-    print v0_ex
-    print
-    print
-    for i in range(0 * len(mis)):
-        print w[mis[i]]
-        print v[mis[i]]
-        print
+              3 * (L.get_beta(0)[1] * vecs[1] - L.get_beta(0)[0] * vecs[0]) +
+              4 * (H.get_beta(0)[1] * vecs[2] - H.get_beta(0)[0] * vecs[0]))
+    v2_ex = (2 * vecs[2] + 4 * (H.get_beta(1)[1] * vecs[3] -
+                                H.get_beta(1)[0] * vecs[2] +
+                                H.get_beta(1)[-1] * vecs[0]))
+
+    assert_equal(v[mis[0]], v0_ex)
+    assert_equal(v[mis[2]], v2_ex)
 
 @skip_if(True)
 def test_apply_fem1d():
