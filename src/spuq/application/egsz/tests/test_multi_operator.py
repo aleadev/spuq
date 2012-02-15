@@ -2,7 +2,6 @@ import numpy as np
 
 from spuq.utils.testing import *
 from spuq.math_utils.multiindex import Multiindex
-from spuq.stochastics.random_variable import NormalRV
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -22,7 +21,7 @@ def test_init():
     rvs = [UniformRV(), NormalRV()]
     coeff_field = CoefficientField(a, rvs)
 
-    A = MultiOperator(coeff_field, diag_assemble)
+    MultiOperator(coeff_field, diag_assemble)
     assert_raises(TypeError, 3, diag_assemble)
     assert_raises(TypeError, coeff_field, 7)
 
@@ -35,7 +34,7 @@ def test_apply():
     A = MultiOperator(coeff_field, diag_assemble)
     vec1 = FlatVector(np.random.random(N))
     vec2 = FlatVector(np.random.random(N))
-    
+
     mis = Multiindex.createCompleteOrderSet(2, 3)
     print mis[0]
     print mis[1]
@@ -47,11 +46,11 @@ def test_apply():
     w[mis[2]] = vec1
     w[mis[3]] = vec2
     print w
-    v = A*w
+    v = A * w
     for i in range(4):
         print w[mis[i]]
         print v[mis[i]]
-        print 
+        print
 
     #A*mv
 

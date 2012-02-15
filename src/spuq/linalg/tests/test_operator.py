@@ -13,14 +13,15 @@ def test_matrixop_init():
     l = [[1, 2, 4], [3, 4, 5]]
     arri = np.array(l, dtype=int)
     arr = np.array(l, dtype=float)
-    A1 = MatrixOperator(l)
-    A2 = MatrixOperator(arri)
-    A3 = MatrixOperator(arr)
-    A4 = MatrixOperator(arr, domain=FooBasis(3))
 
+    A1 = MatrixOperator(l)
     assert_equal(A1.codomain, CanonicalBasis(2))
     assert_equal(A1.domain, CanonicalBasis(3))
     assert_array_equal(A1.as_matrix(), arr)
+
+    MatrixOperator(arri)
+    MatrixOperator(arr)
+    MatrixOperator(arr, domain=FooBasis(3))
 
     assert_raises(TypeError, MatrixOperator, arr, 2)
     assert_raises(TypeError, MatrixOperator, [2])
@@ -73,7 +74,7 @@ def test_compose_types():
 def test_compose_value():
     A = MatrixOperator(1 + rand(3, 5))
     B = MatrixOperator(1 + rand(7, 3))
-    x = FlatVector(rand(5, 1))
+    x = FlatVector(rand(5))
     y = B(A(x))
 
     assert_equal((B * A)(x), y)
@@ -92,14 +93,14 @@ def test_compose_transpose():
     BT = B.transpose()
     CT = C.transpose()
 
-    y = FlatVector(rand(CT.domain.dim, 1))
+    y = FlatVector(rand(CT.domain.dim))
     assert_equal(CT * y, AT * (BT * y))
 
 
 def test_add_sub_operators():
     A = MatrixOperator(1 + rand(3, 5))
     B = MatrixOperator(1 + rand(3, 5))
-    x = FlatVector(rand(5, 1))
+    x = FlatVector(rand(5))
 
     assert_equal((A + B) * x, A * x + B * x)
     assert_equal((A - B) * x, A * x - B * x)

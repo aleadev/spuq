@@ -63,12 +63,12 @@ class MultiOperator(Operator):
                 cur_w = -beta[0] * w[mu]
 
                 # mu+1
-                mu1 = mu.inc(m - 1, 1)
+                mu1 = mu.inc(m - 1)
                 if mu1 in Delta:
                     cur_w += beta[1] * w.get_projection(mu1, mu)
 
                 # mu-1
-                mu2 = mu.inc(m - 1, -1)
+                mu2 = mu.dec(m - 1)
                 if mu2 in Delta:
                     cur_w += beta[-1] * w.get_projection(mu2, mu)
 

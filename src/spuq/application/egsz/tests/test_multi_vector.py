@@ -7,7 +7,7 @@ from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.linalg.vector import FlatVector
 
 def test_init():
-    mv = MultiVector()
+    MultiVector()
 
 
 def test_get_set():
@@ -90,7 +90,6 @@ def test_add():
 
 def test_neg():
     mv1 = MultiVector()
-    mi1 = Multiindex([1, 2, 1])
     mis1 = MultiindexSet.createCompleteOrderSet(3, 4)
     mv1.set_defaults(mis1, FlatVector([3, 4, 5]))
     mv = -mv1

@@ -17,10 +17,10 @@ def test_vector_is_abstract():
 
 def test_flatvec_init():
     arr = np.array([1.0, 2, 3])
-    fv1 = FlatVector(arr)
-    fv2 = FlatVector([1.0, 2.0, 3.0])
-    fv3 = FlatVector([1, 2, 3])
-    fv4 = FlatVector([1, 2, 3], CanonicalBasis(3))
+    FlatVector(arr)
+    FlatVector([1.0, 2.0, 3.0])
+    FlatVector([1, 2, 3])
+    FlatVector([1, 2, 3], CanonicalBasis(3))
     assert_raises(TypeError, FlatVector, ["str", "str"])
     assert_raises(TypeError, FlatVector, [1, 2, 3], object)
 
@@ -89,7 +89,7 @@ def test_flatvec_sub():
     fv3 = FlatVector(np.array([3, 3, 4]), b)
     assert_equal(fv1 - fv2, fv3)
 
-    isub=FlatVector.__isub__
+    isub = FlatVector.__isub__
     del FlatVector.__isub__
     assert_equal(fv1 - fv2, fv3)
     FlatVector.__isub__ = isub

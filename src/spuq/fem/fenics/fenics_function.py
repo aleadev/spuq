@@ -1,7 +1,7 @@
 """FEniCS discrete function wrapper"""
 
-from dolfin import FunctionSpace, VectorFunctionSpace, Function, Expression, Constant, interpolate, project, grad
-from spuq.utils.type_check import *
+from dolfin import VectorFunctionSpace, Function, Expression, Constant, interpolate, project, grad
+from spuq.utils.type_check import takes, optional, list_of
 from spuq.linalg.function import GenericFunction
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 
@@ -44,7 +44,7 @@ class FEniCSFunction(GenericFunction):
 
         Initialised with either fenics Expressions or Functions."""
 
-#    @takes(any, function=Function, Dfunction=optional(Function), fexpression=optional(Expression,FEniCSExpression), Dfexpression=optional(Expression,FEniCSExpression), fstr=optional(str), Dfstr=optional(list_of(str)), domain_dim=int, codomain_dim=int, domain=optional(list_of(int)), numericalDf=optional(bool))
+#    @takes(anything, function=Function, Dfunction=optional(Function), fexpression=optional(Expression,FEniCSExpression), Dfexpression=optional(Expression,FEniCSExpression), fstr=optional(str), Dfstr=optional(list_of(str)), domain_dim=int, codomain_dim=int, domain=optional(list_of(int)), numericalDf=optional(bool))
     def __init__(self, function=None, Dfunction=None, fexpression=None, Dfexpression=None, fstr=None, Dfstr=None, \
                     domain_dim=2, codomain_dim=1, domain=None, numericalDf=True):
         """Initialise (discrete) function.
