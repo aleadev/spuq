@@ -1,7 +1,7 @@
 """FEniCS discrete function wrapper"""
 
-from dolfin import FunctionSpace, VectorFunctionSpace, Function, Expression, Constant, interpolate, project, grad
-from spuq.utils.type_check import *
+from dolfin import VectorFunctionSpace, Function, Expression, Constant, interpolate, project, grad
+from spuq.utils.type_check import takes, optional, list_of
 from spuq.linalg.function import GenericFunction
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 

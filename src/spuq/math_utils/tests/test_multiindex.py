@@ -109,5 +109,10 @@ def test_le():
     assert_false(alpha3 > alpha5)
     assert_false(alpha4 > alpha5)
 
+def test_set_of_mi():
+    mu1a = Multiindex(np.array([0, 1]))
+    mu1b = Multiindex(np.array([0, 1]))
+    set([mu1a])
+    assert_true(mu1b in [mu1a])
 
 test_main()

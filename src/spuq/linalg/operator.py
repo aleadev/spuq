@@ -284,7 +284,7 @@ class SummedOperator(Operator):
 
 class MatrixOperator(BaseOperator):
 
-    @takes(anything, (np.ndarray,list_of(list_of(Scalar))), 
+    @takes(anything, (np.ndarray, list_of(list_of(Scalar))),
                       optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
         if not isinstance(arr, np.ndarray):
@@ -292,16 +292,16 @@ class MatrixOperator(BaseOperator):
         if domain is None:
             domain = CanonicalBasis(arr.shape[1])
         elif domain.dim != arr.shape[1]:
-            raise TypeError( 'size of domain basis does not match '
+            raise TypeError('size of domain basis does not match '
                              'matrix dimensions')
-            
+
         if codomain is None:
             codomain = CanonicalBasis(arr.shape[0])
         elif codomain.dim != arr.shape[0]:
-            raise TypeError( 'size of domain basis does not match '
+            raise TypeError('size of domain basis does not match '
                              'matrix dimensions')
 
-        assert(arr.ndim==2)
+        assert(arr.ndim == 2)
         self._arr = arr
         super(MatrixOperator, self).__init__(domain, codomain)
 
@@ -320,25 +320,25 @@ class MatrixOperator(BaseOperator):
                             self.domain)
 
     def __eq__(self, other):
-        return (type(self) is type(other) and 
+        return (type(self) is type(other) and
                 self.domain == other.domain and
                 self.codomain == other.codomain and
                 (self._arr == other._arr).all())
-        
-def with_equality(cls):
-    cls.__ne__ = ne
-    cls.__eq__ = eq
+
 
 class DiagonalMatrixOperator(BaseOperator):
     @takes(anything, np.ndarray, Basis)
-    def __init__(self, diag, domain=None):
+    def __init__(self, diag, domain=None, codomain=None):
         assert(isinstance(diag, np.ndarray))
-        assert(diag.ndim==1)
+        assert(diag.ndim == 1)
         if domain is None:
             domain = CanonicalBasis(diag.shape[0])
-        
+        if codomain is None:
+            codomain = domain
+        assert domain.dim == codomain.dim
+
         self._diag = diag
-        BaseOperator.__init__(self, domain, domain)
+        BaseOperator.__init__(self, domain, codomain)
 
     @takes(anything, FlatVector)
     def apply(self, vec):
