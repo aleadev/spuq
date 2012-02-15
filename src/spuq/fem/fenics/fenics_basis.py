@@ -1,7 +1,6 @@
 from exceptions import TypeError, AttributeError
 from spuq.utils.enum import Enum
 from spuq.fem.fem_basis import FEMBasis
-from spuq.fem.fenics.fenics_mesh import FEniCSMesh
 from spuq.linalg.operator import MatrixOperator
 from dolfin import FunctionSpace, FunctionSpaceBase, Function, \
                 TestFunction, TrialFunction, Mesh, assemble, dx

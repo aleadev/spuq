@@ -32,7 +32,7 @@ class Multiindex(object):
 
     def __eq__(self, other):
         return (type(self) is type(other) and
-                self.__hash == other.__hash and
+                self.__hash__() == other.__hash__() and
                 np.array_equal(self._arr, other._arr))
 
     def __ne__(self, other):
@@ -56,7 +56,7 @@ class Multiindex(object):
         return cmpval <= 0
 
     def __gt__(self, other):
-        return not self<=other
+        return not self <= other
 
     def __hash__(self):
         if self.__hash is None:
