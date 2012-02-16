@@ -1,18 +1,20 @@
 from __future__ import division
 import numpy as np
 from functools import partial
+from dolfin import Expression, Function, FunctionSpace, UnitSquare, interpolate
 
-from spuq.utils.testing import *
-from spuq.math_utils.multiindex import Multiindex
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.coefficient_field import CoefficientField
+from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.linalg.basis import Basis, CanonicalBasis
 from spuq.linalg.vector import FlatVector
-from spuq.linalg.operator import DiagonalMatrixOperator
+from spuq.linalg.operator import DiagonalMatrixOperator, Operator
 from spuq.linalg.function import ConstFunction, SimpleFunction
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.polyquad.polynomials import LegendrePolynomials, StochasticHermitePolynomials
+from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_main, assert_raises
+from spuq.math_utils.multiindex import Multiindex
 
 def fem1d_assemble(func, basis):
     """setup 1d FEM stiffness matrix with uniformly distributed nodes in [0,1] and piecewise constant coefficient (evaluated at element centers)"""
@@ -86,6 +88,80 @@ def test_apply():
 
     assert_equal(v[mis[0]], v0_ex)
     assert_equal(v[mis[2]], v2_ex)
+
+def test_fenics_vector():
+    def mult_assemble(a, basis):
+        return MultOperator(a(0), basis)
+
+    class MultOperator(Operator):
+        def __init__(self, a, basis):
+            self._a = a
+            self._basis = basis
+        def apply(self, vec):
+            return self._a * vec
+        @property
+        def domain(self):
+            return self._basis
+        @property
+        def codomain(self):
+            return self._basis
+
+    #a = [ConstFunction(1.0), SimpleFunction(np.sin), SimpleFunction(np.cos)]
+    a = [ConstFunction(2), ConstFunction(3), ConstFunction(4)]
+    rvs = [UniformRV(), NormalRV(mu=0.5)]
+    coeff_field = CoefficientField(a, rvs)
+
+    A = MultiOperator(coeff_field, mult_assemble)
+    mis = [Multiindex([0]),
+           Multiindex([1]),
+           Multiindex([0, 1]),
+           Multiindex([0, 2])]
+    mesh = UnitSquare(4, 4)
+    fs = FunctionSpace(mesh, "CG", 4)
+    F = [interpolate(Expression("*".join(["x[0]"] * i)) , fs) for i in range(1, 5)]
+    vecs = [FEniCSVector(f) for f in F]
+
+    w = MultiVectorWithProjection()
+    for mi, vec in zip(mis, vecs):
+        w[mi] = vec
+    v = A * w
+
+    L = LegendrePolynomials(normalised=True)
+    H = StochasticHermitePolynomials(mu=0.5, normalised=True)
+    ex0 = Expression("2*x[0] + 3*(l01*x[0]*x[0]-l00*x[0]) + 4*(h01*x[0]*x[0]*x[0]-h00*x[0])",
+                     l01=L.get_beta(0)[1], l00=L.get_beta(0)[0],
+                     h01=H.get_beta(0)[1], h00=H.get_beta(0)[0])
+    vec0 = FEniCSVector(interpolate(ex0, fs))
+
+    assert_almost_equal(v[mis[0]].array(), vec0.array())
+
+
+    # ======================================================================
+
+    N = len(mis)
+    meshes = [UnitSquare(i + 3, i + 3) for i in range(N)]
+    fss = [FunctionSpace(mesh, "CG", 4) for mesh in meshes]
+    F = [interpolate(Expression("*".join(["x[0]"] * (i + 1))) , fss[i]) for i in range(N)]
+    vecs = [FEniCSVector(f) for f in F]
+
+    w = MultiVectorWithProjection()
+    for mi, vec in zip(mis, vecs):
+        w[mi] = vec
+    v = A * w
+
+    L = LegendrePolynomials(normalised=True)
+    H = StochasticHermitePolynomials(mu=0.5, normalised=True)
+    ex0 = Expression("2*x[0] + 3*(l01*x[0]*x[0]-l00*x[0]) + 4*(h01*x[0]*x[0]*x[0]-h00*x[0])",
+                     l01=L.get_beta(0)[1], l00=L.get_beta(0)[0],
+                     h01=H.get_beta(0)[1], h00=H.get_beta(0)[0])
+    ex2 = Expression("2*x[0]*x[0]*x[0] + 4*(h11*x[0]*x[0]*x[0]*x[0] - h10*x[0]*x[0]*x[0] + h1m1*x[0])",
+                      h11=H.get_beta(1)[1], h10=H.get_beta(1)[0], h1m1=H.get_beta(1)[-1])
+    vec0 = FEniCSVector(interpolate(ex0, fss[0]))
+    vec2 = FEniCSVector(interpolate(ex2, fss[2]))
+
+    assert_almost_equal(v[mis[0]].array(), vec0.array())
+    assert_almost_equal(v[mis[2]].array(), vec2.array())
+
 
 @skip_if(True)
 def test_apply_fem1d():

@@ -8,7 +8,8 @@ from spuq.utils import strclass
 class CoefficientField(object):
     """expansion of a coefficient field according to EGSZ (1.2)"""
 
-    @takes(anything, sequence_of(GenericFunction), sequence_of(RandomVariable))
+#    @takes(anything, sequence_of(GenericFunction), sequence_of(RandomVariable))
+    @takes(anything, sequence_of(anything), sequence_of(RandomVariable))
     def __init__(self, funcs, rvs):
         """initialise with list of functions and list of random variables
         
