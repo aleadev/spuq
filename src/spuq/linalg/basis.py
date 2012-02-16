@@ -41,10 +41,20 @@ class CanonicalBasis(Basis):
 
 class FunctionBasis(Basis):
 
+    @abstractmethod
+    def eval(self, x):
+        """Evaluate the basis functions at point x where x has length domain_dim."""
+        raise NotImplementedError
+
+    @abstractproperty
+    def domain_dim(self):
+        """The dimension of the domain the functions are defined upon."""
+        raise NotImplementedError
+
     @abstractproperty
     def gramian(self):  # pragma: no cover
         """The Gramian as a LinearOperator (not necessarily a matrix)"""
-        return NotImplemented
+        raise NotImplementedError
 
 
 # class SubBasis, IndexedBasis

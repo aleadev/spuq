@@ -1,74 +1,144 @@
+import numpy as np
+
+from dolfin import (Function, FunctionSpace, FunctionSpaceBase, TestFunction, TrialFunction, assemble, dx)
+import dolfin as fe
+
+from spuq.utils.type_check import takes, anything, optional
+from spuq.utils.enum import Enum
+from spuq.linalg.operator import MatrixOperator
+from spuq.linalg.vector import Scalar
+from spuq.linalg.basis import check_basis
 from spuq.fem.fem_vector import FEMVector
-from spuq.fem.fenics.fenics_basis import FEniCSBasis
-from spuq.fem.fenics.fenics_function import FEniCSFunction
-from dolfin import Function, FunctionSpaceBase, GenericVector, Vector
-from dolfin.cpp import GenericFunction
-from numpy import empty
+from spuq.fem.fem_basis import FEMBasis
+
+PROJECTION = Enum('INTERPOLATION', 'L2PROJECTION')
+
+class FEniCSBasis(FEMBasis):
+
+    @takes(anything, FunctionSpaceBase, optional(anything))
+    def __init__(self, fefs, ptype=PROJECTION.INTERPOLATION):
+        self._fefs = fefs
+        self._ptype = ptype
+
+    def refine(self, cell_markers):
+        """Refine mesh of basis uniformly or wrt cells, returns
+        (prolongate,restrict,...)."""
+        new_mesh = fe.refine(self._fefs.mesh(), cell_markers)
+        new_fs = FunctionSpace(new_mesh, self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
+        new_basis = FEniCSBasis(new_fs)
+        prolongate = new_basis.project_onto
+        restrict = self.project_onto
+        return (new_basis, prolongate, restrict)
+
+    @takes(anything, "FEniCSVector")
+    def project_onto(self, vec):
+        if self._ptype == PROJECTION.INTERPOLATION:
+            new_fefunc = fe.interpolate(vec._fefunc, self._fefs)
+        elif self._ptype == PROJECTION.L2PROJECTION:
+            new_fefunc = fe.project(vec._fefunc, self._fefs)
+        else:
+            raise AttributeError
+        return FEniCSVector(new_fefunc)
+
+    @property
+    def dim(self):
+        return self._fefs.dim()
+
+    def eval(self, x):  # pragma: no coverage
+        """Evaluate the basis functions at point x where x has length domain_dim."""
+        raise NotImplementedError
+
+    @property
+    def domain_dim(self):
+        """The dimension of the domain the functions are defined upon."""
+        return self._fefs.cell().topological_dimension()
+
+    @property
+    def gramian(self):
+        """The Gramian as a LinearOperator (not necessarily a matrix)"""
+        # TODO: wrap sparse FEniCS matrix A in FEniCSOperator
+        u = TrialFunction(self._fefs)
+        v = TestFunction(self._fefs)
+        a = (u * v) * dx
+        A = assemble(a)
+        return MatrixOperator(A.array())
+
+    @takes(anything, "FEniCSBasis")
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self._fefs == other._fefs)
+
 
 class FEniCSVector(FEMVector):
     '''Wrapper for FEniCS/dolfin Function.
 
         Provides a FEniCSBasis and a FEniCSFunction (with the respective coefficient vector).'''
-    
-    def __init__(self, coeffs=None, basis=None, function=None):
+
+    @takes(anything, Function)
+    def __init__(self, fefunc):
         '''Initialise with coefficient vector and FEMBasis'''
-        if basis:
-            assert function==None
-            if not isinstance(basis, FEniCSBasis):
-                assert isinstance(basis, FunctionSpaceBase)
-                basis = FEniCSBasis(functionspace=basis)
-            self._basis = basis
-            if coeffs == None:
-                coeffs = Vector(basis.functionspace.dim)
-            assert isinstance(coeffs, GenericVector)
-            self._F = FEniCSFunction(Function(basis.functionspace, coeffs))
-        else:
-            assert function!=None and isinstance(function, (Function, FEniCSFunction))
-            if isinstance(function, FEniCSFunction):
-                self._F = function
-            else:
-                assert isinstance(function, Function)
-                self._F = FEniCSFunction(function)
-            self._basis = FEniCSBasis(functionspace=self._F.function_space())
-            self._coeffs = self._F.f.vector()
-    
-    @property
-    def F(self):
-        '''return FEniCSFunction'''
-        return self._F
-    
-    @property
-    def function(self):
-        '''return underlying FEniCS Function'''
-        return self._F.f
+        self._fefunc = fefunc
 
     @property
     def basis(self):
         '''return FEniCSBasis'''
-#        if not hasattr(self, '_FBasis'):
-#            self._FBasis = FEniCSBasis(functionspace=self.functionspace)
-        return self._basis
-
-    @property
-    def functionspace(self):
-        '''return FEniCS FunctionSpace'''
-        return self._F.function_space()
-
-    @property
-    def dim(self):
-        '''return dimension of function space'''
-        return self.functionspace.dim()
+        return FEniCSBasis(self._fefunc.function_space())
 
     @property
     def coeffs(self):
-        '''return (assignable) fenics coefficient vector of Function'''
-        return self._F.coeffs
+        '''return (assignable) FEniCS coefficient vector of Function'''
+        return self._fefunc.vector()
+
+    @coeffs.setter
+    def coeffs(self, val):
+        self._fefunc.vector()[:] = val
 
     def array(self):
         '''return copy of coefficient vector as numpy array'''
-        return self._F.array()
+        return self._fefunc.vector().array()
 
-    def evaluate(self, x):
-        val = empty([0,0])
-        self._F.eval(val, x)
-        return val
+    def eval(self, x):
+        return self._fefunc(x)
+
+    def _create_copy(self, coeffs):
+        # remove create_copy and retain only copy()
+        new_fefunc = Function(self._fefunc.function_space(), coeffs)
+        return self.__class__(new_fefunc)
+
+    def __eq__(self, other):
+        """Compare vectors for equality.
+
+        Note that vectors are only considered equal when they have
+        exactly the same type."""
+#        print "************* EQ "
+#        print self.coeffs.array()
+#        print other.coeffs.array()
+#        print (type(self) == type(other),
+#                self.basis == other.basis,
+#                self.coeffs.size() == other.coeffs.size())
+
+        return (type(self) == type(other) and
+                self.basis == other.basis and
+                self.coeffs.size() == other.coeffs.size() and
+                (self.coeffs == other.coeffs).all())
+
+    @takes(anything)
+    def __neg__(self):
+        return self._create_copy(-self.coeffs)
+
+    @takes(anything, "FEniCSVector")
+    def __iadd__(self, other):
+        check_basis(self.basis, other.basis)
+        self.coeffs += other.coeffs
+        return self
+
+    @takes(anything, "FEniCSVector")
+    def __isub__(self, other):
+        check_basis(self.basis, other.basis)
+        self.coeffs -= other.coeffs
+        return self
+
+    @takes(anything, Scalar)
+    def __imul__(self, other):
+        self.coeffs *= other
+        return self

@@ -69,16 +69,16 @@ class Vector(object):
     def __add__(self, other):
         """Add two vectors."""
         return self.copy().__iadd__(other)
-    
+
     def __radd__(self, other):  # pragma: no cover
         """This happens only when other is not a vector."""
         return NotImplemented
- 
+
     def __sub__(self, other):
         """Subtract two vectors."""
         if hasattr(self, "__isub__"):
             return self.copy().__isub__(other)
-        return self + (-other)
+        return self +(-other)
 
     def __rsub__(self, other):  # pragma: no cover
         """This happens only when other is not a vector."""
@@ -111,7 +111,7 @@ class FlatVector(Vector):
         if basis is None:
             basis = CanonicalBasis(coeffs.shape[0])
         assert(basis.dim == coeffs.shape[0])
-        assert(coeffs.ndim==1)
+        assert(coeffs.ndim == 1)
         self._coeffs = coeffs
         self._basis = basis
 
@@ -127,7 +127,7 @@ class FlatVector(Vector):
         return self.coeffs
 
     def copy(self):
-        return self._create_copy(self._coeffs.copy())
+        return self._create_copy(self.coeffs.copy())
 
     def _create_copy(self, coeffs):
         """Creates a copy of this vector with new coefficients, but

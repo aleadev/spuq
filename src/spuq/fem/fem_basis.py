@@ -1,4 +1,4 @@
-from abc import *
+from abc import ABCMeta, abstractmethod
 from spuq.linalg.basis import FunctionBasis
 
 class FEMBasis(FunctionBasis):
@@ -13,7 +13,7 @@ class FEMBasis(FunctionBasis):
         raise NotImplementedError
 
     @abstractmethod
-    def project(self, vec, vecbasis, ptype):
+    def project_onto(self, vec):
         """Project coefficient vector to FEMBasis.
         
         vec can either be a FEMVector or an array in which case a
