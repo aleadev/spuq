@@ -38,7 +38,7 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything
 
 from dolfin import (assemble, inner, dot, grad, dx, avg, ds, dS, sqrt,
-                    FunctionSpace, TestFunction, CellSize, FacetNormal)
+                    FunctionSpace, TestFunction, Constant, CellSize, FacetNormal)
 
 
 class ResidualEstimator(object):
@@ -75,13 +75,8 @@ class ResidualEstimator(object):
                                   ( \alpha_{\mu_m+1}^m\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m} - \alpha_{\mu_m}^m w_{N,\mu}
                                   + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m})\cdot\nu] ||_{L^2(S)}\\
         """
-
-        # TODO: implement vector space operations on fenics vectors (and test them)
-
         # get mean field of coefficient
         a0_f, _ = self.CF[0]
-        # TODO: implement sqrt(fenics_function) in a reasonable way
-        a = sqrt(a0_f)
 
         # prepare FEM
         V = w[mu].functionspace
@@ -91,13 +86,12 @@ class ResidualEstimator(object):
         h = CellSize(mesh)
         nu = FacetNormal(mesh)
         # initialise volume and edge residual with deterministic part
-        # TODO: a0_f.f, or a0_f.df, or ???
-        R_T = dot(grad(a0_f), grad(w[mu].f))
+        R_T = dot(a0_f.Dufl, grad(w[mu].f))
         if not mu:
             R_T = R_T + self.f
         else:
-            R_T = 0 * self.f # TODO: ConstantExpression("0")?
-        R_E = a0_f * grad(w[mu].f)
+            R_T = Constant(0)
+        R_E = a0_f.ufl * grad(w[mu].f)
 
         # iterate m
         Delta = w.active_indices()
@@ -123,15 +117,15 @@ class ResidualEstimator(object):
                 res += beta[-1] * w_mu2
 
             # add volume contribution for m
-            r_t = dot(grad(am_f), grad(res.f))
+            r_t = dot(am_f.Dufl, grad(res.ufl))
             R_T = R_T + r_t
             # add edge contribution for m
-            r_e = a * dot(grad(res.f), grad(nu))
+            r_e = sqrt(a0_f.ufl) * dot(grad(res.ufl), grad(nu))
             R_E = R_E + r_e
 
         # scaling of residual terms and definition of residual form
-        R_T = 1 / a * R_T ** 2
-        R_E = 1 / a * R_E ** 2
+        R_T = 1 / sqrt(a0_f.ufl) * R_T ** 2
+        R_E = 1 / sqrt(a0_f.ufl) * R_E ** 2
         res_form = (h ** 2 * R_T * w * dx
                     + avg(h) * avg(R_E) * 2 * avg(w) * dS
                     + h * R_E * w * ds)
@@ -194,7 +188,7 @@ class ResidualEstimator(object):
         w_mu1_back = w.get_back_projection(mu1, mu)
         # evaluate H1 semi-norm of projection error
         error1 = w_mu1_back - w[mu]
-        a1 = inner(grad(error1.f), grad(error1.f)) * dx
+        a1 = inner(grad(error1.ufl), grad(error1.ufl)) * dx
         zeta1 = beta[1] * assemble(a1)
 
         # mu -1
@@ -202,7 +196,7 @@ class ResidualEstimator(object):
         w_mu2_back = w.get_back_projection(mu2, mu)
         # evaluate H1 semi-norm of projection error
         error2 = w_mu2_back - w[mu]
-        a2 = inner(grad(error2.f), grad(error2.f)) * dx
+        a2 = inner(grad(error2.ufl), grad(error2.ufl)) * dx
         zeta2 = beta[-1] * assemble(a2)
 
         zeta1 *= ainfty

@@ -6,12 +6,12 @@ from spuq.fem.fem_basis import FEMBasis
 
 class FEMDiscretisation(object):
     """FEM discretisation interface"""
-    
+
     __metaclass__ = ABCMeta
-    
+
     @abstractmethod
     @takes(anything, dict, FEMBasis)
     def assemble_operator(self, data, basis):
         """Evaluate discrete operator"""
-        return NotImplemented
-    
+        raise NotImplementedError
+

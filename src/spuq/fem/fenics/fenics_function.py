@@ -1,28 +1,34 @@
 """FEniCS discrete function wrapper"""
 
-from dolfin import VectorFunctionSpace, Function, Expression, Constant, interpolate, project, grad
-from spuq.utils.type_check import takes, optional, list_of
+from abc import abstractproperty
 from spuq.linalg.function import GenericFunction
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
+from spuq.utils.type_check import takes, anything, optional, sequence_of
+from dolfin import (VectorFunctionSpace, Function, FunctionSpaceBase,
+                        Expression, Constant, interpolate, project, grad)
 
 
 class FEniCSGenericFunction(GenericFunction):
     def __init__(self, domain_dim, codomain_dim):
         GenericFunction.__init__(domain_dim, codomain_dim)
 
+    @abstractproperty
+    def ufl(self):
+        raise NotImplementedError
+
 
 class FEniCSExpression(FEniCSGenericFunction):
     """Wrapper for FEniCS Expressions"""
 
     @takes(anything, optional(int), optional(int), optional(bool))
-    def __init__(self, domain_dim = 2, codomain_dim = 1, constant = False):
+    def __init__(self, domain_dim=2, codomain_dim=1, constant=False):
         FEniCSGenericFunction.__init__(self, domain_dim, codomain_dim)
         self.fexpr = None
         self.Dfexpr = None
 
     @classmethod
     @takes(anything, str, optional(sequence_of(str)))
-    def from_string(cls, fstr, Dfstr, domain_dim = 2, codomain_dim = 1, constant = False):
+    def from_string(cls, fstr, Dfstr, domain_dim=2, codomain_dim=1, constant=False):
         FEx = cls(domain_dim, codomain_dim, constant)
         if not constant:
             FEx.fexpr = Expression(fstr)
@@ -37,7 +43,7 @@ class FEniCSExpression(FEniCSGenericFunction):
 
     @classmethod
     @takes(anything, Expression, optional(Expression))
-    def from_expression(cls, fexpr, Dfexpr = None, domain_dim = 2, codomain_dim = 1, constant = False):
+    def from_expression(cls, fexpr, Dfexpr=None, domain_dim=2, codomain_dim=1, constant=False):
         FEx = cls(domain_dim, codomain_dim, constant)
         FEx.fexpr = fexpr
         FEx.Dfexpr = Dfexpr
@@ -47,7 +53,7 @@ class FEniCSExpression(FEniCSGenericFunction):
 
     def diff(self):
         assert self.Dfexpr
-        return FEniCSExpression.from_expression(fexpression = self.Dfexpr, None, self.domain_dim, self.domain_dim)
+        return FEniCSExpression.from_expression(fexpression=self.Dfexpr, None, self.domain_dim, self.domain_dim)
 
 
 class FEniCSFunction(FEniCSGenericFunction):
@@ -83,20 +89,20 @@ class FEniCSFunction(FEniCSGenericFunction):
             F = cls(domain_dim, codomain_dim)
             F.f = function
             F.fFS = function.function_space()
-        if Dfunction:
-            F.Df = Dfunction
-            F.DfFS = Dfunction.function_space()
-        else:
-            F.Dfunction = None
-            F.DfFS = None
+            if Dfunction:
+                F.Df = Dfunction
+                F.DfFS = Dfunction.function_space()
+            else:
+                F.Dfunction = None
+                F.DfFS = None
 
-        if not Dfunction and numericalDf:
-            # construct "natural" gradient space
-            F.DfFS = VectorFunctionSpace(self.fFS.mesh(), self.fFS.ufl_element().family(),
-                                                self.fFS.ufl_element().degree())
+            if not Dfunction and numericalDf:
+                # construct "natural" gradient space
+                F.DfFS = VectorFunctionSpace(self.fFS.mesh(), self.fFS.ufl_element().family(),
+                                                    self.fFS.ufl_element().degree())
 
-            # project function derivative on VectorFunctionSpace
-            F.Df = project(grad(self.f), self.DfFS)
+                # project function derivative on VectorFunctionSpace
+                F.Df = project(grad(self.f), self.DfFS)
 
 #        if not domain and self.fFS:
 #            # determine domain from mesh coordinates
@@ -106,8 +112,8 @@ class FEniCSFunction(FEniCSGenericFunction):
 
 
     @classmethod
-    @takes(anything, FunctionSpace, (Expression,FEniCSExpression), optional(Expression))
-    def from_expression(cls, FS, fexpr, Dfexpr):
+    @takes(anything, FunctionSpaceBase, (Expression, FEniCSExpression), optional(Expression))
+    def from_expression(cls, V, fexpr, Dfexpr):
         if isinstance(fexpr, FEniCSExpression):
             Dfexpr = fexpr.Dfexpr
             fexpr = fexpr.fexpr
@@ -148,7 +154,7 @@ class FEniCSFunction(FEniCSGenericFunction):
     def basis(self):
         """Return FEniCSBasis"""
         if not hasattr(self, 'fbasis'):
-            self.fbasis = FEniCSBasis(functionspace = self.functionspace)
+            self.fbasis = FEniCSBasis(functionspace=self.functionspace)
         return self.fbasis
 
     @property

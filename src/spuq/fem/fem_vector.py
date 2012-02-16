@@ -6,4 +6,4 @@ class FEMVector(FlatVector):
 
     @abc.abstractmethod
     def evaluate(self, x):
-        return NotImplemented
+        raise NotImplementedError

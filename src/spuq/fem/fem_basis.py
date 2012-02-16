@@ -3,14 +3,14 @@ from spuq.linalg.basis import FunctionBasis
 
 class FEMBasis(FunctionBasis):
     """"FEM basis"""
-    
+
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def refine(self, cells):
         """Refine mesh of basis uniformly or wrt cells, returns
         (prolongate,restrict,...)."""
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def project(self, vec, vecbasis, ptype):
@@ -20,4 +20,4 @@ class FEMBasis(FunctionBasis):
         basis has to be passed as well. In the first case, a new
         FEMVector is returned, in the second case, a coefficient array
         and the new basis is returned."""
-        return NotImplemented
+        raise NotImplementedError
