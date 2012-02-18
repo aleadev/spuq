@@ -1,6 +1,6 @@
 import numpy as np
 
-from dolfin import (Function, FunctionSpace, FunctionSpaceBase, TestFunction, TrialFunction, assemble, dx)
+from dolfin import Function, FunctionSpace, FunctionSpaceBase, TestFunction, TrialFunction, CellFunction, assemble, dx, parameters
 import dolfin as fe
 
 from spuq.utils.type_check import takes, anything, optional
@@ -13,6 +13,9 @@ from spuq.fem.fem_basis import FEMBasis
 
 PROJECTION = Enum('INTERPOLATION', 'L2PROJECTION')
 
+# Set option to allow extrapolation (for interpolation)
+fe.parameters["allow_extrapolation"] = True
+
 class FEniCSBasis(FEMBasis):
 
     @takes(anything, FunctionSpaceBase, optional(anything))
@@ -20,10 +23,18 @@ class FEniCSBasis(FEMBasis):
         self._fefs = fefs
         self._ptype = ptype
 
-    def refine(self, cell_markers):
+    def refine(self, cell_ids=None):
         """Refine mesh of basis uniformly or wrt cells, returns
         (prolongate,restrict,...)."""
-        new_mesh = fe.refine(self._fefs.mesh(), cell_markers)
+        mesh = self._fefs.mesh()
+        cell_markers = CellFunction("bool", mesh)
+        if cell_ids == None:
+            cell_markers.set_all(True)
+        else:
+            cell_markers.set_all(False)
+            for cid in cell_ids:
+                cell_markers[cid] = True
+        new_mesh = fe.refine(mesh, cell_markers)
         new_fs = FunctionSpace(new_mesh, self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
         new_basis = FEniCSBasis(new_fs)
         prolongate = new_basis.project_onto
@@ -86,11 +97,12 @@ class FEniCSVector(FEMVector):
 
     @property
     def coeffs(self):
-        '''return (assignable) FEniCS coefficient vector of Function'''
+        '''return FEniCS coefficient vector of Function'''
         return self._fefunc.vector()
 
     @coeffs.setter
     def coeffs(self, val):
+        '''set FEniCS coefficient vector of Function'''
         self._fefunc.vector()[:] = val
 
     def array(self):
@@ -101,7 +113,7 @@ class FEniCSVector(FEMVector):
         return self._fefunc(x)
 
     def _create_copy(self, coeffs):
-        # remove create_copy and retain only copy()
+        # TODO: remove create_copy and retain only copy()
         new_fefunc = Function(self._fefunc.function_space(), coeffs)
         return self.__class__(new_fefunc)
 

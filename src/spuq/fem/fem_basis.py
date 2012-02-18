@@ -7,17 +7,12 @@ class FEMBasis(FunctionBasis):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def refine(self, cells):
-        """Refine mesh of basis uniformly or wrt cells, returns
-        (prolongate,restrict,...)."""
+    def refine(self, cell_ids=None):
+        """Refine mesh of basis uniformly or with respect to cell ids, returns
+        (new_basis, prolongate, restrict,)."""
         raise NotImplementedError
 
     @abstractmethod
     def project_onto(self, vec):
-        """Project coefficient vector to FEMBasis.
-        
-        vec can either be a FEMVector or an array in which case a
-        basis has to be passed as well. In the first case, a new
-        FEMVector is returned, in the second case, a coefficient array
-        and the new basis is returned."""
+        """Project vector onto own FEMBasis."""
         raise NotImplementedError

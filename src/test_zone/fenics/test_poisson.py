@@ -25,15 +25,15 @@ bc = DirichletBC(V, u0, u0_boundary)
 v = TestFunction(V)
 u = TrialFunction(V)
 f = Expression('-2*x[0]*(x[0]-1)-2*x[1]*(x[1]-1)')
-a = inner(grad(u), grad(v))*dx
-L = f*v*dx
+a = inner(grad(u), grad(v)) * dx
+L = f * v * dx
 
 # compute solution
 A = assemble(a)
 b = assemble(L)
-bc.apply(A,b)
+bc.apply(A, b)
 u = Function(V)
-solve(A,u.vector(),b)
+solve(A, u.vector(), b)
 
 # plot solution and mesh
 #plot(u)
@@ -41,16 +41,16 @@ solve(A,u.vector(),b)
 #interactive()
 
 # assemble mass matrix and get numpy vector
-M = assemble((u*v)*dx)
+M = assemble((u * v) * dx)
 npM = M.array()
 # print 'shape of mass matrix M is ', npM.shape
 
 # interpolation and projection test
-mesh2 = UnitSquare(40,40)
+mesh2 = UnitSquare(40, 40)
 V2 = FunctionSpace(mesh2, 'CG', 2)
 f2 = Expression('sin(4*3.141*x[0]*x[1])+x[0]*x[1]')
-f2_V2 = interpolate(f2,V2)
-pf2_V1 = project(f2_V2,V)
+f2_V2 = interpolate(f2, V2)
+pf2_V1 = project(f2_V2, V)
 
 plot(f2_V2)
 plot(pf2_V1)

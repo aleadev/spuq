@@ -23,8 +23,6 @@ def test_fenics_basis():
 
     basis1.gramian.as_matrix()
 
-    # TODO: test projection, refinement
-
 def test_fenics_vector():
     mesh = UnitSquare(3, 3)
     fs1 = FunctionSpace(mesh, "CG", 2)
@@ -95,14 +93,7 @@ def test_fenics_refine():
     exa = Expression("1.+x[0]*x[1]")
     f1a = interpolate(exa, fs1)
     vec1a = FEniCSVector(f1a)
-
-    cell_markers = CellFunction("bool", mesh1)
-    cell_markers.set_all(False)
-    cell_markers[1] = True
-    cell_markers[3] = True
-    cell_markers[15] = True
-
-    (basis2, prolongate, restrict) = vec1a.basis.refine(cell_markers)
+    (basis2, prolongate, restrict) = vec1a.basis.refine((1,3,15))
     vec2 = prolongate(vec1a)
     assert_equal(vec2.basis, basis2)
     vec1b = restrict(vec2)
