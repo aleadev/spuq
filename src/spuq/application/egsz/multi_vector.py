@@ -97,8 +97,6 @@ class MultiVector(Vector):
         return "<%s keys=%s>" % (strclass(self.__class__), self.mi2vec.keys())
 
 
-
-
 class MultiVectorWithProjection(MultiVector):
     @takes(anything, optional(callable))
     def __init__(self, project=None):

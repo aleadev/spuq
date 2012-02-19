@@ -1,6 +1,6 @@
 from __future__ import division
 import numpy as np
-from functools import partial
+#from functools import partial
 from dolfin import Expression, FunctionSpace, UnitSquare, interpolate
 
 from spuq.application.egsz.fem_discretisation import FEMPoisson

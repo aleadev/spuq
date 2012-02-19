@@ -30,14 +30,16 @@ The coefficients :math:`\alpha_j` follow from the recurrence coefficients
 """
 
 from __future__ import division
+import numpy as np
+
+from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt,
+                    Function, FunctionSpace, TestFunction, CellSize, FacetNormal)
 
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
+from spuq.linalg.vector import FlatVector 
 from spuq.math_utils.multiindex import Multiindex
-from spuq.utils.type_check import takes, anything
-
-from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt,
-                    FunctionSpace, TestFunction, Constant, CellSize, FacetNormal)
+from spuq.utils.type_check import takes, anything, list_of
 
 
 class ResidualEstimator(object):
@@ -56,7 +58,11 @@ class ResidualEstimator(object):
         # evaluate residual estimator for all multi indices
         eta = MultiVector()
         for mu in w.active_indices():
-            eta[mu] = cls._evaluateResidualEstimator(mu, w, CF, f)
+            a, b = cls._evaluateResidualEstimator(mu, w, CF, f)
+            print type(a), type(b)
+            eta[mu], errormu = cls._evaluateResidualEstimator(mu, w, CF, f)
+            print "local error for mu ", mu, ": ", errormu
+#            print eta[mu].array()
         return eta
 
 
@@ -75,21 +81,17 @@ class ResidualEstimator(object):
         # get mean field of coefficient
         a0_f, _ = CF[0]
 
-        # prepare FEM
+        # prepare some FEM variables
         V = w[mu]._fefunc.function_space()
         mesh = V.mesh()
-        DG = FunctionSpace(mesh, "DG", 0)
-        w = TestFunction(DG)
-        h = CellSize(mesh)
         nu = FacetNormal(mesh)
+
         # initialise volume and edge residual with deterministic part
         R_T = dot(nabla_grad(a0_f), nabla_grad(w[mu]._fefunc))
         if not mu:
             R_T = R_T + f
-        else:
-            R_T = Constant(0)
-        R_E = a0_f * nabla_grad(w[mu]._fefunc)
-
+        R_E = a0_f * dot(nabla_grad(w[mu]._fefunc), nu)
+        
         # iterate m
         Delta = w.active_indices()
         for m in range(1, len(CF)):
@@ -117,20 +119,27 @@ class ResidualEstimator(object):
             r_t = dot(nabla_grad(am_f), nabla_grad(res._fefunc))
             R_T = R_T + r_t
             # add edge contribution for m
-            r_e = sqrt(a0_f._fefunc) * dot(nabla_grad(res._fefunc), nabla_grad(nu))
+            r_e = am_f * dot(nabla_grad(res._fefunc), nu)
             R_E = R_E + r_e
 
+        # prepare more FEM variables for residual assembly
+        V = w[mu]._fefunc.function_space()
+        DG = FunctionSpace(mesh, "DG", 0)
+        s = TestFunction(DG)
+        h = CellSize(mesh)
+        
         # scaling of residual terms and definition of residual form
-        R_T = 1 / sqrt(a0_f._fefunc) * R_T ** 2
-        R_E = 1 / sqrt(a0_f._fefunc) * R_E ** 2
-        res_form = (h ** 2 * R_T * w * dx
-                    + avg(h) * avg(R_E) * 2 * avg(w) * dS
-                    + h * R_E * w * ds)
+        R_T = 1 / sqrt(a0_f) * R_T ** 2
+        R_E = 1 / sqrt(a0_f) * R_E ** 2
+        res_form = (h ** 2 * R_T * s * dx
+                    + avg(h) * avg(R_E) * 2 * avg(s) * dS
+                    + h * R_E * s * ds)
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
+        eta_indicator = np.array([sqrt(e) for e in eta])
         error = sqrt(sum(i for i in eta.array()))
-        return (eta, error)
+        return (FlatVector(eta_indicator), error)
 
 
     @classmethod
@@ -149,16 +158,19 @@ class ResidualEstimator(object):
             \zeta_{\mu,T,m}^{\mu\pm e_m} := ||a_m/\overline{a}||_{L^\infty(D)} \alpha_{\mu_m\pm 1}\int_T | \nabla( \Pi_{\mu\pm e_m}^\mu(\Pi_\mu^{\mu\pm e_m} w_{N,mu\pm e_)m})) - w_{N,mu\pm e_)m} |^2\;dx
         """
 
-        delta = MultiVector()
-        for mu in w.active_set():
-            delta[mu] = sum(cls.evaluateLocalProjectionError(w, mu, m, CF)
-                            for m in range(1, len(CF)))
-        return delta
+        Delta = w.active_indices()
+        print "\nDELTA: ", type(Delta)
+        proj_error = MultiVector()
+        for mu in Delta:
+            dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta)
+                                                for m in range(1, len(CF)))
+            proj_error[mu] = FlatVector(dmu)
+        return proj_error
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField)
-    def evaluateLocalProjectionError(cls, w, mu, m, CF):
+    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex))
+    def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -168,35 +180,56 @@ class ResidualEstimator(object):
         Both errors, :math:`\zeta_{\mu,T,m}^{\mu+e_m}` and :math:`\zeta_{\mu,T,m}^{\mu-e_m}` are returned.
         """
 
-        # determine ||a_m/\overline{a}||_{L\infty(D)}
+        # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
         a0_f, _ = CF[0]
         am_f, _ = CF[m]
-        mesh_points = w[mu].mesh.coordinates()
-        amin = min(a0_f(mesh_points))
-        ammax = max(am_f(mesh_points))
+        f = Function(w[mu]._fefunc.function_space())
+        f.interpolate(a0_f)
+        amin = min(f.vector().array())
+        f.interpolate(am_f)
+        ammax = max(f.vector().array())
         ainfty = ammax / amin
+        assert isinstance(ainfty, float)
+#        print "\namin, amax, ainfty ", amin, ammax, ainfty
 
-        # prepare projections of wN
+        # prepare FEniCS discretisation variables
+        mesh = w[mu]._fefunc.function_space().mesh()
+        DG = FunctionSpace(mesh, 'DG', 0)
+        s = TestFunction(DG)
+
         # prepare polynom coefficients
         _, am_rv = CF[m]
         beta = am_rv.orth_polys.get_beta(mu[m - 1])
 
         # mu+1
         mu1 = mu.inc(m - 1)
-        w_mu1_back = w.get_back_projection(mu1, mu)
-        # evaluate H1 semi-norm of projection error
-        error1 = w_mu1_back - w[mu]
-        a1 = inner(nabla_grad(error1._fefunc), nabla_grad(error1._fefunc)) * dx
-        zeta1 = beta[1] * assemble(a1)
+        if mu1 in Delta:
+            w_mu1_back = w.get_back_projection(mu1, mu)
+            # evaluate H1 semi-norm of projection error
+            error1 = w_mu1_back - w[mu]
+            a1 = inner(nabla_grad(error1._fefunc), nabla_grad(error1._fefunc)) * s * dx
+            zeta1 = beta[1] * assemble(a1)
+            zeta1 = zeta1.array()
+        else:
+            zeta1 = np.zeros(mesh.num_cells())
 
         # mu -1
         mu2 = mu.dec(m - 1)
-        w_mu2_back = w.get_back_projection(mu2, mu)
-        # evaluate H1 semi-norm of projection error
-        error2 = w_mu2_back - w[mu]
-        a2 = inner(nabla_grad(error2._fefunc), nabla_grad(error2._fefunc)) * dx
-        zeta2 = beta[-1] * assemble(a2)
+        if mu2 in Delta:
+            w_mu2_back = w.get_back_projection(mu2, mu)
+            # evaluate H1 semi-norm of projection error
+            error2 = w_mu2_back - w[mu]
+            a2 = inner(nabla_grad(error2._fefunc), nabla_grad(error2._fefunc)) * s * dx
+            
+            # TODO: beta[-1] sometimes returns numpy.float64 instead of float leading to wrong results in the following multiplication
+            zeta2 = float(beta[-1]) * assemble(a2)
+            print "\n-----ZETA2:", type(zeta2)
+            print type(beta[-1])
 
-        zeta1 *= ainfty
-        zeta2 *= ainfty
-        return (zeta1, zeta2)
+#            zeta2 = beta[-1] * assemble(a2)
+            zeta2 = zeta2.array()
+        else:
+            zeta2 = np.zeros(mesh.num_cells())
+
+        zeta = ainfty * (zeta1 + zeta2)
+        return zeta

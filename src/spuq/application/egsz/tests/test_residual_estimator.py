@@ -1,14 +1,8 @@
 from __future__ import division
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-#from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.math_utils.multiindex import Multiindex
-#from spuq.linalg.basis import CanonicalBasis
-#from spuq.linalg.vector import FlatVector
-#from spuq.linalg.operator import DiagonalMatrixOperator, Operator
-#from spuq.linalg.function import ConstFunction, SimpleFunction
-#from spuq.polyquad.polynomials import LegendrePolynomials, StochasticHermitePolynomials
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_main, assert_raises
 
@@ -24,8 +18,6 @@ except:
 @skip_if(not HAVE_FENICS, "FEniCS not installed.")
 def test_estimator():
     # setup solution multi vector
-#    fe = FEMPoisson()
-#    A = MultiOperator(coeff_field, fe.assemble_operator)
     mis = [Multiindex([0]),
            Multiindex([1]),
            Multiindex([0, 1]),
@@ -41,7 +33,7 @@ def test_estimator():
 #    v = A * w
 
     # define coefficient field
-    a = [Expression('sin(pi*I*x[0]*x[1])', I=i, degree=2, element=fs.ufl_element())
+    a = [Expression('2.+sin(pi*I*x[0]*x[1])', I=i, degree=2, element=fs.ufl_element())
                                                                 for i in range(1, 4)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
     coeff_field = CoefficientField(a, rvs)
@@ -52,8 +44,9 @@ def test_estimator():
     # evaluate residual and projection error estimators
     res = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
     proj = ResidualEstimator.evaluateProjectionError(w, coeff_field)
-    print res.shape, proj.shape
-    print res, proj
+    print res[mis[0]].as_array().shape, proj[mis[0]].as_array().shape
+    print res[mis[0]].as_array()
+    print proj[mis[0]].as_array()
     
     
 #    # MultiindexSet

@@ -55,6 +55,10 @@ class FEniCSBasis(FEMBasis):
     def dim(self):
         return self._fefs.dim()
 
+    @property
+    def mesh(self):
+        return self._fefs.mesh()
+
     def eval(self, x):  # pragma: no coverage
         """Evaluate the basis functions at point x where x has length domain_dim."""
         raise NotImplementedError
