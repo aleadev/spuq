@@ -8,15 +8,6 @@ from spuq.fem.fem_discretisation import FEMDiscretisation
 from spuq.linalg.operator import Operator
 from spuq.utils.type_check import takes, anything
 
-#        def apply(self, vec):
-#            return self._a * vec
-#        @property
-#        def domain(self):
-#            return self._basis
-#        @property
-#        def codomain(self):
-#            return self._basis
-
 class FEMPoisson(FEMDiscretisation):
     """FEM discrete Laplace operator with coefficient :math:`a` on domain :math:`\Omega:=[0,1]^2` with homogeneous Dirichlet boundary conditions
 
@@ -26,7 +17,8 @@ class FEMPoisson(FEMDiscretisation):
         ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
     """
 
-    def assemble_operator(self, coeff, basis):
+    @classmethod
+    def assemble_operator(cls, coeff, basis):
         """Assemble the discrete problem (i.e. the stiffness matrix)"""
         
         class MatrixWrapper(Operator):

@@ -168,8 +168,7 @@ def test_fenics_with_assembly():
     rvs = [UniformRV(), NormalRV(mu=0.5)]
     coeff_field = CoefficientField(a, rvs)
 
-    fe = FEMPoisson()
-    A = MultiOperator(coeff_field, fe.assemble_operator)
+    A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
     mis = [Multiindex([0]),
            Multiindex([1]),
            Multiindex([0, 1]),
