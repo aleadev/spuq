@@ -1,6 +1,6 @@
 import numpy as np
 
-from dolfin import Function, FunctionSpace, FunctionSpaceBase, TestFunction, TrialFunction, CellFunction, assemble, dx, parameters
+from dolfin import Function, FunctionSpace, FunctionSpaceBase, TestFunction, TrialFunction, CellFunction, assemble, dx
 import dolfin as fe
 
 from spuq.utils.type_check import takes, anything, optional
@@ -11,10 +11,10 @@ from spuq.linalg.basis import check_basis
 from spuq.fem.fem_vector import FEMVector
 from spuq.fem.fem_basis import FEMBasis
 
-PROJECTION = Enum('INTERPOLATION', 'L2PROJECTION')
-
-# Set option to allow extrapolation (for interpolation)
+# Set option to allow extrapolation outside mesh (for interpolation)
 fe.parameters["allow_extrapolation"] = True
+
+PROJECTION = Enum('INTERPOLATION', 'L2PROJECTION')
 
 class FEniCSBasis(FEMBasis):
 
@@ -87,7 +87,7 @@ class FEniCSVector(FEMVector):
 
     @takes(anything, Function)
     def __init__(self, fefunc):
-        '''Initialise with coefficient vector and FEMBasis'''
+        '''Initialise with coefficient vector and Function'''
         self._fefunc = fefunc
 
     @property

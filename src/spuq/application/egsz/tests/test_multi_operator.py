@@ -185,6 +185,7 @@ def test_fenics_with_assembly():
     v = A * w
 
     print '\n', v[mis[0]].array()
+    print w[mis[0]].array()
 
 #    L = LegendrePolynomials(normalised=True)
 #    H = StochasticHermitePolynomials(mu=0.5, normalised=True)
