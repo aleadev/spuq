@@ -230,7 +230,7 @@ class SimpleFunction(GenericFunction):
         return self._f(*x)
 
     def diff(self):
-        assert self._Df != None
+        assert self._Df is not None
         return SimpleFunction(self._Df, domain_dim=self.domain_dim,
                                   codomain_dim=self.codomain_dim * self.domain_dim)
 

@@ -28,7 +28,7 @@ class FEniCSBasis(FEMBasis):
         (prolongate,restrict,...)."""
         mesh = self._fefs.mesh()
         cell_markers = CellFunction("bool", mesh)
-        if cell_ids == None:
+        if cell_ids is None:
             cell_markers.set_all(True)
         else:
             cell_markers.set_all(False)
