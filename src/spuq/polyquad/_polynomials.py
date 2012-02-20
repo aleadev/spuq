@@ -168,7 +168,7 @@ def compute_poly(rc_func, n, x):
     f = [_0(x), _1(x)]
     for i in xrange(n):
         (a, b, c) = rc_func(i)
-        fn = (a + x * b) * f[i + 1] - c * f[i]
+        fn = (x * b + a) * f[i + 1] - c * f[i]
         f.append(fn)
     return f[1:]
 
@@ -182,7 +182,7 @@ def _compute_poly2(rc_func, n, x): # pragma: no cover
         h1, h0 = 1, 0
         for i in xrange(0, n):
             (a, b, c) = rc_func(i)
-            h1, h0 = (a + b * x) * h1 - c * h0, h1
+            h1, h0 = (x * b + a) * h1 - c * h0, h1
         return h1
 
 
@@ -254,13 +254,15 @@ def stc_stoch_hermite(a, b, c, triple=False):
 # Legendre polynomials
 def rc_legendre(n):
     """AS page 782 """
-    return rc4_to_rc3((max(0, n) + 1.0, 0.0, 2.0 * n + 1.0, float(n)))
+    n = float(n)
+    return rc4_to_rc3((max(0.0, n) + 1, 0.0, 2 * n + 1, n))
 
 
 def rc_norm_legendre(n):
     """Recurrence coefficients of the normalised Legendre polys on [-1, 1]."""
+    n = float(n)
     if n > 0:
-        beta = (4 - float(n) ** -2) ** -0.5
+        beta = (4 - n ** -2) ** -0.5
     else:
         beta = 0.0
     return (0.0, beta)
@@ -270,11 +272,13 @@ def sqnorm_legendre(n):
     """Square of the norm of the legendre polynomials of [-1, 1].
 
     AS page 782 (divided by 2, s.t. h0 == 1)"""
-    return 1.0 / (2.0 * n + 1.0)
+    n = float(n)
+    return 1.0 / (2 * n + 1)
 
 
 def rc_jacobi(n, alpha, beta):
     """AS page 782 """
+    n = float(n)
     if n == 0:
         a = (alpha - beta) / 2.0
         b = (alpha + beta + 2) / 2.0
@@ -291,6 +295,7 @@ def sqnorm_jacobi(n, alpha, beta):
     """Square of the norm of the legendre polynomials of [-1, 1].
 
     AS page 782 (divided by 2, s.t. h0 == 1)"""
+    n = float(n)
     def _sqnorm(n, alpha, beta):
         from scipy.special import gamma
         return (2.0 ** (alpha + beta + 1) /
@@ -310,7 +315,7 @@ def rc_chebyshev_t(n):
     see AS page 782 """
     if n == 0:
         return (0.0, 1.0, 0.0)
-    return (0.0, 2.0, 1)
+    return (0.0, 2.0, 1.0)
 
 def rc_chebyshev_u(n):
     """Chebyshev polynomials of the second kind on [-1,1]

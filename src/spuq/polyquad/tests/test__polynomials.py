@@ -67,11 +67,11 @@ def test_monomials():
 
 def test_sqnorm_legendre():
     # first test norm of legendre polynomials
-    assert_almost_equal( sqnorm_legendre(0), 1.0)
-    assert_almost_equal( sqnorm_legendre(1), 1.0/3.0)
-    assert_almost_equal( sqnorm_legendre(2), 1.0/5.0)
-    assert_almost_equal( sqnorm_legendre(3), 1.0/7.0)
-    assert_almost_equal( sqnorm_legendre(4), 1.0/9.0)
+    assert_almost_equal(sqnorm_legendre(0), 1.0)
+    assert_almost_equal(sqnorm_legendre(1), 1.0 / 3.0)
+    assert_almost_equal(sqnorm_legendre(2), 1.0 / 5.0)
+    assert_almost_equal(sqnorm_legendre(3), 1.0 / 7.0)
+    assert_almost_equal(sqnorm_legendre(4), 1.0 / 9.0)
 
 
 def test_sqnorm_from_rc():
@@ -80,7 +80,7 @@ def test_sqnorm_from_rc():
     # computed directly by some analytic formula. We do that for the Legendre 
     # polynomials only, as they have already been checked, later polynomials 
     # can then rely on this method to work.
-    
+
     assert_array_almost_equal(sqnorm_legendre(0), 1)
     h1 = [sqnorm_from_rc(rc_legendre, i) for i in range(7)]
     h2 = [sqnorm_legendre(i) for i in range(7)]
@@ -104,24 +104,24 @@ def test_sqnorm_jacobi():
 # test the structure coefficient stuff
 
 def test_stc_hermite():
-    assert_equal(stc_stoch_hermite(0,0,0), 1)
-    assert_equal(stc_stoch_hermite(1,1,1), 0)
-    assert_equal(stc_stoch_hermite(-1,0,0), 0)
-    assert_equal(stc_stoch_hermite(0,-1,0), 0)
-    assert_equal(stc_stoch_hermite(0,0,-2), 0)
-    assert_equal(stc_stoch_hermite(2,3,5,True), 120)
-    assert_equal(stc_stoch_hermite(2,3,5), 1)
-    assert_equal(stc_stoch_hermite(2,1,4), 0)
-    assert_equal(stc_stoch_hermite(3,1,4,True), 24)
-    assert_equal(stc_stoch_hermite(7,5,8,True), 16934400)
-    assert_equal(stc_stoch_hermite(7,5,8,False), 420)
-    
-    c=stc_stoch_hermite
-    n=sqnorm_stoch_hermite
+    assert_equal(stc_stoch_hermite(0, 0, 0), 1)
+    assert_equal(stc_stoch_hermite(1, 1, 1), 0)
+    assert_equal(stc_stoch_hermite(-1, 0, 0), 0)
+    assert_equal(stc_stoch_hermite(0, -1, 0), 0)
+    assert_equal(stc_stoch_hermite(0, 0, -2), 0)
+    assert_equal(stc_stoch_hermite(2, 3, 5, True), 120)
+    assert_equal(stc_stoch_hermite(2, 3, 5), 1)
+    assert_equal(stc_stoch_hermite(2, 1, 4), 0)
+    assert_equal(stc_stoch_hermite(3, 1, 4, True), 24)
+    assert_equal(stc_stoch_hermite(7, 5, 8, True), 16934400)
+    assert_equal(stc_stoch_hermite(7, 5, 8, False), 420)
+
+    c = stc_stoch_hermite
+    n = sqnorm_stoch_hermite
     x = np.poly1d([1, 0])
     P = compute_poly(rc_stoch_hermite, 5, x)
-    p1=P[2]*P[3]
-    p2=sum([c(2,3,i)*P[i] for i in xrange(6)])
+    p1 = P[2] * P[3]
+    p2 = sum([c(2, 3, i) * P[i] for i in xrange(6)])
     assert_array_equal(p1, p2)
 
 # Make sure the support functions work.
