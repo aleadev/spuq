@@ -42,12 +42,18 @@ def test_estimator():
     f = Constant("1.0")
 
     # evaluate residual and projection error estimators
-    res = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
-    proj = ResidualEstimator.evaluateProjectionError(w, coeff_field)
-    print res[mis[0]].as_array().shape, proj[mis[0]].as_array().shape
-    print res[mis[0]].as_array()
-    print proj[mis[0]].as_array()
+    resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
+    projind = ResidualEstimator.evaluateProjectionError(w, coeff_field)
+    print resind[mis[0]].as_array().shape, projind[mis[0]].as_array().shape
+    print "RESIDUAL:", resind[mis[0]].as_array()
+    print "PROJECTION:", projind[mis[0]].as_array()
+    print "residual error estimate for mu"
+    for mu in reserr:
+        print "\t", mu, " is ", reserr[mu]
     
+    assert_equal(w.active_indices(), resind.active_indices())
+    print "active indices are ", resind.active_indices()
+    print "additional projection error indices are ", set(projind.active_indices()) - set(resind.active_indices())
     
 #    # MultiindexSet
 #    m = 2

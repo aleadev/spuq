@@ -53,17 +53,15 @@ class ResidualEstimator(object):
     @classmethod
     @takes(anything, MultiVectorWithProjection, CoefficientField, anything)
     def evaluateResidualEstimator(cls, w, CF, f):
-        """Evaluate residual estimator EGSZ (5.7) for all active mu of wN."""
-
+        """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
         # evaluate residual estimator for all multi indices
+
         eta = MultiVector()
+        err = dict()
         for mu in w.active_indices():
-            a, b = cls._evaluateResidualEstimator(mu, w, CF, f)
-            print type(a), type(b)
-            eta[mu], errormu = cls._evaluateResidualEstimator(mu, w, CF, f)
-            print "local error for mu ", mu, ": ", errormu
-#            print eta[mu].array()
-        return eta
+            err[mu] = 1
+            eta[mu], err[mu] = cls._evaluateResidualEstimator(mu, w, CF, f)
+        return (eta, err)
 
 
     @classmethod
@@ -159,7 +157,6 @@ class ResidualEstimator(object):
         """
 
         Delta = w.active_indices()
-        print "\nDELTA: ", type(Delta)
         proj_error = MultiVector()
         for mu in Delta:
             dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta)
@@ -220,13 +217,7 @@ class ResidualEstimator(object):
             # evaluate H1 semi-norm of projection error
             error2 = w_mu2_back - w[mu]
             a2 = inner(nabla_grad(error2._fefunc), nabla_grad(error2._fefunc)) * s * dx
-            
-            # TODO: beta[-1] sometimes returns numpy.float64 instead of float leading to wrong results in the following multiplication
-            zeta2 = float(beta[-1]) * assemble(a2)
-            print "\n-----ZETA2:", type(zeta2)
-            print type(beta[-1])
-
-#            zeta2 = beta[-1] * assemble(a2)
+            zeta2 = beta[-1] * assemble(a2)
             zeta2 = zeta2.array()
         else:
             zeta2 = np.zeros(mesh.num_cells())

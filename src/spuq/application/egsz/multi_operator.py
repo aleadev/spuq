@@ -12,13 +12,6 @@ where the coefficients :math:`(\alpha^m_{n-1},\alpha^m_n,\alpha^m_{n+1})` are ob
         \alpha_n &:= a_n/b_n \\
         \alpha_{n+1} &:= 1/b_n
 
-
-# init
-FEM = FEMPoisson()
-assemble = lambda a, basis: FEM.assemble_operator({'a':a}, basis)
-CF = ...
-mo = MultiOperator( CF, assemble )
-
 """
 
 from spuq.linalg.basis import Basis

@@ -41,16 +41,16 @@ class FEMPoisson(FEMDiscretisation):
         # get FEniCS function space
         V = basis._fefs
 
-# TODO: what about boundary conditions?
-#        # define boundary conditions
-#        def u0_boundary(x, on_boundary):
-#            return on_boundary
-#        u0 = Constant(0.0)        
-#        bc = DirichletBC(V, u0, u0_boundary)
+        # define boundary conditions
+        def u0_boundary(x, on_boundary):
+            return on_boundary
+        u0 = Constant(0.0)        
+        bc = DirichletBC(V, u0, u0_boundary)
 
-        # setup problem
+        # setup problem, assemble and apply boundary conditions
         u = TrialFunction(V)
         v = TestFunction(V)
         a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
         A = assemble(a)
+        bc.apply(A)
         return MatrixWrapper(A)
