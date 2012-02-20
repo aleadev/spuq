@@ -22,7 +22,9 @@ def test_init():
     assert_equal(len(rvs), 2)
 
     assert_raises(AssertionError, CoefficientField, a2, rvs)
-    assert_raises(TypeError, CoefficientField, [1, 2], rvs)
+    # acceptable now, as the type of the "functions" has to be only compatible
+    # now with the assemble routine 
+    #assert_raises(TypeError, CoefficientField, [1, 2, 3], rvs)
     assert_raises(TypeError, CoefficientField, a1[1], rvs)
     assert_raises(TypeError, CoefficientField, a2, [1, 2])
     assert_raises(TypeError, CoefficientField, a2, rvs[0])

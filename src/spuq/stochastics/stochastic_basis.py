@@ -17,7 +17,7 @@ class StochasticBasis(FunctionBasis):
 
 
 class MultiindexBasis(StochasticBasis):
-    def __init__(self, I,  bases):
+    def __init__(self, I, bases):
         assert(I.m == len(bases))
         self.I = I
         self.bases = bases
@@ -37,7 +37,7 @@ class MultiindexBasis(StochasticBasis):
                 Q[q, :] = Phi.eval(q, theta)
             S = S * Q[self.I.arr[:, i], :]
         return S
-    
+
     @property
     def gramian(self):
         return NotImplemented
@@ -62,7 +62,15 @@ class GPCBasis(StochasticBasis):
 
     @property
     def dim(self):
-        return self._p+1
+        return self._p + 1
+
+    @property
+    def domain_dim(self):
+        return 1
+
+    def eval(self, x):
+        Phi = self._rv.orth_polys
+        return Phi.eval(self._p, x, all_degrees=True)
 
     @property
     def gramian(self):

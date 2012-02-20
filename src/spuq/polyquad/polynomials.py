@@ -22,9 +22,13 @@ class PolynomialFamily(object):
         """Return specific structure coefficient"""
         return NotImplemented
 
-    def eval(self, n, x):
+    def eval(self, n, x, all_degrees=False):
         """Evaluate polynomial of degree ``n`` at points ``x``"""
-        return _p.compute_poly(self.recurrence_coefficients, n, x)[-1]
+        values = _p.compute_poly(self.recurrence_coefficients, n, x)
+        if all_degrees:
+            return values
+        else:
+            return values[-1]
 
     def __getitem__(self, n):
         x = np.poly1d([1, 0])
