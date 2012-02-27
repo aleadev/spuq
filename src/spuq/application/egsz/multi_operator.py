@@ -42,12 +42,14 @@ class MultiOperator(Operator):
 
         v = 0 * w
         Delta = w.active_indices()
+        maxm = max(len(mu) for mu in Delta) + 1
+        assert len(self._CF) >= maxm        # ensure CF expansion is sufficently long
         for mu in Delta:
             # deterministic part
             a0_f, _ = self._CF[0]
             A0 = self._assemble(a0_f, w[mu].basis)
             v[mu] = A0 * w[mu]
-            for m in range(1, len(self._CF)):
+            for m in range(1, maxm):
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
                 Am = self._assemble(am_f, w[mu].basis)

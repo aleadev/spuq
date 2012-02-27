@@ -54,3 +54,23 @@ class FEMPoisson(FEMDiscretisation):
         A = assemble(a)
         bc.apply(A)
         return MatrixWrapper(A)
+
+    @classmethod
+    def assemble_rhs(cls, f, basis):
+        """Assemble the discrete right-hand side"""
+        
+        # get FEniCS function space
+        V = basis._fefs
+
+        # define boundary conditions
+        def u0_boundary(x, on_boundary):
+            return on_boundary
+        u0 = Constant(0.0)        
+        bc = DirichletBC(V, u0, u0_boundary)
+
+        # assemble and apply boundary conditions
+        v = TestFunction(V)
+        l = (f * v) * dx
+        F = assemble(l)
+        bc.apply(F)
+        return F

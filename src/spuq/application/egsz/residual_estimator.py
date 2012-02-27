@@ -92,7 +92,9 @@ class ResidualEstimator(object):
         
         # iterate m
         Delta = w.active_indices()
-        for m in range(1, len(CF)):
+        maxm = max(len(mu) for mu in Delta) + 1
+        assert len(CF) >= maxm        # ensure CF expansion is sufficently long
+        for m in range(1, maxm):
             am_f, am_rv = CF[m]
 
             # prepare polynom coefficients
