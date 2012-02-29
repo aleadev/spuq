@@ -67,7 +67,7 @@ class FEMPoisson(FEMDiscretisation):
             return on_boundary
         u0 = Constant(0.0)        
         bc = DirichletBC(V, u0, u0_boundary)
-
+        
         # assemble and apply boundary conditions
         v = TestFunction(V)
         l = (f * v) * dx

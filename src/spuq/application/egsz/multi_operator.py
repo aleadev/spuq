@@ -43,7 +43,7 @@ class MultiOperator(Operator):
         v = 0 * w
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
-        assert len(self._CF) >= maxm        # ensure CF expansion is sufficently long
+        assert len(self._CF) >= maxm        # ensure CF expansion is sufficiently long
         for mu in Delta:
             # deterministic part
             a0_f, _ = self._CF[0]

@@ -27,7 +27,7 @@ def boundary(x):
 
 # Error tolerance
 tolerance = 0.1
-max_iterations = 20
+max_iterations = 4 #20
 
 # Refinement fraction
 fraction = 0.7
@@ -43,8 +43,8 @@ for i in range(max_iterations):
     u = TrialFunction(V)
     f = Expression("10*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)",
                    degree=3)
-    a = inner(grad(v), grad(u))*dx
-    L = v*f*dx
+    a = inner(grad(v), grad(u)) * dx
+    L = v * f * dx
 
     # Define boundary condition
     bc = DirichletBC(V, 0.0, "near(x[0], 0.0) || near(x[0], 1.0)")
@@ -54,7 +54,7 @@ for i in range(max_iterations):
     solve(a == L, u_h, bc)
 
     # Define cell and facet residuals
-    R_T = - (f + div(grad(u_h)))
+    R_T = -(f + div(grad(u_h)))
     n = FacetNormal(mesh)
     R_dT = dot(grad(u_h), n)
 
@@ -64,8 +64,8 @@ for i in range(max_iterations):
     h = CellSize(mesh)
 
     # Define form for assembling error indicators
-    form = (h**2*R_T**2*w*dx + avg(h)*avg(R_dT)**2*2*avg(w)*dS
-            + h*R_dT**2*w*ds)
+    form = (h ** 2 * R_T ** 2 * w * dx + avg(h) * avg(R_dT) ** 2 * 2 * avg(w) * dS
+            + h * R_dT ** 2 * w * ds)
 
     # Assemble error indicators
     indicators = assemble(form)
@@ -87,7 +87,7 @@ for i in range(max_iterations):
     largest_error = max(indicators)
     cell_markers = MeshFunction("bool", mesh, mesh.topology().dim())
     for c in cells(mesh):
-        cell_markers[c] = indicators[c.index()] > (fraction*largest_error)
+        cell_markers[c] = indicators[c.index()] > (fraction * largest_error)
 
     # Refine mesh
     mesh = refine(mesh, cell_markers)

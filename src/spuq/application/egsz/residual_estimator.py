@@ -93,7 +93,7 @@ class ResidualEstimator(object):
         # iterate m
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
-        assert len(CF) >= maxm        # ensure CF expansion is sufficently long
+        assert len(CF) >= maxm        # ensure CF expansion is sufficiently long
         for m in range(1, maxm):
             am_f, am_rv = CF[m]
 
