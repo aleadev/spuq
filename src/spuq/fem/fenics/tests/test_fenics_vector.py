@@ -1,8 +1,9 @@
 import numpy as np
-from dolfin import UnitSquare, FunctionSpace, Expression, Function, interpolate, CellFunction
+from dolfin import UnitSquare, FunctionSpace, Expression, interpolate
 
 from spuq.utils.testing import *
-from spuq.fem.fenics.fenics_vector import FEniCSBasis, FEniCSVector
+from spuq.fem.fenics.fenics_basis import FEniCSBasis
+from spuq.fem.fenics.fenics_vector import FEniCSVector
 
 def test_fenics_basis():
     mesh = UnitSquare(5, 5)
@@ -69,7 +70,6 @@ def test_fenics_vector():
 
 def test_fenics_project():
     mesh1 = UnitSquare(3, 3)
-    mesh2 = UnitSquare(5, 5)
     fs1 = FunctionSpace(mesh1, "CG", 2)
     fs2 = FunctionSpace(mesh1, "CG", 2)
     exa = Expression("1.+x[0]*x[1]")
@@ -93,13 +93,12 @@ def test_fenics_refine():
     exa = Expression("1.+x[0]*x[1]")
     f1a = interpolate(exa, fs1)
     vec1a = FEniCSVector(f1a)
-    (basis2, prolongate, restrict) = vec1a.basis.refine((1,3,15))
+    (basis2, prolongate, restrict) = vec1a.basis.refine((1, 3, 15))
     vec2 = prolongate(vec1a)
     assert_equal(vec2.basis, basis2)
     vec1b = restrict(vec2)
     assert_equal(vec1b.basis, vec1a.basis)
     assert_almost_equal(vec1a.array(), vec1b.array())
-
 
 
 test_main()
