@@ -1,6 +1,6 @@
 from dolfin import Function
 
-from spuq.utils.type_check import takes, anything
+from spuq.utils.type_check import takes, anything, sequence_of, set_of
 from spuq.linalg.vector import Scalar
 from spuq.linalg.basis import check_basis
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
@@ -42,6 +42,14 @@ class FEniCSVector(FEMVector):
         # TODO: remove create_copy and retain only copy()
         new_fefunc = Function(self._fefunc.function_space(), coeffs)
         return self.__class__(new_fefunc)
+
+    @takes(anything, (set_of(int), sequence_of(int)))
+    def refine(self, cell_ids=None, with_prolongation=False):
+        (new_basis, prolongate, _) = self.basis.refine(cell_ids)
+        if with_prolongation:
+            return prolongate(self)
+        else:
+            return FEniCSVector(Function(new_basis._fefs))
 
     def __eq__(self, other):
         """Compare vectors for equality.

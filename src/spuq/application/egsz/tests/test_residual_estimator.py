@@ -1,5 +1,6 @@
 from __future__ import division
 from operator import itemgetter
+from collections import defaultdict
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -8,7 +9,7 @@ from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_main, assert_raises
 
 try:
-    from dolfin import Expression, FunctionSpace, UnitSquare, interpolate, Constant, MeshFunction, cells, refine
+    from dolfin import Expression, FunctionSpace, UnitSquare, interpolate, Constant, MeshFunction, cells, refine, plot, interactive
     from spuq.application.egsz.residual_estimator import ResidualEstimator
 #    from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -83,60 +84,57 @@ def test_estimator_refinement():
     # define source term
     f = Constant("1.0")
 
-    # evaluate residual and projection error estimators
-    resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
-    projind = ResidualEstimator.evaluateProjectionError(w, coeff_field)
-    
-    print resind[mis[0]].as_array().shape, projind[mis[0]].as_array().shape
-    print "RESIDUAL:", resind[mis[0]].as_array()
-    print "PROJECTION:", projind[mis[0]].as_array()
-    print "residual error estimate for mu"
-    for mu in reserr:
-        print "\t", mu, " is ", reserr[mu]
-    
-    assert_equal(w.active_indices(), resind.active_indices())
-    print "active indices are ", resind.active_indices()
 
+    # refinement loop
+    refinements = 1
 
-    # ===================
-    # MARK algorithm test
-    # ===================
-
-    # setup marking function
-    mesh_markers = {}
-    for mu in w.active_indices():
-        mesh = w[mu].basis._fefs.mesh()
-        mesh_markers[mu] = MeshFunction("bool", mesh, mesh.topology().dim())
-        mesh_markers[mu].set_all(False)
-
-    # residual marking
-    theta_eta = 0.3
-    global_res = sum([res[1] for res in reserr.items()])
-    allresind = [(resind[mu].coeffs[i], i, mu) for i in range(len(resind[mu].coeffs)) for mu in resind.active_indices()]
-    allresind = sorted(allresind, key=itemgetter(1))
-    # TODO: check that indexing and cell ids are consistent (it would be safer to always work with cell indices) 
-    marked_res = 0
-    for res in allresind:
-        if marked_res >= theta_eta * global_res:
-            break
-        mesh_markers[res[2]][res[1]] = True
-        marked_res += res[0]
+    for refinement in range(refinements):
+        print "REFINEMENT LOOP iteration ", refinement + 1
         
-    print "RES MARKED elements:\n", [(mu, mesh_markers[mu].array().sum()) for mu in mesh_markers]
+        # evaluate residual and projection error estimates
+        resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
+        projind = ResidualEstimator.evaluateProjectionError(w, coeff_field)
     
-    # projection marking
-    theta_zeta = 0.8
-    max_zeta = max([max(projind[mu].coeffs) for mu in projind.active_indices()])
-    for mu in projind.active_indices():
-        indmu = [i for i, p in enumerate(projind[mu].coeffs) if p >= theta_zeta * max_zeta]
-        print "PROJ MARKING", len(indmu), "elements in", mu
-        for i in indmu:
-            mesh_markers[mu][i] = True
+        # ===================
+        # MARK algorithm test
+        # ===================
+    
+        # setup marking sets
+        mesh_markers = defaultdict(set)
+    
+        # residual marking
+        theta_eta = 0.3
+        global_res = sum([res[1] for res in reserr.items()])
+        allresind = list()
+        for mu, resmu in resind.iteritems():
+            allresind = allresind + [(resmu.coeffs[i], i, mu) for i in range(len(resmu.coeffs))]
+        allresind = sorted(allresind, key=itemgetter(1))
+        # TODO: check that indexing and cell ids are consistent (it would be safer to always work with cell indices) 
+        marked_res = 0
+        for res in allresind:
+            if marked_res >= theta_eta * global_res:
+                break
+            mesh_markers[res[2]].add(res[1])
+            marked_res += res[0]
+            
+        print "RES MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
+        
+        # projection marking
+        theta_zeta = 0.8
+        max_zeta = max([max(projind[mu].coeffs) for mu in projind.active_indices()])
+        for mu, vec in projind.iteritems():
+            indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
+            mesh_markers[mu] = mesh_markers[mu].union(set(indmu)) 
+            print "PROJ MARKING", len(indmu), "elements in", mu
+    
+        print "FINAL MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
+    
+        # create refined multi vector
+        new_w = MultiVectorWithProjection()
+        for mu, cell_ids in mesh_markers.iteritems():
+            new_w[mu] = w[mu].refine(cell_ids, True)
+        w = new_w
 
-    print "FINAL MARKED elements:\n", [(mu, mesh_markers[mu].array().sum()) for mu in mesh_markers]
-
-    # refine meshes
-#    mesh = refine(mesh, cell_markers)
     
     # new multiindex activation
 #    am_f, am_rv = coeff_field[0]
@@ -144,5 +142,14 @@ def test_estimator_refinement():
 #    beta[0]
 #    print "additional projection error indices are ", set(projind.active_indices()) - set(resind.active_indices())
 
+    
+        print "REFINED MESHES elements:\n", [(mu, vec.basis.mesh.num_cells()) for mu, vec in w.iteritems()]
+
+    # show refined meshes
+    plot_meshes = True    
+    if plot_meshes:
+        for mu, vec in new_w.iteritems():
+            plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
+        interactive()
 
 test_main()

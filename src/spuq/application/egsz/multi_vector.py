@@ -47,6 +47,9 @@ class MultiVector(Vector):
     def keys(self):
         return self.mi2vec.keys()
 
+    def iteritems(self):
+        return self.mi2vec.iteritems()
+
     def active_indices(self):
         return sorted(self.keys())
 
