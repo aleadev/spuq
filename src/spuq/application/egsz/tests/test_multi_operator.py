@@ -10,7 +10,7 @@ from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.linalg.basis import CanonicalBasis
 from spuq.linalg.vector import FlatVector
-from spuq.linalg.operator import DiagonalMatrixOperator, Operator
+from spuq.linalg.operator import DiagonalMatrixOperator, Operator, MultiplicationOperator
 from spuq.linalg.function import ConstFunction, SimpleFunction
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.polyquad.polynomials import LegendrePolynomials, StochasticHermitePolynomials
@@ -80,11 +80,11 @@ def test_apply():
 
     L = LegendrePolynomials(normalised=True)
     H = StochasticHermitePolynomials(mu=0.5, normalised=True)
-    v0_ex = (2 * vecs[0] + 
-              3 * (L.get_beta(0)[1] * vecs[1] - L.get_beta(0)[0] * vecs[0]) + 
+    v0_ex = (2 * vecs[0] +
+              3 * (L.get_beta(0)[1] * vecs[1] - L.get_beta(0)[0] * vecs[0]) +
               4 * (H.get_beta(0)[1] * vecs[2] - H.get_beta(0)[0] * vecs[0]))
-    v2_ex = (2 * vecs[2] + 4 * (H.get_beta(1)[1] * vecs[3] - 
-                                H.get_beta(1)[0] * vecs[2] + 
+    v2_ex = (2 * vecs[2] + 4 * (H.get_beta(1)[1] * vecs[3] -
+                                H.get_beta(1)[0] * vecs[2] +
                                 H.get_beta(1)[-1] * vecs[0]))
 
     assert_equal(v[mis[0]], v0_ex)
@@ -92,20 +92,8 @@ def test_apply():
 
 def test_fenics_vector():
     def mult_assemble(a, basis):
-        return MultOperator(a(0), basis)
+        return MultiplicationOperator(a(0), basis)
 
-    class MultOperator(Operator):
-        def __init__(self, a, basis):
-            self._a = a
-            self._basis = basis
-        def apply(self, vec):
-            return self._a * vec
-        @property
-        def domain(self):
-            return self._basis
-        @property
-        def codomain(self):
-            return self._basis
 
     a = [ConstFunction(2), ConstFunction(3), ConstFunction(4)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
@@ -183,8 +171,8 @@ def test_fenics_with_assembly():
         w[mi] = vec
     v = A * w
 
-    print '\n', v[mis[0]].array()
-    print w[mis[0]].array()
+    #print '\n', v[mis[0]].array()
+    #print w[mis[0]].array()
 
 #    L = LegendrePolynomials(normalised=True)
 #    H = StochasticHermitePolynomials(mu=0.5, normalised=True)

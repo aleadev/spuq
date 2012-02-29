@@ -347,12 +347,25 @@ class DiagonalMatrixOperator(BaseOperator):
         return FlatVector(np.multiply(self._diag, vec.coeffs), self.domain)
 
     def as_matrix(self):
-        return np.asmatrix(self._arr)
+        return np.asmatrix(np.diag(self._arr))
 
     def transpose(self):
-        return MatrixOperator(self._arr.T,
+        return DiagonalMatrixOperator(self._arr.T,
                             self.codomain,
                             self.domain)
+
+class MultiplicationOperator(Operator):
+    def __init__(self, a, basis):
+        self._a = a
+        self._basis = basis
+    def apply(self, vec):
+        return self._a * vec
+    @property
+    def domain(self):
+        return self._basis
+    @property
+    def codomain(self):
+        return self._basis
 
 
 # class TensorOperator(Operator):
