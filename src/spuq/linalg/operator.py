@@ -302,7 +302,7 @@ class MatrixOperator(BaseOperator):
                              'matrix dimensions')
 
         assert(arr.ndim == 2)
-        self._arr = arr
+        self._arr = np.asarray(arr)
         super(MatrixOperator, self).__init__(domain, codomain)
 
     @takes(anything, FlatVector)
