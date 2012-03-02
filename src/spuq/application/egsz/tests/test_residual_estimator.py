@@ -1,6 +1,8 @@
 from __future__ import division
+from math import ceil
 from operator import itemgetter
 from collections import defaultdict
+from itertools import count
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -9,7 +11,8 @@ from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_main, assert_raises
 
 try:
-    from dolfin import Expression, FunctionSpace, UnitSquare, interpolate, Constant, MeshFunction, cells, refine, plot, interactive
+    from dolfin import (Expression, Function, FunctionSpace, UnitSquare, interpolate, Constant, MeshFunction,
+                            cells, refine, plot, interactive, norm)
     from spuq.application.egsz.residual_estimator import ResidualEstimator
 #    from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -84,8 +87,8 @@ def test_estimator_refinement():
     # define source term
     f = Constant("1.0")
 
-
     # refinement loop
+    # ===============
     refinements = 1
 
     for refinement in range(refinements):
@@ -103,7 +106,8 @@ def test_estimator_refinement():
         mesh_markers = defaultdict(set)
     
         # residual marking
-        theta_eta = 0.3
+        # ================
+        theta_eta = 0.4
         global_res = sum([res[1] for res in reserr.items()])
         allresind = list()
         for mu, resmu in resind.iteritems():
@@ -120,8 +124,10 @@ def test_estimator_refinement():
         print "RES MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
         
         # projection marking
+        # ==================
         theta_zeta = 0.8
         max_zeta = max([max(projind[mu].coeffs) for mu in projind.active_indices()])
+        print "max_zeta =", max_zeta
         for mu, vec in projind.iteritems():
             indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
             mesh_markers[mu] = mesh_markers[mu].union(set(indmu)) 
@@ -134,19 +140,50 @@ def test_estimator_refinement():
         for mu, cell_ids in mesh_markers.iteritems():
             new_w[mu] = w[mu].refine(cell_ids, True)
         w = new_w
-
     
-    # new multiindex activation
-#    am_f, am_rv = coeff_field[0]
-#    beta = am_rv.orth_polys.get_beta(1)
-#    beta[0]
-#    print "additional projection error indices are ", set(projind.active_indices()) - set(resind.active_indices())
-
-    
-        print "REFINED MESHES elements:\n", [(mu, vec.basis.mesh.num_cells()) for mu, vec in w.iteritems()]
+        # new multiindex activation
+        # =========================
+        # determine possible new indices
+        theta_delta = 0.9
+        maxm = 10
+        a0_f, _ = coeff_field[0]
+        Ldelta = {}
+        Delta = w.active_indices()
+        deltaN = int(ceil(0.7 * len(Delta)))
+        for mu in Delta:
+            norm_w = norm(w[mu].coeffs, 'L2')
+            for m in count(1):
+                if mu.inc(m) not in Delta:
+                    if m > maxm or m >= len(coeff_field):  # or len(Ldelta) >= deltaN
+                        break 
+                    am_f, am_rv = coeff_field[m]
+                    beta = am_rv.orth_polys.get_beta(1)
+                    # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
+                    f = Function(w[mu]._fefunc.function_space())
+                    f.interpolate(a0_f)
+                    min_a0 = min(f.vector().array())
+                    f.interpolate(am_f)
+                    max_am = max(f.vector().array())
+                    ainfty = max_am / min_a0
+                    assert isinstance(ainfty, float)
+                    
+#                    print "A***", beta[1], ainfty, norm_w
+#                    print "B***", beta[1] * ainfty * norm_w
+#                    print "C***", theta_delta, max_zeta
+#                    print "D***", theta_delta * max_zeta
+#                    print "E***", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta)
+                    
+                    if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
+                        Ldelta[mu.inc(m)] = beta[1] * ainfty * norm_w
+        print "POSSIBLE NEW MULTIINDICES ", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)
+        Ldelta = sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Ldelta), deltaN)]
+        # add new multiindices to solution vector
+        for mu, _ in Ldelta:
+            w[mu] = vecs[0]             # initialise with some function for testing purposes
+        print "SELECTED NEW MULTIINDICES ", Ldelta
 
     # show refined meshes
-    plot_meshes = True    
+    plot_meshes = False    
     if plot_meshes:
         for mu, vec in new_w.iteritems():
             plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)

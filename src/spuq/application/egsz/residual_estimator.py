@@ -33,7 +33,7 @@ from __future__ import division
 import numpy as np
 
 from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt,
-                    Function, FunctionSpace, TestFunction, CellSize, FacetNormal)
+                    Function, FunctionSpace, TestFunction, CellSize, FacetNormal, Constant)
 
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
@@ -168,8 +168,8 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex))
-    def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta):
+    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), bool)
+    def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta, local=True):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -192,9 +192,12 @@ class ResidualEstimator(object):
 #        print "\namin, amax, ainfty ", amin, ammax, ainfty
 
         # prepare FEniCS discretisation variables
-        mesh = w[mu]._fefunc.function_space().mesh()
-        DG = FunctionSpace(mesh, 'DG', 0)
-        s = TestFunction(DG)
+        if local:
+            mesh = w[mu]._fefunc.function_space().mesh()
+            DG = FunctionSpace(mesh, 'DG', 0)
+            s = TestFunction(DG)
+        else:
+            s = Constant('1.0')
 
         # prepare polynom coefficients
         _, am_rv = CF[m]
