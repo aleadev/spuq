@@ -98,6 +98,12 @@ def test_estimator_refinement():
         resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         projind = ResidualEstimator.evaluateProjectionError(w, coeff_field)
     
+        # testing -->
+        projglobal = ResidualEstimator.evaluateProjectionError(w, coeff_field, False)
+        for mu, val in projglobal.iteritems():
+            print "GLOBAL Projection Error for", mu, "=", val
+        # <-- testing
+    
         # ===================
         # MARK algorithm test
         # ===================

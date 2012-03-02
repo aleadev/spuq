@@ -39,7 +39,7 @@ from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 from spuq.linalg.vector import FlatVector 
 from spuq.math_utils.multiindex import Multiindex
-from spuq.utils.type_check import takes, anything, list_of
+from spuq.utils.type_check import takes, anything, list_of, optional
 
 
 class ResidualEstimator(object):
@@ -93,7 +93,10 @@ class ResidualEstimator(object):
         # iterate m
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
-        assert len(CF) >= maxm        # ensure CF expansion is sufficiently long
+        if len(CF) < maxm:
+            maxm = len(CF)  
+            print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector"
+#        assert len(CF) >= maxm        # ensure CF expansion is sufficiently long
         for m in range(1, maxm):
             am_f, am_rv = CF[m]
 
@@ -143,8 +146,8 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, CoefficientField)
-    def evaluateProjectionError(cls, w, CF):
+    @takes(anything, MultiVectorWithProjection, CoefficientField, optional(bool))
+    def evaluateProjectionError(cls, w, CF, local=True):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -159,16 +162,26 @@ class ResidualEstimator(object):
         """
 
         Delta = w.active_indices()
-        proj_error = MultiVector()
+        if local:
+            proj_error = MultiVector()
+        else:
+            proj_error = {}
         for mu in Delta:
-            dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta)
-                                                for m in range(1, len(CF)))
-            proj_error[mu] = FlatVector(dmu)
+            maxm = max(len(mu) for mu in Delta) + 1
+            if len(CF) < maxm:
+                maxm = len(CF)  
+                print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector"
+            dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, local)
+                                                        for m in range(1, maxm))
+            if local:
+                proj_error[mu] = FlatVector(dmu)
+            else:
+                proj_error[mu] = dmu
         return proj_error
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), bool)
+    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(bool))
     def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta, local=True):
         """Evaluate the local projection error according to EGSZ (6.4).
 
@@ -211,9 +224,13 @@ class ResidualEstimator(object):
             error1 = w_mu1_back - w[mu]
             a1 = inner(nabla_grad(error1._fefunc), nabla_grad(error1._fefunc)) * s * dx
             zeta1 = beta[1] * assemble(a1)
-            zeta1 = zeta1.array()
+            if local:  
+                zeta1 = zeta1.array()
         else:
-            zeta1 = np.zeros(mesh.num_cells())
+            if local:
+                zeta1 = np.zeros(mesh.num_cells())
+            else:
+                zeta1 = 0
 
         # mu -1
         mu2 = mu.dec(m - 1)
@@ -223,9 +240,13 @@ class ResidualEstimator(object):
             error2 = w_mu2_back - w[mu]
             a2 = inner(nabla_grad(error2._fefunc), nabla_grad(error2._fefunc)) * s * dx
             zeta2 = beta[-1] * assemble(a2)
-            zeta2 = zeta2.array()
+            if local:
+                zeta2 = zeta2.array()
         else:
-            zeta2 = np.zeros(mesh.num_cells())
+            if local:
+                zeta2 = np.zeros(mesh.num_cells())
+            else:
+                zeta2 = 0
 
         zeta = ainfty * (zeta1 + zeta2)
         return zeta
