@@ -44,8 +44,8 @@ class MultiOperator(Operator):
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
         if len(self._CF) < maxm:
+            print "[MultiOperator] WARNING: insufficient length of coefficient field for MultiVector (", len(self._CF), "instead of", maxm, ")"
             maxm = len(self._CF)  
-            print "[MultiOperator] WARNING: insufficient length of coefficient field for MultiVector"
 #        assert len(self._CF) >= maxm        # ensure CF expansion is sufficiently long
         for mu in Delta:
             # deterministic part

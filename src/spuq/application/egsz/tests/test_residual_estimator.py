@@ -70,7 +70,7 @@ def test_estimator_refinement():
            Multiindex([0, 2])]
     mesh = UnitSquare(4, 4)
     fs = FunctionSpace(mesh, "CG", 1)
-    F = [interpolate(Expression("*".join(["x[0]"] * i)) , fs) for i in range(1, 5)]
+    F = [interpolate(Expression("*".join(["(-x[0])"] * i)) , fs) for i in range(1, 5)]
     vecs = [FEniCSVector(f) for f in F]
 
     w = MultiVectorWithProjection()
@@ -78,8 +78,8 @@ def test_estimator_refinement():
         w[mi] = vec
 
     # define coefficient field
-    aN = 10
-    a = [Expression('2.+sin(2.*pi*I*x[0]*x[1])', I=i, degree=3, element=fs.ufl_element())
+    aN = 15
+    a = [Expression('2.+sin(pi*I*x[0]+x[1])', I=i, degree=3, element=fs.ufl_element())
                                                                 for i in range(1, aN)]
     rvs = [NormalRV(mu=0.5) for _ in range(1, aN - 1)]
     coeff_field = CoefficientField(a, rvs)
@@ -89,10 +89,12 @@ def test_estimator_refinement():
 
     # refinement loop
     # ===============
-    refinements = 1
+    refinements = 4
 
     for refinement in range(refinements):
+        print "*****************************"
         print "REFINEMENT LOOP iteration ", refinement + 1
+        print "*****************************"
         
         # evaluate residual and projection error estimates
         resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
@@ -113,7 +115,7 @@ def test_estimator_refinement():
     
         # residual marking
         # ================
-        theta_eta = 0.4
+        theta_eta = 0.8
         global_res = sum([res[1] for res in reserr.items()])
         allresind = list()
         for mu, resmu in resind.iteritems():
@@ -141,12 +143,6 @@ def test_estimator_refinement():
     
         print "FINAL MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
     
-        # create refined multi vector
-        new_w = MultiVectorWithProjection()
-        for mu, cell_ids in mesh_markers.iteritems():
-            new_w[mu] = w[mu].refine(cell_ids, True)
-        w = new_w
-    
         # new multiindex activation
         # =========================
         # determine possible new indices
@@ -155,7 +151,7 @@ def test_estimator_refinement():
         a0_f, _ = coeff_field[0]
         Ldelta = {}
         Delta = w.active_indices()
-        deltaN = int(ceil(0.7 * len(Delta)))
+        deltaN = int(ceil(0.1 * len(Delta)))
         for mu in Delta:
             norm_w = norm(w[mu].coeffs, 'L2')
             for m in count(1):
@@ -187,11 +183,16 @@ def test_estimator_refinement():
         for mu, _ in Ldelta:
             w[mu] = vecs[0]             # initialise with some function for testing purposes
         print "SELECTED NEW MULTIINDICES ", Ldelta
+    
+        # create new refined (and enlarged) multi vector
+        # ==============================================
+        for mu, cell_ids in mesh_markers.iteritems():
+            w[mu] = w[mu].refine(cell_ids, True)
 
     # show refined meshes
-    plot_meshes = False    
+    plot_meshes = True    
     if plot_meshes:
-        for mu, vec in new_w.iteritems():
+        for mu, vec in w.iteritems():
             plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
         interactive()
 

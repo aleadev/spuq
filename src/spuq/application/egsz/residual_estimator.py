@@ -94,8 +94,8 @@ class ResidualEstimator(object):
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
         if len(CF) < maxm:
+            print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", len(CF), "instead of", maxm, ")"
             maxm = len(CF)  
-            print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector"
 #        assert len(CF) >= maxm        # ensure CF expansion is sufficiently long
         for m in range(1, maxm):
             am_f, am_rv = CF[m]
@@ -169,8 +169,8 @@ class ResidualEstimator(object):
         for mu in Delta:
             maxm = max(len(mu) for mu in Delta) + 1
             if len(CF) < maxm:
+                print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", len(CF), "instead of", maxm, ")"
                 maxm = len(CF)  
-                print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector"
             dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, local)
                                                         for m in range(1, maxm))
             if local:
@@ -221,7 +221,7 @@ class ResidualEstimator(object):
         if mu1 in Delta:
             w_mu1_back = w.get_back_projection(mu1, mu)
             # evaluate H1 semi-norm of projection error
-            error1 = w_mu1_back - w[mu]
+            error1 = w_mu1_back - w[mu1]
             a1 = inner(nabla_grad(error1._fefunc), nabla_grad(error1._fefunc)) * s * dx
             zeta1 = beta[1] * assemble(a1)
             if local:  
@@ -237,7 +237,7 @@ class ResidualEstimator(object):
         if mu2 in Delta:
             w_mu2_back = w.get_back_projection(mu2, mu)
             # evaluate H1 semi-norm of projection error
-            error2 = w_mu2_back - w[mu]
+            error2 = w_mu2_back - w[mu2]
             a2 = inner(nabla_grad(error2._fefunc), nabla_grad(error2._fefunc)) * s * dx
             zeta2 = beta[-1] * assemble(a2)
             if local:

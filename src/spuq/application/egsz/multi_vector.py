@@ -1,4 +1,4 @@
-from weakref import WeakValueDictionary
+# from weakref import WeakValueDictionary
 
 from spuq.linalg.vector import Scalar, Vector
 from spuq.math_utils.multiindex import Multiindex
@@ -107,8 +107,8 @@ class MultiVectorWithProjection(MultiVector):
         if not project:
             project = MultiVectorWithProjection.default_project
         self.project = project
-        self._proj_cache = WeakValueDictionary()
-        self._back_cache = WeakValueDictionary()
+        self._proj_cache = {}               # NOTE: WeakValueDictionary is not appropriate for this type of cache
+        self._back_cache = {}
 
     @staticmethod
     def default_project(vec_src, vec_dest):
@@ -126,6 +126,7 @@ class MultiVectorWithProjection(MultiVector):
                 self.project == other.project)
 
     def clear_cache(self):
+#        print "************CLEARING CACHE!!!!********************"
         self._back_cache.clear()
         self._proj_cache.clear()
 
@@ -134,9 +135,18 @@ class MultiVectorWithProjection(MultiVector):
         """Return projection of vector in multivector"""
         args = (mu_src, mu_dest, self.project)
         vec = self._proj_cache.get(args)
+#        print "P MultiVector get_projection", mu_src, mu_dest
         if not vec:
+#            print "P ADDING TO CACHE: new projection required..."
             vec = self.project(self[mu_src], self[mu_dest])
             self._proj_cache[args] = vec
+#            print "P proj_cache size", len(self._proj_cache)
+#            print "P with keys", self._proj_cache.keys()
+#        else:
+#            print "P CACHED!"
+#        print "P dim mu_src =", self[mu_src].coeffs.size()
+#        print "P dim mu_dest =", self[mu_dest].coeffs.size()
+#        print "P dim vec =", vec.coeffs.size()
         return vec
 
 
@@ -145,8 +155,17 @@ class MultiVectorWithProjection(MultiVector):
         """Return back projection of vector in multivector"""
         args = (mu_src, mu_dest, self.project)
         vec = self._back_cache.get(args)
+#        print "BP MultiVector get_back_projection", mu_src, mu_dest
         if not vec:
+#            print "BP ADDING TO CACHE: new back_projection required..."
             vec_prj = self.get_projection(mu_src, mu_dest)
             vec = self.project(vec_prj, self[mu_src])
             self._back_cache[args] = vec
+#            print "BP back_cache size", len(self._back_cache)
+#            print "BP with keys", self._back_cache.keys()
+#        else:
+#            print "BP CACHED!"
+#        print "BP dim mu_src =", self[mu_src].coeffs.size()
+#        print "BP dim mu_dest =", self[mu_dest].coeffs.size()
+#        print "BP dim vec =", vec.coeffs.size()
         return vec
