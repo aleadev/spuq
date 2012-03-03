@@ -79,7 +79,6 @@ def test_fenics_vector():
     def mult_assemble(a, basis):
         return MultiplicationOperator(a(0), basis)
 
-
     a = [ConstFunction(2), ConstFunction(3), ConstFunction(4)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
     coeff_field = CoefficientField(a, rvs)
@@ -108,7 +107,8 @@ def test_fenics_vector():
 
     assert_almost_equal(v[mis[0]].array(), vec0.array())
 
-
+    # ======================================================================
+    # test with different meshes
     # ======================================================================
 
     N = len(mis)
@@ -168,6 +168,8 @@ def test_fenics_with_assembly():
 #    assert_almost_equal(v[mis[0]].array(), vec0.array())
 
 
+    # ======================================================================
+    # test with different meshes
     # ======================================================================
 
     N = len(mis)

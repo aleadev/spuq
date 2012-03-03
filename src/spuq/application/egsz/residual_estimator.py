@@ -32,7 +32,7 @@ The coefficients :math:`\alpha_j` follow from the recurrence coefficients
 from __future__ import division
 import numpy as np
 
-from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt,
+from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt, refine,
                     Function, FunctionSpace, TestFunction, CellSize, FacetNormal, Constant)
 
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -146,8 +146,8 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, CoefficientField, optional(bool))
-    def evaluateProjectionError(cls, w, CF, local=True):
+    @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool))
+    def evaluateProjectionError(cls, w, CF, maxh=0.0, local=True):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -171,7 +171,7 @@ class ResidualEstimator(object):
             if len(CF) < maxm:
                 print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", len(CF), "instead of", maxm, ")"
                 maxm = len(CF)  
-            dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, local)
+            dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, maxh, local)
                                                         for m in range(1, maxm))
             if local:
                 proj_error[mu] = FlatVector(dmu)
@@ -181,8 +181,8 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(bool))
-    def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta, local=True):
+    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float), optional(bool))
+    def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta, maxh=0.0, local=True):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -195,7 +195,16 @@ class ResidualEstimator(object):
         # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
         a0_f, _ = CF[0]
         am_f, _ = CF[m]
-        f = Function(w[mu]._fefunc.function_space())
+        # create 
+        V = w[mu]._fefunc.function_space()
+        ufl = V.ufl_element()
+        mesh = V.mesh()
+        while maxh > 0 and mesh.hmax() > maxh:
+            # TODO: log message
+            mesh = refine(mesh)
+        V = FunctionSpace(mesh, ufl.family(), ufl.degree())
+        # interpolate coefficient functions on mesh
+        f = Function(V)
         f.interpolate(a0_f)
         amin = min(f.vector().array())
         f.interpolate(am_f)
