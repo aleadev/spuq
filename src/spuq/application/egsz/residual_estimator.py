@@ -32,14 +32,14 @@ The coefficients :math:`\alpha_j` follow from the recurrence coefficients
 from __future__ import division
 import numpy as np
 
-from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt,
-                    Function, FunctionSpace, TestFunction, CellSize, FacetNormal)
+from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt, refine,
+                    Function, FunctionSpace, TestFunction, CellSize, FacetNormal, Constant)
 
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 from spuq.linalg.vector import FlatVector 
 from spuq.math_utils.multiindex import Multiindex
-from spuq.utils.type_check import takes, anything, list_of
+from spuq.utils.type_check import takes, anything, list_of, optional
 
 
 class ResidualEstimator(object):
@@ -93,7 +93,10 @@ class ResidualEstimator(object):
         # iterate m
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
-        assert len(CF) >= maxm        # ensure CF expansion is sufficiently long
+        if len(CF) < maxm:
+            print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", len(CF), "instead of", maxm, ")"
+            maxm = len(CF)  
+#        assert len(CF) >= maxm        # ensure CF expansion is sufficiently long
         for m in range(1, maxm):
             am_f, am_rv = CF[m]
 
@@ -143,8 +146,8 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, CoefficientField)
-    def evaluateProjectionError(cls, w, CF):
+    @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool))
+    def evaluateProjectionError(cls, w, CF, maxh=0.0, local=True):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -159,17 +162,27 @@ class ResidualEstimator(object):
         """
 
         Delta = w.active_indices()
-        proj_error = MultiVector()
+        if local:
+            proj_error = MultiVector()
+        else:
+            proj_error = {}
         for mu in Delta:
-            dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta)
-                                                for m in range(1, len(CF)))
-            proj_error[mu] = FlatVector(dmu)
+            maxm = max(len(mu) for mu in Delta) + 1
+            if len(CF) < maxm:
+                print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", len(CF), "instead of", maxm, ")"
+                maxm = len(CF)  
+            dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, maxh, local)
+                                                        for m in range(1, maxm))
+            if local:
+                proj_error[mu] = FlatVector(dmu)
+            else:
+                proj_error[mu] = dmu
         return proj_error
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex))
-    def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta):
+    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float), optional(bool))
+    def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta, maxh=0.0, local=True):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -182,7 +195,16 @@ class ResidualEstimator(object):
         # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
         a0_f, _ = CF[0]
         am_f, _ = CF[m]
-        f = Function(w[mu]._fefunc.function_space())
+        # create 
+        V = w[mu]._fefunc.function_space()
+        ufl = V.ufl_element()
+        mesh = V.mesh()
+        while maxh > 0 and mesh.hmax() > maxh:
+            # TODO: log message
+            mesh = refine(mesh)
+        V = FunctionSpace(mesh, ufl.family(), ufl.degree())
+        # interpolate coefficient functions on mesh
+        f = Function(V)
         f.interpolate(a0_f)
         amin = min(f.vector().array())
         f.interpolate(am_f)
@@ -192,9 +214,12 @@ class ResidualEstimator(object):
 #        print "\namin, amax, ainfty ", amin, ammax, ainfty
 
         # prepare FEniCS discretisation variables
-        mesh = w[mu]._fefunc.function_space().mesh()
-        DG = FunctionSpace(mesh, 'DG', 0)
-        s = TestFunction(DG)
+        if local:
+            mesh = w[mu]._fefunc.function_space().mesh()
+            DG = FunctionSpace(mesh, 'DG', 0)
+            s = TestFunction(DG)
+        else:
+            s = Constant('1.0')
 
         # prepare polynom coefficients
         _, am_rv = CF[m]
@@ -205,24 +230,32 @@ class ResidualEstimator(object):
         if mu1 in Delta:
             w_mu1_back = w.get_back_projection(mu1, mu)
             # evaluate H1 semi-norm of projection error
-            error1 = w_mu1_back - w[mu]
+            error1 = w_mu1_back - w[mu1]
             a1 = inner(nabla_grad(error1._fefunc), nabla_grad(error1._fefunc)) * s * dx
             zeta1 = beta[1] * assemble(a1)
-            zeta1 = zeta1.array()
+            if local:  
+                zeta1 = zeta1.array()
         else:
-            zeta1 = np.zeros(mesh.num_cells())
+            if local:
+                zeta1 = np.zeros(mesh.num_cells())
+            else:
+                zeta1 = 0
 
         # mu -1
         mu2 = mu.dec(m - 1)
         if mu2 in Delta:
             w_mu2_back = w.get_back_projection(mu2, mu)
             # evaluate H1 semi-norm of projection error
-            error2 = w_mu2_back - w[mu]
+            error2 = w_mu2_back - w[mu2]
             a2 = inner(nabla_grad(error2._fefunc), nabla_grad(error2._fefunc)) * s * dx
             zeta2 = beta[-1] * assemble(a2)
-            zeta2 = zeta2.array()
+            if local:
+                zeta2 = zeta2.array()
         else:
-            zeta2 = np.zeros(mesh.num_cells())
+            if local:
+                zeta2 = np.zeros(mesh.num_cells())
+            else:
+                zeta2 = 0
 
         zeta = ainfty * (zeta1 + zeta2)
         return zeta
