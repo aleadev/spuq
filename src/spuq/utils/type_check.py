@@ -138,7 +138,7 @@
 
 __all__ = [ "takes", "InputParameterError", "returns", "ReturnValueError",
             "optional", "nothing", "anything", "list_of", "tuple_of", "dict_of",
-            "by_regex", "with_attr", "one_of", "set_of" ]
+            "by_regex", "with_attr", "one_of", "set_of", "sequence_of" ]
 
 no_check = False # set this to True to turn all checks off
 
@@ -231,8 +231,8 @@ class CallableChecker(Checker):
 
     def __init__(self, reference):
         # be lenient with the typical bug to write 'any' instead of 'anything'
-        if reference==any:
-            reference=anything
+        if reference == any:
+            reference = anything
         Checker.__init__(self, reference)
 
     def check(self, value):
@@ -273,7 +273,7 @@ class TupleOfChecker(Checker):
                not filter(lambda e: not self.reference.check(e), value)
 
     def __str__(self):
-        return "tuple_of(%s)" % str(reference)
+        return "tuple_of(%s)" % str(self.reference)
 
 tuple_of = lambda * args: TupleOfChecker(*args).check
 
@@ -423,7 +423,7 @@ def takes(*args, **kwargs):
                     if not checker.check(arg):
                         raise InputParameterError("%s() got invalid parameter "
                                                   "%d of type %s "
-                                                  "instead of type %s" %
+                                                  "instead of type %s" % 
                                                   (method.__name__, i + 1,
                                                    type_name(arg), str(checker)))
 
@@ -431,7 +431,7 @@ def takes(*args, **kwargs):
                     if not checker.check(kwargs.get(kwname, None)):
                         raise InputParameterError("%s() got invalid parameter "
                                                   "%d of type %s "
-                                                  "instead of type %s" %
+                                                  "instead of type %s" % 
                                                   (method.__name__, kwname,
                                                    type_name(kwargs.get(kwname, None)), str(checker)))
 
@@ -472,7 +472,7 @@ def returns(sometype):
                 if not checker.check(result):
                     raise ReturnValueError("%s() has returned an invalid "
                                            "value %d of type %s "
-                                           "instead of type %s" %
+                                           "instead of type %s" % 
                                            (method.__name__, result, type_name(result)), str(checker))
 
                 return result
