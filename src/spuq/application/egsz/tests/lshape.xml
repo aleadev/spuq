@@ -9,7 +9,7 @@
       <vertex index="4" x="1" y="0" />
       <vertex index="5" x="-1" y="1" />
       <vertex index="6" x="0" y="1" />
-      <vertex index="7" x="1" y="0" />
+      <vertex index="7" x="1" y="1" />
     </vertices>
     <cells size="6">
       <triangle index="0" v0="0" v1="3" v2="2" />
