@@ -284,11 +284,8 @@ class SummedOperator(Operator):
 
 class MatrixOperator(BaseOperator):
 
-    @takes(anything, (np.ndarray, list_of(list_of(Scalar))),
-                      optional(Basis), optional(Basis))
+    @takes(anything, np.ndarray, optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
-        if not isinstance(arr, np.ndarray):
-            arr = np.array(arr, dtype=float)
         if domain is None:
             domain = CanonicalBasis(arr.shape[1])
         elif domain.dim != arr.shape[1]:
@@ -305,11 +302,17 @@ class MatrixOperator(BaseOperator):
         self._arr = np.asarray(arr)
         super(MatrixOperator, self).__init__(domain, codomain)
 
+    @classmethod
+    @takes(anything, list_of(list_of(Scalar)), optional(Basis), optional(Basis))
+    def from_sequence(cls, arr, domain=None, codomain=None):
+        ndarr = np.array(arr, dtype=float)
+        return cls(ndarr, domain, codomain)
+
     @takes(anything, FlatVector)
     def apply(self, vec):
         "Apply operator to vec which should be in the domain of op"
         self._check_basis(vec)
-        return FlatVector(np.dot(self._arr, vec.coeffs), self.codomain)
+        return type(vec)(np.dot(self._arr, vec.coeffs), self.codomain)
 
     def as_matrix(self):
         return np.asmatrix(self._arr)
@@ -337,35 +340,84 @@ class DiagonalMatrixOperator(BaseOperator):
             codomain = domain
         assert domain.dim == codomain.dim
 
-        self._diag = diag
+        self._diag = np.asarray(diag)
         BaseOperator.__init__(self, domain, codomain)
 
     @takes(anything, FlatVector)
     def apply(self, vec):
         "Apply operator to ``vec`` which should be in the domain of the operator."
         self._check_basis(vec)
-        return FlatVector(np.multiply(self._diag, vec.coeffs), self.domain)
+        return type(vec)(np.multiply(self._diag, vec.coeffs), self.domain)
 
     def as_matrix(self):
         return np.asmatrix(np.diag(self._arr))
 
     def transpose(self):
-        return DiagonalMatrixOperator(self._arr.T,
+        return DiagonalMatrixOperator(self._diag,
                             self.codomain,
                             self.domain)
+    def inverse(self):
+        return DiagonalMatrixOperator(1.0/self._diag,
+                            self.codomain,
+                            self.domain)
+        
 
-class MultiplicationOperator(Operator):
-    def __init__(self, a, basis):
+class MatrixSolveOperator(BaseOperator):
+
+    @takes(anything, (np.ndarray, list_of(list_of(Scalar))),
+                      optional(Basis), optional(Basis))
+    def __init__(self, arr, domain=None, codomain=None):
+        if not isinstance(arr, np.ndarray):
+            arr = np.array(arr, dtype=float)
+        if domain is None:
+            domain = CanonicalBasis(arr.shape[0])
+        elif domain.dim != arr.shape[0]:
+            raise TypeError('size of domain basis does not match '
+                             'matrix dimensions')
+
+        if codomain is None:
+            codomain = CanonicalBasis(arr.shape[1])
+        elif codomain.dim != arr.shape[1]:
+            raise TypeError('size of domain basis does not match '
+                             'matrix dimensions')
+
+        assert(arr.ndim == 2)
+        self._arr = np.asarray(arr)
+        super(MatrixSolveOperator, self).__init__(domain, codomain)
+
+    @takes(anything, FlatVector)
+    def apply(self, vec):
+        "Apply operator to vec which should be in the domain of op"
+        self._check_basis(vec)
+        return type(vec)(np.linalg.solve(self._arr, vec.coeffs), self.codomain)
+
+    def as_matrix(self):
+        return np.asmatrix(np.linalg.inv(self._arr))
+
+    def transpose(self):
+        return MatrixSolveOperator(self._arr.T,
+                                   self.codomain,
+                                   self.domain)
+
+    def __eq__(self, other):
+        return (type(self) is type(other) and
+                self.domain == other.domain and
+                self.codomain == other.codomain and
+                (self._arr == other._arr).all())
+
+
+class MultiplicationOperator(BaseOperator):
+    def __init__(self, a, domain):
         self._a = a
-        self._basis = basis
+        if domain is None:
+            domain = CanonicalBasis(diag.shape[0])
+        BaseOperator.__init__(self, domain, domain)
     def apply(self, vec):
         return self._a * vec
-    @property
-    def domain(self):
-        return self._basis
-    @property
-    def codomain(self):
-        return self._basis
+    def transpose(self):
+        return self
+    def inverse(self):
+        return MultiplicationOperator(1.0/self._a, self.domain)
 
 
 # class TensorOperator(Operator):
