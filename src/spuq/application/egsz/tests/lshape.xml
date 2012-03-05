@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<dolfin xmlns:dolfin="http://fenicsproject.org">
+  <mesh celltype="triangle" dim="2">
+    <vertices size="8">
+      <vertex index="0" x="-1" y="-1" />
+      <vertex index="1" x="0" y="-1" />
+      <vertex index="2" x="-1" y="0" />
+      <vertex index="3" x="0" y="0" />
+      <vertex index="4" x="1" y="0" />
+      <vertex index="5" x="-1" y="1" />
+      <vertex index="6" x="0" y="1" />
+      <vertex index="7" x="1" y="0" />
+    </vertices>
+    <cells size="6">
+      <triangle index="0" v0="0" v1="3" v2="2" />
+      <triangle index="1" v0="0" v1="1" v2="3" />
+      <triangle index="2" v0="2" v1="3" v2="6" />
+      <triangle index="3" v0="2" v1="6" v2="5" />
+      <triangle index="4" v0="3" v1="4" v2="7" />
+      <triangle index="5" v0="3" v1="7" v2="6" />
+    </cells>
+  </mesh>
+</dolfin>
