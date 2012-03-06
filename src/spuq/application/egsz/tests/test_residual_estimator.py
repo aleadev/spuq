@@ -12,10 +12,11 @@ from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_
 
 try:
     from dolfin import (Expression, Function, FunctionSpace, UnitSquare, interpolate, Constant, MeshFunction,
-                            FiniteElement, cells, refine, plot, interactive, norm)
+                            Mesh, FiniteElement, cells, refine, plot, interactive, norm, solve)
     import ufl
     from spuq.application.egsz.residual_estimator import ResidualEstimator
-#    from spuq.application.egsz.fem_discretisation import FEMPoisson
+    from spuq.application.egsz.fem_discretisation import FEMPoisson
+    from spuq.fem.fenics.fenics_basis import FEniCSBasis
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     HAVE_FENICS = True
 except:
@@ -40,7 +41,7 @@ def test_estimator():
 
     # define coefficient field
     aN = 4
-    a = [Expression('2.+sin(2.*pi*I*x[0]*x[1])', I=i, degree=3, element=fs.ufl_element())
+    a = [Expression('2.+sin(20.*pi*I*x[0]*x[1])', I=i, degree=3, element=fs.ufl_element())
                                                                 for i in range(1, aN)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
     coeff_field = CoefficientField(a, rvs)
@@ -64,34 +65,54 @@ def test_estimator():
 
 @skip_if(not HAVE_FENICS, "FEniCS not installed.")
 def test_estimator_refinement():
+    # define source term
+    f = Constant("1.0")
+#    f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
+
+    # set default vector for new indices
+    mesh0 = refine(Mesh('lshape.xml'))
+    fs0 = FunctionSpace(mesh0, "CG", 1)
+    B = FEniCSBasis(fs0)
+    u0 = Function(fs0)
+    diffcoeff = Constant("1.0") 
+    fem_A = FEMPoisson.assemble_lhs(diffcoeff, B)
+    fem_b = FEMPoisson.assemble_rhs(f, B)
+    solve(fem_A, u0.vector(), fem_b)
+    vec0 = FEniCSVector(u0)
+
     # setup solution multi vector
     mis = [Multiindex([0]),
            Multiindex([1]),
            Multiindex([0, 1]),
            Multiindex([0, 2])]
     N = len(mis)
-    meshes = [UnitSquare(i + 3, 3 + N - i) for i in range(N)]
-    fss = [FunctionSpace(mesh, "CG", 4) for mesh in meshes]
-    F = [interpolate(Expression("*".join(["x[0]"] * (i + 1))) , fss[i]) for i in range(N)]
-    vecs = [FEniCSVector(f) for f in F]
+
+#    meshes = [UnitSquare(i + 3, 3 + N - i) for i in range(N)]
+    meshes = [refine(Mesh('lshape.xml')) for _ in range(N)]
+    fss = [FunctionSpace(mesh, "CG", 1) for mesh in meshes]
+
+    # solve Poisson problem
     w = MultiVectorWithProjection()
-    for mi, vec in zip(mis, vecs):
-        w[mi] = vec
+    for i, mi in enumerate(mis):
+        B = FEniCSBasis(fss[i])
+        u = Function(fss[i])
+        fem_A = FEMPoisson.assemble_lhs(diffcoeff, B)
+        fem_b = FEMPoisson.assemble_rhs(f, B)
+        solve(fem_A, u.vector(), fem_b)
+        w[mi] = FEniCSVector(u)
+#        plot(w[mi]._fefunc)
 
     # define coefficient field
     aN = 15
-    a = [Expression('2.+sin(pi*I*x[0]+x[1])', I=i, degree=3,
+#    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
+    a = [Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
                         element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in range(1, aN)]
     rvs = [NormalRV(mu=0.5) for _ in range(1, aN - 1)]
     coeff_field = CoefficientField(a, rvs)
 
-    # define source term
-#    f = Constant("1.0")
-    f = Expression("10*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
-
     # refinement loop
     # ===============
-    refinements = 3
+    refinements = 5
 
     for refinement in range(refinements):
         print "*****************************"
@@ -138,14 +159,18 @@ def test_estimator_refinement():
         # projection marking
         # ==================
         theta_zeta = 0.8
+        min_zeta = 1e-10
         max_zeta = max([max(projind[mu].coeffs) for mu in projind.active_indices()])
         print "max_zeta =", max_zeta
-        for mu, vec in projind.iteritems():
-            indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
-            mesh_markers[mu] = mesh_markers[mu].union(set(indmu)) 
-            print "PROJ MARKING", len(indmu), "elements in", mu
-    
-        print "FINAL MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
+        if max_zeta >= min_zeta:
+            for mu, vec in projind.iteritems():
+                indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
+                mesh_markers[mu] = mesh_markers[mu].union(set(indmu)) 
+                print "PROJ MARKING", len(indmu), "elements in", mu
+        
+            print "FINAL MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
+        else:
+            print "NO PROJECTION MARKING due to very small projection error!"
     
         # new multiindex activation
         # =========================
@@ -154,12 +179,13 @@ def test_estimator_refinement():
         maxm = 10
         a0_f, _ = coeff_field[0]
         Ldelta = {}
-        Delta = w.active_indices()
-        deltaN = int(ceil(0.1 * len(Delta)))
+        Delta = w.active_indices()     
+        deltaN = int(ceil(0.1 * len(Delta)))               # max number new multiindices
         for mu in Delta:
             norm_w = norm(w[mu].coeffs, 'L2')
             for m in count(1):
-                if mu.inc(m) not in Delta:
+                mu1 = mu.inc(m)
+                if mu1 not in Delta:
                     if m > maxm or m >= len(coeff_field):  # or len(Ldelta) >= deltaN
                         break 
                     am_f, am_rv = coeff_field[m]
@@ -173,31 +199,42 @@ def test_estimator_refinement():
                     ainfty = max_am / min_a0
                     assert isinstance(ainfty, float)
                     
-                    print "A***", beta[1], ainfty, norm_w
-                    print "B***", beta[1] * ainfty * norm_w
-                    print "C***", theta_delta, max_zeta
-                    print "D***", theta_delta * max_zeta
-                    print "E***", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta)
+#                    print "A***", beta[1], ainfty, norm_w
+#                    print "B***", beta[1] * ainfty * norm_w
+#                    print "C***", theta_delta, max_zeta
+#                    print "D***", theta_delta * max_zeta
+#                    print "E***", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta)
                     
                     if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
-                        Ldelta[mu.inc(m)] = beta[1] * ainfty * norm_w
+                        val1 = beta[1] * ainfty * norm_w
+                        if mu1 not in Ldelta.keys() or (mu1 in Ldelta.keys() and Ldelta[mu1] < val1):
+                            Ldelta[mu1] = val1
+                    
         print "POSSIBLE NEW MULTIINDICES ", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)
         Ldelta = sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Ldelta), deltaN)]
         # add new multiindices to solution vector
         for mu, _ in Ldelta:
-            w[mu] = vecs[0]             # initialise with some function for testing purposes
+            w[mu] = vec0
         print "SELECTED NEW MULTIINDICES ", Ldelta
     
         # create new refined (and enlarged) multi vector
         # ==============================================
         for mu, cell_ids in mesh_markers.iteritems():
-            w[mu] = w[mu].refine(cell_ids, True)
+            vec = w[mu].refine(cell_ids, with_prolongation=False)
+            fs = vec._fefunc.function_space()
+            B = FEniCSBasis(fs)
+            u = Function(fs)
+            fem_A = FEMPoisson.assemble_lhs(diffcoeff, B)
+            fem_b = FEMPoisson.assemble_rhs(f, B)
+            solve(fem_A, vec.coeffs, fem_b)
+            w[mu] = vec
 
     # show refined meshes
     plot_meshes = True    
     if plot_meshes:
         for mu, vec in w.iteritems():
             plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
+            plot(vec._fefunc)
         interactive()
 
 test_main()

@@ -19,7 +19,7 @@ class FEMPoisson(FEMDiscretisation):
 
     @classmethod
     def assemble_operator(cls, coeff, basis):
-        """Assemble the discrete problem (i.e. the stiffness matrix)"""
+        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator"""
         
         class MatrixWrapper(Operator):
             @takes(anything, Matrix, FEniCSBasis)
@@ -38,6 +38,11 @@ class FEMPoisson(FEMDiscretisation):
             def codomain(self):
                 return self._basis
         
+        return MatrixWrapper(cls.assemble_lhs(coeff, basis))
+
+    @classmethod
+    def assemble_lhs(cls, coeff, basis):
+        """Assemble the discrete problem (i.e. the stiffness matrix)"""
         # get FEniCS function space
         V = basis._fefs
 
@@ -53,7 +58,7 @@ class FEMPoisson(FEMDiscretisation):
         a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
         A = assemble(a)
         bc.apply(A)
-        return MatrixWrapper(A)
+        return A
 
     @classmethod
     def assemble_rhs(cls, f, basis):
