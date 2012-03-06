@@ -9,17 +9,27 @@ class FooBasis(CanonicalBasis):
     respect bases."""
     pass
 
+class BarBasis(CanonicalBasis):
+    """Dummy basis class for testing that operator methods correctly
+    respect bases."""
+    pass
+
+class FooVector(FlatVector):
+    """Dummy vector class for testing that operator methods correctly
+    respect vector classes."""
+    pass
+
+
 def test_matrixop_init():
     l = [[1, 2, 4], [3, 4, 5]]
     arri = np.array(l, dtype=int)
     arr = np.array(l, dtype=float)
 
-    A1 = MatrixOperator(l)
+    A1 = MatrixOperator.from_sequence(l)
     assert_equal(A1.codomain, CanonicalBasis(2))
     assert_equal(A1.domain, CanonicalBasis(3))
     assert_array_equal(A1.as_matrix(), arr)
 
-    MatrixOperator(arri)
     MatrixOperator(arr)
     MatrixOperator(arr, domain=FooBasis(3))
 
@@ -30,11 +40,12 @@ def test_matrixop_init():
     assert_raises(TypeError, MatrixOperator, arr, codomain=CanonicalBasis(5))
 
 def test_matrixop_equal():
-    l = [[1, 2, 4], [3, 4, 5]]
-    arr = np.array(l, dtype=float)
-    A1 = MatrixOperator(l)
-    A2 = MatrixOperator(arr)
-    A3 = MatrixOperator([[1, 2, 3], [4, 5, 6]])
+    arr1 = np.array([[1, 2, 4], [3, 4, 5]], dtype=float)
+    arr2 = np.array([[1, 2, 4], [3, 4, 5]], dtype=float)
+    arr3 = np.array([[1, 2, 3], [3, 4, 6]], dtype=float)
+    A1 = MatrixOperator(arr1)
+    A2 = MatrixOperator(arr2)
+    A3 = MatrixOperator(arr3)
 
     assert_true(A1 == A2)
     assert_true(not (A1 != A2))
@@ -115,6 +126,56 @@ def test_diag_operator_apply():
     y = FlatVector([3, 8, 15])
     A = DiagonalMatrixOperator(diag)
     assert_equal(A * x, y)
+
+def assert_vector_almost_equal(vec1, vec2):
+    assert_equal(type(vec1), type(vec2))
+    assert_almost_equal(vec1.coeffs, vec2.coeffs)
+    #assert_equal(vec1, vec2)
+
+def test_operator_consistency():
+    def do_consistency_check(op):
+        vec = FooVector(np.random.random(op.domain.dim), 
+                        op.domain)
+
+        res = op * vec
+        assert_equal(res.basis, op.codomain)
+        assert_equal(type(res), type(vec))
+
+        assert_vector_almost_equal((3.0 * op) * vec, 3.0 * res)
+        assert_vector_almost_equal((op * 3.0) * vec, 3.0 * res)
+
+        if hasattr(op, "inverse") and op.domain.dim==op.codomain.dim:
+            inv = op.inverse()
+            assert_vector_almost_equal(vec, inv * res)
+            assert_equal(inv.domain, op.codomain)
+            assert_equal(inv.codomain, op.domain)
+
+            iinv = inv.inverse()
+            assert_vector_almost_equal(res, iinv * vec)
+            assert_equal(inv.domain, op.domain)
+            assert_equal(inv.codomain, op.codomain)
+
+        if hasattr(op, "transpose"):
+            trans = op.transpose()
+            #assert_equal(vec, trans * res)
+            assert_equal(trans.domain, op.codomain)
+            assert_equal(trans.codomain, op.domain)
+
+            ttrans = trans.transpose()
+            assert_vector_almost_equal(res, ttrans * vec)
+            assert_equal(ttrans.domain, op.domain)
+            assert_equal(ttrans.codomain, op.codomain)
+
+
+        pass
+    A = MatrixOperator.from_sequence([[1,2], [3,4]], FooBasis(2), BarBasis(2))
+    do_consistency_check(A)
+
+    A = MatrixOperator.from_sequence([[1,2], [3,4], [4,5]])
+    do_consistency_check(A)
+
+    A = MultiplicationOperator(3.0, FooBasis(4))
+    do_consistency_check(A)
 
 
 

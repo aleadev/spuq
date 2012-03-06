@@ -1,12 +1,9 @@
 from __future__ import division
 import numpy as np
-from dolfin import Expression, FunctionSpace, UnitSquare, interpolate
 
-from spuq.application.egsz.fem_discretisation import FEMPoisson
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.linalg.basis import CanonicalBasis
 from spuq.linalg.vector import FlatVector
 from spuq.linalg.operator import DiagonalMatrixOperator, MultiplicationOperator
@@ -15,6 +12,14 @@ from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.polyquad.polynomials import LegendrePolynomials, StochasticHermitePolynomials
 from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_main, assert_raises
 from spuq.math_utils.multiindex import Multiindex
+
+try:
+    from dolfin import Expression, FunctionSpace, UnitSquare, interpolate
+    from spuq.application.egsz.fem_discretisation import FEMPoisson
+    from spuq.fem.fenics.fenics_vector import FEniCSVector
+    HAVE_FENICS = True
+except:
+    HAVE_FENICS = False
 
 
 class SimpleProjectBasis(CanonicalBasis):
@@ -75,6 +80,7 @@ def test_apply():
     assert_equal(v[mis[0]], v0_ex)
     assert_equal(v[mis[2]], v2_ex)
 
+@skip_if(not HAVE_FENICS)
 def test_fenics_vector():
     def mult_assemble(a, basis):
         return MultiplicationOperator(a(0), basis)
@@ -135,6 +141,7 @@ def test_fenics_vector():
     assert_almost_equal(v[mis[0]].array(), vec0.array())
     assert_almost_equal(v[mis[2]].array(), vec2.array())
 
+@skip_if(not HAVE_FENICS)
 def test_fenics_with_assembly():
     a = [Expression('A*sin(pi*I*x[0]*x[1])', A=1, I=i, degree=2) for i in range(1, 4)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]

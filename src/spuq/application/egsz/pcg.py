@@ -13,12 +13,14 @@ def inner(v, w):
 
 @takes(Operator, Vector, Operator, Vector, optional(float), optional(int))
 def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
-    w = ForgetfulVector(2)
-    rho = ForgetfulVector(2)
-    s = ForgetfulVector(2)
-    v = ForgetfulVector(2)
-    z = ForgetfulVector(2)
-    alpha = ForgetfulVector(2)
+    # for most quantities in PCG (except zeta) only the most recent 
+    # values needs to be kept in memory
+    w = ForgetfulVector(1)
+    rho = ForgetfulVector(1)
+    s = ForgetfulVector(1)
+    v = ForgetfulVector(1)
+    z = ForgetfulVector(1)
+    alpha = ForgetfulVector(1)
     zeta = ForgetfulVector(2)
 
     w[0] = w0
