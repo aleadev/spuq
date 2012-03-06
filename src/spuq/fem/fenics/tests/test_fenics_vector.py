@@ -1,10 +1,16 @@
 import numpy as np
-from dolfin import UnitSquare, FunctionSpace, Expression, interpolate
 
 from spuq.utils.testing import *
-from spuq.fem.fenics.fenics_basis import FEniCSBasis
-from spuq.fem.fenics.fenics_vector import FEniCSVector
 
+try:
+    from dolfin import UnitSquare, FunctionSpace, Expression, interpolate
+    from spuq.fem.fenics.fenics_basis import FEniCSBasis
+    from spuq.fem.fenics.fenics_vector import FEniCSVector
+    HAVE_FENICS = True
+except:
+    HAVE_FENICS = False
+
+@skip_if(not HAVE_FENICS)
 def test_fenics_basis():
     mesh = UnitSquare(5, 5)
     fs1 = FunctionSpace(mesh, "CG", 1)
@@ -24,6 +30,7 @@ def test_fenics_basis():
 
     basis1.gramian.as_matrix()
 
+@skip_if(not HAVE_FENICS)
 def test_fenics_vector():
     mesh = UnitSquare(3, 3)
     fs1 = FunctionSpace(mesh, "CG", 2)
@@ -68,6 +75,7 @@ def test_fenics_vector():
     assert_almost_equal(vec1.eval([0.8, 0.4]), 1.32)
 
 
+@skip_if(not HAVE_FENICS)
 def test_fenics_project():
     mesh1 = UnitSquare(3, 3)
     fs1 = FunctionSpace(mesh1, "CG", 2)
@@ -87,6 +95,7 @@ def test_fenics_project():
     assert_equal(vec2a.basis.project_onto(vec1b), vec2b)
     #assert_equal(vec1a.basis.project_onto(vec2b).array(), vec1b.array())
 
+@skip_if(not HAVE_FENICS)
 def test_fenics_refine():
     mesh1 = UnitSquare(3, 3)
     fs1 = FunctionSpace(mesh1, "CG", 2)

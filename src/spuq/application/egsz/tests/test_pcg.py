@@ -11,11 +11,13 @@ from spuq.linalg.basis import CanonicalBasis
 
 
 def test_pcg_matrix():
+    rand = np.random.mtrand.RandomState(1234).random_sample
+
     N = 7
-    M = np.random.random((N, N))
+    M = rand((N, N))
     A = MatrixOperator(np.dot(M, M.T))
     P = MultiplicationOperator(1, CanonicalBasis(N))
-    x = FlatVector(np.random.random((N,)))
+    x = FlatVector(rand((N,)))
     b = A * x
     print
 
@@ -34,12 +36,12 @@ def test_pcg_matrix():
 
     P = MatrixOperator(P.as_matrix())
     x_ap, zeta, iter = pcg(A, b, P, 0 * x, eps=0.00001)
-    print iter
+    #print iter
     assert_array_almost_equal(x.coeffs, x_ap.coeffs)
 
     P = DiagonalMatrixOperator(np.diag(A.as_matrix())).inverse()
     x_ap, zeta, iter = pcg(A, b, P, 0 * x, eps=0.00001)
-    print iter
+    #print iter
     assert_array_almost_equal(x.coeffs, x_ap.coeffs)
 
     #print x
