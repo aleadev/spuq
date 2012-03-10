@@ -14,6 +14,7 @@ try:
     from dolfin import (Expression, Function, FunctionSpace, UnitSquare, interpolate, Constant, MeshFunction,
                             Mesh, FiniteElement, cells, refine, plot, interactive, norm, solve)
     import ufl
+    from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_basis import FEniCSBasis
@@ -21,6 +22,7 @@ try:
     HAVE_FENICS = True
 except:
     HAVE_FENICS = False
+    
     
 @skip_if(not HAVE_FENICS, "FEniCS not installed.")
 def test_estimator():
@@ -112,7 +114,7 @@ def test_estimator_refinement():
 
     # refinement loop
     # ===============
-    refinements = 5
+    refinements = 3
 
     for refinement in range(refinements):
         print "*****************************"
@@ -236,5 +238,80 @@ def test_estimator_refinement():
             plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
             plot(vec._fefunc)
         interactive()
+
+
+@skip_if(not HAVE_FENICS, "FEniCS not installed.")
+def test_marking():
+    # PDE data
+    # ========
+    # define source term and diffusion coefficient
+#    f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
+    f = Constant("1.0")
+    diffcoeff = Constant("1.0") 
+
+    # setup multivector
+    #==================
+    # solution evaluation function
+    def eval_poisson(vec=None):
+        if vec == None:
+            # set default vector for new indices
+            #    mesh0 = refine(Mesh('lshape.xml'))
+            mesh0 = UnitSquare(4, 4)
+            fs = FunctionSpace(mesh0, "CG", 1)
+            vec = FEniCSVector(Function(fs))
+        fem_A = FEMPoisson.assemble_lhs(diffcoeff, vec.basis)
+        fem_b = FEMPoisson.assemble_rhs(f, vec.basis)
+        solve(fem_A, vec.coeffs, fem_b)
+        return vec
+
+    # define active multiindices
+    mis = [Multiindex([0]),
+           Multiindex([1]),
+           Multiindex([0, 1]),
+           Multiindex([0, 2])]
+
+    # setup initial multivector
+    w = MultiVectorWithProjection()
+    Marking.refine(w, {}, mis, eval_poisson)
+    print "active indices of after initialisation: ", w.active_indices()
+
+    # define coefficient field
+    # ========================
+    aN = 15
+#    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
+    a = [Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
+                        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in range(1, aN)]
+    rvs = [NormalRV(mu=0.5) for _ in range(1, aN - 1)]
+    coeff_field = CoefficientField(a, rvs)
+#   TODO: coeff_field = ParametricCoefficientField((Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
+#                        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count()), (NormalRV(mu=0.5) for _ in count()))
+
+    # refinement loop
+    # ===============
+    theta_eta = 0.8
+    theta_zeta = 0.8
+    min_zeta = 1e-10
+    maxh = 1 / 10
+    refinements = 1
+
+    for refinement in range(refinements):
+        print "*****************************"
+        print "REFINEMENT LOOP iteration", refinement + 1
+        print "*****************************"
+        
+        # evaluate residual and projection error estimates
+        # ================================================
+        mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(w, coeff_field, f, theta_eta, theta_zeta, min_zeta, maxh)
+        mesh_markers = mesh_markers_R.copy().update(mesh_markers_P)
+        Marking.refine(w, mesh_markers, new_multiindices.keys(), eval_poisson)
+ 
+    # show refined meshes
+    plot_meshes = True    
+    if plot_meshes:
+        for mu, vec in w.iteritems():
+            plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
+            plot(vec._fefunc)
+        interactive()
+
 
 test_main()
