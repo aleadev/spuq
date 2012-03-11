@@ -1,9 +1,10 @@
 import numpy as np
+from itertools import count
 
 from spuq.utils.testing import *
 from spuq.linalg.function import ConstFunction, SimpleFunction
 from spuq.stochastics.random_variable import NormalRV, UniformRV, ArcsineRV
-from spuq.application.egsz.coefficient_field import CoefficientField
+from spuq.application.egsz.coefficient_field import CoefficientField, ParametricCoefficientField
 
 
 def test_init():
@@ -70,5 +71,29 @@ def test_len_getitem_repr():
     assert_true(str(cf).endswith(">"))
 
 
+def test_parametric():
+    def test_gen(*v):
+        for i in count():
+            yield v[i % len(v)]
+    cf = ConstFunction(1)
+    sf = SimpleFunction(np.sin)
+    cf = SimpleFunction(np.cos)
+    urv = UniformRV()
+    nrv = NormalRV()
+    cf = ParametricCoefficientField(test_gen(cf, sf, cf), test_gen(urv, nrv))
+    assert_true(cf.length == np.infty)
+    f, rv = cf[0]
+    assert_true(f(0) == 1.0)
+    assert_equal(type(rv), NormalRV)
+    f, rv = cf[1]
+    assert_true(f(0) == 0.0)
+    assert_equal(type(rv), UniformRV)
+    f, rv = cf[9]
+    assert_true(f(0) == 1.0)
+    assert_equal(type(rv), UniformRV)
+    assert_true(len(cf._rvs) == 10)
+    assert_true(len(cf._funcs) == 10)
+    
+    
 test_main()
 
