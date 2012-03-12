@@ -107,8 +107,8 @@ def test_main(with_coverage=True):
                 module = get_base_module(file_to_run)
                 if module is not None:
                     argv = argv + ['--with-coverage', '--cover-package', module]
-                    # unload module so it can be instrumented by coverage 
-                    sys.modules.pop(module, None)
+                    # reload module so it can be instrumented by coverage
+                    reload(sys.modules[module])
             import_nose().run(argv=argv)
             #run_module_suite(file_to_run)
         else:
