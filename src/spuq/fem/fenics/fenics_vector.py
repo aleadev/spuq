@@ -13,7 +13,7 @@ class FEniCSVector(FEMVector):
 
     @takes(anything, Function)
     def __init__(self, fefunc):
-        '''Initialise with coefficient vector and Function'''
+        '''Initialise with coefficient vector and Function.'''
         self._fefunc = fefunc
 
     @property
@@ -23,16 +23,16 @@ class FEniCSVector(FEMVector):
 
     @property
     def coeffs(self):
-        '''return FEniCS coefficient vector of Function'''
+        '''Return FEniCS coefficient vector of Function.'''
         return self._fefunc.vector()
 
     @coeffs.setter
     def coeffs(self, val):
-        '''set FEniCS coefficient vector of Function'''
+        '''Set FEniCS coefficient vector of Function.'''
         self._fefunc.vector()[:] = val
 
     def array(self):
-        '''return copy of coefficient vector as numpy array'''
+        '''Return copy of coefficient vector as numpy array.'''
         return self._fefunc.vector().array()
 
     def eval(self, x):

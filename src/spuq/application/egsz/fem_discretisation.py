@@ -9,7 +9,7 @@ from spuq.linalg.operator import Operator
 from spuq.utils.type_check import takes, anything
 
 class FEMPoisson(FEMDiscretisation):
-    """FEM discrete Laplace operator with coefficient :math:`a` on domain :math:`\Omega:=[0,1]^2` with homogeneous Dirichlet boundary conditions
+    """FEM discrete Laplace operator with coefficient :math:`a` on domain :math:`\Omega:=[0,1]^2` with homogeneous Dirichlet boundary conditions.
 
         ..math:: -\mathrm{div}a \nabla u = 0 \qquad\textrm{in }\Omega
         ..math:: u = 0 \qquad\textrm{on }\partial\Omega
@@ -19,7 +19,7 @@ class FEMPoisson(FEMDiscretisation):
 
     @classmethod
     def assemble_operator(cls, coeff, basis):
-        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator"""
+        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
         
         class MatrixWrapper(Operator):
             @takes(anything, Matrix, FEniCSBasis)
@@ -42,7 +42,7 @@ class FEMPoisson(FEMDiscretisation):
 
     @classmethod
     def assemble_lhs(cls, coeff, basis):
-        """Assemble the discrete problem (i.e. the stiffness matrix)"""
+        """Assemble the discrete problem (i.e. the stiffness matrix)."""
         # get FEniCS function space
         V = basis._fefs
 
@@ -62,7 +62,7 @@ class FEMPoisson(FEMDiscretisation):
 
     @classmethod
     def assemble_rhs(cls, f, basis):
-        """Assemble the discrete right-hand side"""
+        """Assemble the discrete right-hand side."""
         
         # get FEniCS function space
         V = basis._fefs
