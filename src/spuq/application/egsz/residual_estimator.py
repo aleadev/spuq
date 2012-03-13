@@ -55,7 +55,7 @@ class ResidualEstimator(object):
     def evaluateResidualEstimator(cls, w, CF, f):
         """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
         # evaluate residual estimator for all multi indices
-
+        print "XXXXXXXXXXXXXXXXXXXXXXXXX", type(MultiVector)
         eta = MultiVector()
         err = dict()
         for mu in w.active_indices():
@@ -93,10 +93,10 @@ class ResidualEstimator(object):
         # iterate m
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
-        if len(CF) < maxm:
-            print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", len(CF), "instead of", maxm, ")"
-            maxm = len(CF)  
-#        assert len(CF) >= maxm        # ensure CF expansion is sufficiently long
+        if CF.length < maxm:
+            print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", CF.length, "instead of", maxm, ")"
+            maxm = CF.length  
+#        assert CF.length >= maxm        # ensure CF expansion is sufficiently long
         for m in range(1, maxm):
             am_f, am_rv = CF[m]
 
@@ -168,9 +168,9 @@ class ResidualEstimator(object):
             proj_error = {}
         for mu in Delta:
             maxm = max(len(mu) for mu in Delta) + 1
-            if len(CF) < maxm:
-                print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", len(CF), "instead of", maxm, ")"
-                maxm = len(CF)  
+            if CF.length < maxm:
+                print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", CF.length, "instead of", maxm, ")"
+                maxm = CF.length  
             dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, maxh, local)
                                                         for m in range(1, maxm))
             if local:

@@ -1,5 +1,4 @@
-"""EGSZ discrete operator A
-
+"""EGSZ discrete operator A.
 
 According to the representation of orthogonal polynomials in spuq, the operator A defined in EGSZ (2.6) has the more general form
 
@@ -11,7 +10,6 @@ where the coefficients :math:`(\alpha^m_{n-1},\alpha^m_n,\alpha^m_{n+1})` are ob
         \alpha_{n-1} &:= c_n/b_n \\
         \alpha_n &:= a_n/b_n \\
         \alpha_{n+1} &:= 1/b_n
-
 """
 
 from spuq.linalg.basis import Basis
@@ -23,8 +21,7 @@ from spuq.math_utils.multiindex import Multiindex
 
 
 class MultiOperator(Operator):
-    """Discrete operator according to EGSZ (2.6), generalised for spuq
-    orthonormal polynomials"""
+    """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials."""
 
     @takes(anything, CoefficientField, callable, optional(Basis), optional(Basis))
     def __init__(self, CF, assemble, domain=None, codomain=None):
@@ -37,16 +34,15 @@ class MultiOperator(Operator):
 
     @takes(any, MultiVectorWithProjection)
     def apply(self, w):
-        """Apply operator to vector which has to live in the same
-        domain"""
+        """Apply operator to vector which has to live in the same domain."""
 
         v = 0 * w
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
-        if len(self._CF) < maxm:
-            print "[MultiOperator] WARNING: insufficient length of coefficient field for MultiVector (", len(self._CF), "instead of", maxm, ")"
-            maxm = len(self._CF)  
-#        assert len(self._CF) >= maxm        # ensure CF expansion is sufficiently long
+        if self._CF.length < maxm:
+            print "[MultiOperator] WARNING: insufficient length of coefficient field for MultiVector (", self._CF.length, "instead of", maxm, ")"
+            maxm = self._CF.length  
+#        assert self._CF.length >= maxm        # ensure CF expansion is sufficiently long
         for mu in Delta:
             # deterministic part
             a0_f, _ = self._CF[0]
@@ -79,10 +75,10 @@ class MultiOperator(Operator):
 
     @property
     def domain(self):
-        """Returns the basis of the domain"""
+        """Returns the basis of the domain."""
         return self._domain
 
     @property
     def codomain(self):
-        """Returns the basis of the codomain"""
+        """Returns the basis of the codomain."""
         return self._codomain

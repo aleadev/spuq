@@ -1,9 +1,11 @@
-from abc import *
+from abc import ABCMeta, abstractmethod
 
 import numpy as np
 
 from spuq.utils.decorators import copydocs
+from spuq.utils.type_check import takes, anything, optional, sequence_of
 from spuq.linalg.basis import FunctionBasis
+from spuq.math_utils.multiindex_set import MultiindexSet
 
 @copydocs
 class StochasticBasis(FunctionBasis):
@@ -17,6 +19,7 @@ class StochasticBasis(FunctionBasis):
 
 
 class MultiindexBasis(StochasticBasis):
+    @takes(anything, MultiindexSet, sequence_of(StochasticBasis))
     def __init__(self, I, bases):
         assert(I.m == len(bases))
         self.I = I
@@ -24,15 +27,14 @@ class MultiindexBasis(StochasticBasis):
         # assert bases are instances of StochasticBasis
         # assert dim of bases larger or equal to max in I
         for k, B in enumerate(bases):
-            assert isinstance(B, StochaticBasis)
-            assert I.arr[:, i].max() < B.dim
+            assert I.arr[:, k].max() < B.dim
 
     def sample(self, n):
         S = np.ones((self.I.count, n))
         for i, rv in enumerate(self.rvs):
             theta = rv.sample(n)
             Phi = rv.getOrthogonalPolynomials()
-            Q = zeros((self.I.p + 1, n))
+            Q = np.zeros((self.I.p + 1, n))
             for q in xrange(self.I.p + 1):
                 Q[q, :] = Phi.eval(q, theta)
             S = S * Q[self.I.arr[:, i], :]
