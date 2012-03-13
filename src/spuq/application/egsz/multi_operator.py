@@ -82,3 +82,38 @@ class MultiOperator(Operator):
     def codomain(self):
         """Returns the basis of the codomain."""
         return self._codomain
+
+
+class PreconditioningOperator(Operator):
+    """Preconditioning operator according to EGSZ (2.??)."""
+
+    @takes(anything, anything, callable, optional(Basis), optional(Basis))
+    def __init__(self, mean_func, assemble_solver, domain=None, codomain=None):
+        """Initialise operator with FEM discretisation and
+        mean diffusion coefficient"""
+        self._assemble = assemble_solver
+        self._mean_func = mean_func
+        self._domain = domain
+        self._codomain = codomain
+
+    @takes(any, MultiVector)
+    def apply(self, w):
+        """Apply operator to vector which has to live in the same domain."""
+        v = 0 * w
+        Delta = w.active_indices()
+
+        for mu in Delta:
+            a0_f = self._mean_func
+            A0 = self._assemble_solver(a0_f, w[mu].basis)
+            v[mu] = A0 * w[mu]
+        return v
+
+    @property
+    def domain(self):
+        """Returns the basis of the domain."""
+        return self._domain
+
+    @property
+    def codomain(self):
+        """Returns the basis of the codomain."""
+        return self._codomain
