@@ -163,6 +163,20 @@ def type_name(v):
 
 ################################################################################
 
+def method_name(m):
+    "Returns the formatted name of the passed method"
+
+    # TODO: should print class name. The following "solution"
+    # does not work as intended however, as at the time of decorating the 
+    # method its not yet an "unbound method" but a simple function that
+    # does not know anything about it's enclosing class
+    if hasattr(m, '__self__'):
+        return "%s of %s%" % (m.__name__, type(m.__self__))
+    else:
+        return "%s" % (m.__name__)
+
+################################################################################
+
 class Checker(object):
 
     def __init__(self, reference):
@@ -424,16 +438,16 @@ def takes(*args, **kwargs):
                         raise InputParameterError("%s() got invalid parameter "
                                                   "%d of type %s "
                                                   "instead of type %s" % 
-                                                  (method.__name__, i + 1,
-                                                   type_name(arg), str(checker)))
+                                                  (method_name(method), i + 1,
+                                                   type(arg), str(checker)))
 
                 for kwname, checker in kwcheckers.iteritems():
                     if not checker.check(kwargs.get(kwname, None)):
                         raise InputParameterError("%s() got invalid parameter "
                                                   "%d of type %s "
                                                   "instead of type %s" % 
-                                                  (method.__name__, kwname,
-                                                   type_name(kwargs.get(kwname, None)), str(checker)))
+                                                  (method_name(method), kwname,
+                                                   type(kwargs.get(kwname, None)), str(checker)))
 
                 return method(*args, **kwargs)
 
@@ -473,8 +487,8 @@ def returns(sometype):
                     raise ReturnValueError("%s() has returned an invalid "
                                            "value %d of type %s "
                                            "instead of type %s" % 
-                                           (method.__name__, result, type_name(result)), str(checker))
-
+                                           (method_name(method), result, type(result), str(checker)))
+                
                 return result
 
             returns_invocation_proxy.__name__ = method.__name__

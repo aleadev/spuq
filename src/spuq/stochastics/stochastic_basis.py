@@ -48,9 +48,13 @@ class MultiindexBasis(StochasticBasis):
 
 
 class GPCBasis(StochasticBasis):
-    def __init__(self, rv, p):
+    def __init__(self, rv, p, **kwargs):
+        StochasticBasis.__init__(self, **kwargs)
         self._rv = rv
         self._p = p
+
+    def copy(self):
+        return self.__cls__(self._rv, self._p, dual=self._dual)
 
     @property
     def rv(self):

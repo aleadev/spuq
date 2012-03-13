@@ -4,10 +4,8 @@ from spuq.utils.testing import *
 
 from spuq.application.egsz.pcg import pcg
 from spuq.linalg.operator import MatrixOperator, MatrixSolveOperator, MultiplicationOperator, DiagonalMatrixOperator
-from spuq.linalg.vector import FlatVector
+from spuq.linalg.vector import FlatVector, inner
 from spuq.linalg.basis import CanonicalBasis
-
-    
 
 
 def test_pcg_matrix():

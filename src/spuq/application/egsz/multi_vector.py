@@ -26,13 +26,8 @@ class MultiVector(Vector):
         """Implementation of Basis too complicated for MultiVector"""
         raise NotImplementedError
 
-    @property
-    def coeffs(self):  # pragma: no cover
-        """Not defined for MultiVector"""
-        raise NotImplementedError
-
-    def as_array(self):  # pragma: no cover
-        """Not defined for MultiVector"""
+    def flatten(self):
+        """Not yet defined for MultiVector"""
         raise NotImplementedError
 
     @takes(anything, Multiindex)
@@ -95,6 +90,14 @@ class MultiVector(Vector):
         for mi in self.keys():
             self[mi] *= other
         return self
+
+    def __inner__(self, other):
+        assert isinstance(other, MultiVector)
+        inner=0.0
+        for mi in self.keys():
+            inner += inner(self[mi], other[mi])
+        return inner
+
 
     def __repr__(self):
         return "<%s keys=%s>" % (strclass(self.__class__), self.mi2vec.keys())

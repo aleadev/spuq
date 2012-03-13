@@ -18,12 +18,26 @@ import numpy as np
 from spuq.linalg.basis import Basis, CanonicalBasis, check_basis
 from spuq.utils import strclass, with_equality
 from spuq.utils.type_check import takes, returns, anything, optional, list_of
+from spuq.math_utils.math_object import MathObject
 
-__all__ = ["Scalar", "Vector", "FlatVector"]
+__all__ = ["Scalar", "Vector", "FlatVector", "inner"]
 
+class Transposable(object):
+    __metaclass__ = ABCMeta
+    @abstractmethod
+    def transpose(self):
+        pass
 
-@with_equality
-class Vector(object):
+class Flat(object):
+    __metaclass__ = ABCMeta
+    @abstractproperty
+    def coeffs(self):
+        pass
+
+    def as_array(self):
+        return self.coeffs
+
+class Vector(MathObject):
     """Abstract base class for vectors which consist of a coefficient
     vector and an associated basis"""
     __metaclass__ = ABCMeta
@@ -33,18 +47,17 @@ class Vector(object):
         """Return basis of this vector"""
         raise NotImplementedError
 
-    @abstractproperty
-    def coeffs(self):  # pragma: no cover
-        """Return cofficients of this vector w.r.t. the basis"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def as_array(self):  # pragma: no cover
-        raise NotImplementedError
-
     @abstractmethod
     def copy(self):  # pragma: no cover
         raise NotImplementedError
+
+    @abstractmethod
+    def flatten(self):
+        raise NotImplementedError
+
+    def transpose(self):
+        dual_coeffs = vec.basis.Gramian * vec.coeffs
+        return vec.__class__(dual_coeffs, vec.basis.dual())
 
     @abstractmethod
     def __eq__(self, other):  # pragma: no cover
@@ -66,6 +79,14 @@ class Vector(object):
         """Multiply this vector with a scalar."""
         return NotImplemented
 
+    def __inner__(self, other):  # pragma: no cover
+        """Scalar product of this vector with another vector."""
+        return NotImplemented
+
+    def __rinner__(self, other):  # pragma: no cover
+        """Scalar product of this vector with another vector (reverse)."""
+        return NotImplemented
+
     def __add__(self, other):
         """Add two vectors."""
         return self.copy().__iadd__(other)
@@ -78,7 +99,7 @@ class Vector(object):
         """Subtract two vectors."""
         if hasattr(self, "__isub__"):
             return self.copy().__isub__(other)
-        return self +(-other)
+        return self + (-other)
 
     def __rsub__(self, other):  # pragma: no cover
         """This happens only when other is not a vector."""
@@ -101,7 +122,7 @@ class Vector(object):
                (strclass(self.__class__), self.basis, self.coeffs)
 
 
-class FlatVector(Vector):
+class FlatVector(Vector, Flat):
     """A vector classed based on the numpy array"""
 
     @takes(anything, (np.ndarray, list_of(Scalar)), optional(Basis))
@@ -126,6 +147,14 @@ class FlatVector(Vector):
     def as_array(self):
         return self.coeffs
 
+    def __inner__(self, other):
+        check_basis(self.basis, other.basis)
+        # TODO: needs to check the gramian too
+        return np.dot(self.coeffs, other.coeffs)
+
+    def __rinner__(self, other):
+        return self.__inner__(other)
+
     def copy(self):
         return self._create_copy(self.coeffs.copy())
 
@@ -142,6 +171,9 @@ class FlatVector(Vector):
         return (type(self) == type(other) and
                 self._basis == other._basis and
                 (self._coeffs == other._coeffs).all())
+
+    def flatten(self):
+        return self
 
     @takes(anything)
     def __neg__(self):
@@ -163,4 +195,18 @@ class FlatVector(Vector):
     def __imul__(self, other):
         self._coeffs *= other
         return self
+
+@takes(Vector, Vector)
+def inner(vec1, vec2):
+    res = vec1.__inner__(vec2)
+    if res is not NotImplemented:
+        return res
+    res = vec2.__rinner__(vec1)
+    if res is not NotImplemented:
+        return res
+    if isinstance(vec1, Transposable):
+        return vec1.transpose() * vec2
+    if isinstance(vec2, Transposable):
+        return vec2.transpose() * vec1
+    raise NotImplementedError(str(vec1)+"/"+str(vec2))
 

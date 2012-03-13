@@ -3,13 +3,8 @@
 from spuq.utils.type_check import takes, optional, returns, tuple_of
 
 from spuq.linalg.operator import Operator
-#from spuq.linalg.vector import Vector, inner
-from spuq.linalg.vector import Vector
+from spuq.linalg.vector import Vector, inner
 from spuq.utils.forgetful_vector import ForgetfulVector
-
-import numpy as np
-def inner(v, w):
-    return np.dot(v.coeffs, w.coeffs)
 
 @takes(Operator, Vector, Operator, Vector, optional(float), optional(int))
 def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
