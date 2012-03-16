@@ -4,6 +4,7 @@ from spuq.utils import strclass, with_equality
 from spuq.utils.decorators import copydocs
 from spuq.math_utils.math_object import MathObject
 
+
 class BasisMismatchError(ValueError):
     pass
 
@@ -11,8 +12,9 @@ class BasisMismatchError(ValueError):
 def check_basis(basis1, basis2, descr1="basis1", descr2="basis2"):
     """Throw if the bases do not match"""
     if basis1 != basis2:
-        raise BasisMismatchError("Basis don't match: %s=%s, %s=%s" %
+        raise BasisMismatchError("Basis don't match: %s=%s, %s=%s" % 
                                  (descr1, str(basis1), descr2, str(basis2)))
+
 
 @with_equality
 class Basis(MathObject):
@@ -41,7 +43,7 @@ class Basis(MathObject):
         raise NotImplementedError
 
     def __repr__(self):
-        return ("<%s dim=%s>" %
+        return ("<%s dim=%s>" % 
                 (strclass(self.__class__), self.dim))
 
 

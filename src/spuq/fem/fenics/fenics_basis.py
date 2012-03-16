@@ -18,6 +18,9 @@ class FEniCSBasis(FEMBasis):
         self._fefs = fefs
         self._ptype = ptype
 
+    def copy(self):
+        return FEniCSBasis(self._fefs, self._ptype)
+
     def refine(self, cell_ids=None):
         """Refine mesh of basis uniformly or wrt cells, returns
         (prolongate,restrict,...)."""

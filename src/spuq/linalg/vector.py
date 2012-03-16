@@ -22,11 +22,13 @@ from spuq.math_utils.math_object import MathObject
 
 __all__ = ["Scalar", "Vector", "FlatVector", "inner"]
 
+
 class Transposable(object):
     __metaclass__ = ABCMeta
     @abstractmethod
     def transpose(self):
         pass
+
 
 class Flat(object):
     __metaclass__ = ABCMeta
@@ -36,6 +38,7 @@ class Flat(object):
 
     def as_array(self):
         return self.coeffs
+
 
 class Vector(MathObject):
     """Abstract base class for vectors which consist of a coefficient
@@ -99,7 +102,7 @@ class Vector(MathObject):
         """Subtract two vectors."""
         if hasattr(self, "__isub__"):
             return self.copy().__isub__(other)
-        return self + (-other)
+        return self +(-other)
 
     def __rsub__(self, other):  # pragma: no cover
         """This happens only when other is not a vector."""
@@ -196,6 +199,7 @@ class FlatVector(Vector, Flat):
         self._coeffs *= other
         return self
 
+
 @takes(Vector, Vector)
 def inner(vec1, vec2):
     res = vec1.__inner__(vec2)
@@ -208,5 +212,4 @@ def inner(vec1, vec2):
         return vec1.transpose() * vec2
     if isinstance(vec2, Transposable):
         return vec2.transpose() * vec1
-    raise NotImplementedError(str(vec1)+"/"+str(vec2))
-
+    raise NotImplementedError(str(vec1) + "/" + str(vec2))

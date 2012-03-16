@@ -3,6 +3,7 @@ from math import ceil
 from operator import itemgetter
 from collections import defaultdict
 from itertools import count
+import logging
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -22,7 +23,11 @@ try:
     HAVE_FENICS = True
 except:
     HAVE_FENICS = False
-    
+
+# setup logging
+logging.basicConfig(filename=__file__[:-2] + 'log', level=logging.ERROR,
+                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
     
 @skip_if(not HAVE_FENICS, "FEniCS not installed.")
 def test_estimator():
@@ -232,12 +237,12 @@ def test_estimator_refinement():
             w[mu] = vec
 
     # show refined meshes
-    plot_meshes = True    
-    if plot_meshes:
-        for mu, vec in w.iteritems():
-            plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
-            plot(vec._fefunc)
-        interactive()
+#    plot_meshes = True    
+#    if plot_meshes:
+#        for mu, vec in w.iteritems():
+#            plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
+#            plot(vec._fefunc)
+#        interactive()
 
 
 @skip_if(not HAVE_FENICS, "FEniCS not installed.")
@@ -273,7 +278,7 @@ def test_marking():
     # setup initial multivector
     w = MultiVectorWithProjection()
     Marking.refine(w, {}, mis, eval_poisson)
-    print "active indices of after initialisation: ", w.active_indices()
+    logger.info("active indices of after initialisation: %s", w.active_indices())
 
     # define coefficient field
     # ========================
@@ -288,25 +293,27 @@ def test_marking():
 
     # refinement loop
     # ===============
-    theta_eta = 0.8
+    theta_eta = 0.3
     theta_zeta = 0.8
     min_zeta = 1e-10
     maxh = 1 / 10
+    theta_delta = 0.8 
     refinements = 1
 
     for refinement in range(refinements):
-        print "*****************************"
-        print "REFINEMENT LOOP iteration", refinement + 1
-        print "*****************************"
+        logger.info("*****************************")
+        logger.info("REFINEMENT LOOP iteration %i", refinement + 1)
+        logger.info("*****************************")
         
         # evaluate residual and projection error estimates
         # ================================================
-        mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(w, coeff_field, f, theta_eta, theta_zeta, min_zeta, maxh)
-        mesh_markers = mesh_markers_R.copy().update(mesh_markers_P)
+        mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
+        mesh_markers = mesh_markers_R.copy()
+        mesh_markers.update(mesh_markers_P)
         Marking.refine(w, mesh_markers, new_multiindices.keys(), eval_poisson)
  
     # show refined meshes
-    plot_meshes = True    
+    plot_meshes = False    
     if plot_meshes:
         for mu, vec in w.iteritems():
             plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)

@@ -16,9 +16,10 @@ from spuq.linalg.basis import Basis
 from spuq.linalg.operator import Operator
 from spuq.utils.type_check import takes, anything, optional
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-from spuq.math_utils.multiindex import Multiindex
+from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 
+import logging
+logger = logging.getLogger(__name__)
 
 class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials."""
@@ -40,15 +41,17 @@ class MultiOperator(Operator):
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
         if self._CF.length < maxm:
-            print "[MultiOperator] WARNING: insufficient length of coefficient field for MultiVector (", self._CF.length, "instead of", maxm, ")"
+            logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i", self._CF.length, maxm)
             maxm = self._CF.length  
 #        assert self._CF.length >= maxm        # ensure CF expansion is sufficiently long
         for mu in Delta:
+            logger.debug("apply on mu = %s", str(mu))
             # deterministic part
             a0_f, _ = self._CF[0]
             A0 = self._assemble(a0_f, w[mu].basis)
             v[mu] = A0 * w[mu]
             for m in range(1, maxm):
+                logger.debug("with m = %i", m)
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._CF[m]
                 Am = self._assemble(am_f, w[mu].basis)
@@ -85,7 +88,7 @@ class MultiOperator(Operator):
 
 
 class PreconditioningOperator(Operator):
-    """Preconditioning operator according to EGSZ (2.??)."""
+    """Preconditioning operator according to EGSZ section 7.1."""
 
     @takes(anything, anything, callable, optional(Basis), optional(Basis))
     def __init__(self, mean_func, assemble_solver, domain=None, codomain=None):

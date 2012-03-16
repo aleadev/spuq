@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 from spuq.utils.testing import *
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
@@ -6,9 +7,11 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.linalg.vector import FlatVector
 
+# setup logging
+logging.basicConfig(filename=__file__[:-2] + 'log', level=logging.INFO)
+
 def test_init():
     MultiVector()
-
 
 def test_get_set():
     mv = MultiVector()

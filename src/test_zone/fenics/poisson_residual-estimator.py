@@ -21,20 +21,16 @@ largest error indicator)
 from dolfin import *
 from numpy import array, sqrt
 
-# Define Dirichlet boundary (x = 0 or x = 1)
-def boundary(x):
-    return True
-#    return x[0] < DOLFIN_EPS or x[0] > 1.0 - DOLFIN_EPS
-
 # Error tolerance
 tolerance = 0.1
-max_iterations = 4 #20
+max_iterations = 100
 
 # Refinement fraction
-fraction = 0.7
+fraction = 0.5
 
 # Create initial mesh
-mesh = UnitSquare(4, 4)
+#mesh = UnitSquare(4, 4)
+mesh = Mesh("lshape.xml")
 
 for i in range(max_iterations):
 
@@ -42,13 +38,19 @@ for i in range(max_iterations):
     V = FunctionSpace(mesh, "CG", 1)
     v = TestFunction(V)
     u = TrialFunction(V)
-    f = Expression("10*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)",
-                   degree=3)
+#    f = Expression("10*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)",
+#                   degree=3)
+    f = Constant("1.0")
     a = inner(grad(v), grad(u)) * dx
     L = v * f * dx
 
     # Define boundary condition
-    bc = DirichletBC(V, 0.0, "near(x[0], 0.0) || near(x[0], 1.0)")
+#    bc = DirichletBC(V, 0.0, "near(x[0], 0.0) || near(x[0], 1.0)")
+    def u0_boundary(x, on_boundary):
+        return on_boundary
+    #    return x[0] < DOLFIN_EPS or x[0] > 1.0 - DOLFIN_EPS
+    u0 = Constant(0.0)
+    bc = DirichletBC(V, u0, u0_boundary)
 
     # Compute solution
     u_h = Function(V)
@@ -65,8 +67,8 @@ for i in range(max_iterations):
     h = CellSize(mesh)
 
     # Define form for assembling error indicators
-    form = (h ** 2 * R_T ** 2 * w * dx + avg(h) * avg(R_dT) ** 2 * 2 * avg(w) * dS
-            + h * R_dT ** 2 * w * ds)
+    form = (h ** 2 * R_T ** 2 * w * dx + avg(h) * avg(R_dT) ** 2 * 2 * avg(w) * dS)
+#            + h * R_dT ** 2 * w * ds)
 
     # Assemble error indicators
     indicators = assemble(form)

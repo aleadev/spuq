@@ -19,7 +19,8 @@ from spuq.application.egsz.multi_vector import MultiVector
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.utils.type_check import takes, anything, optional
 
-DEBUG_PROJECTION = True
+import logging
+logger = logging.getLogger(__name__)
 
 class Marking(object):
     """EGSZ marking strategy for residual estimator."""
@@ -40,12 +41,12 @@ class Marking(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float)
-    def mark(cls, w, coeff_field, f, theta_eta, theta_zeta, min_zeta, maxh):
+    def mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh):
         """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
         mesh_markers_R = cls.mark_residual(w, coeff_field, f, theta_eta)
-        mesh_markers_P, max_zeta = cls.mark_projection(maxh, w, coeff_field, theta_zeta, min_zeta)
-        new_mi = cls.mark_new_multiindices(w, coeff_field, max_zeta)
-        return (mesh_markers_R, mesh_markers_P, new_mi)
+        mesh_markers_P, max_zeta = cls.mark_projection(w, coeff_field, theta_zeta, min_zeta, maxh)
+        new_mi = cls.mark_inactive_multiindices(w, coeff_field, theta_delta, max_zeta)
+        return mesh_markers_R, mesh_markers_P, new_mi
     
 
     @classmethod
@@ -82,10 +83,10 @@ class Marking(object):
         projind = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
         
         # testing -->
-        if DEBUG_PROJECTION:
+        if logger.isEnabledFor(logging.DEBUG):
             projglobal = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
             for mu, val in projglobal.iteritems():
-                print "GLOBAL Projection Error for", mu, "=", val
+                logger.debug("GLOBAL Projection Error for %s = %f", mu, val)
         # <-- testing
 
         # projection marking
@@ -93,23 +94,23 @@ class Marking(object):
         # setup marking sets
         mesh_markers = defaultdict(set)
         max_zeta = max([max(projind[mu].coeffs) for mu in projind.active_indices()])
-        print "max_zeta =", max_zeta
+        logger.info("max_zeta = %f", max_zeta)
         if max_zeta >= min_zeta:
             for mu, vec in projind.iteritems():
                 indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
                 mesh_markers[mu] = mesh_markers[mu].union(set(indmu)) 
-                print "PROJ MARKING", len(indmu), "elements in", mu
+                logger.debug("PROJ MARKING %i elements in %s", len(indmu), str(mu))
         
-            print "FINAL MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
+            logger.info("FINAL MARKED elements: %s", str([(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]))
         else:
-            print "NO PROJECTION MARKING due to very small projection error!"
-        return (mesh_markers, max_zeta)
+            logger.info("NO PROJECTION MARKING due to very small projection error")
+        return mesh_markers, max_zeta
     
     
     @classmethod
     @takes(anything, MultiVector, CoefficientField, float, float, float, optional(int))
     def mark_inactive_multiindices(cls, w, coeff_field, theta_delta, max_zeta, maxm=10):
-        """Estimate projection error for inanctive indices and determine multiindices to be activated."""
+        """Estimate projection error for inactive indices and determine multiindices to be activated."""
         # new multiindex activation
         # =========================
         # determine possible new indices
@@ -135,18 +136,18 @@ class Marking(object):
                     ainfty = max_am / min_a0
                     assert isinstance(ainfty, float)
                     
-#                    print "A***", beta[1], ainfty, norm_w
-#                    print "B***", beta[1] * ainfty * norm_w
-#                    print "C***", theta_delta, max_zeta
-#                    print "D***", theta_delta * max_zeta
-#                    print "E***", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta)
+                    logger.debug("A*** %f -- %f -- %f", beta[1], ainfty, norm_w)
+                    logger.debug("B*** %f", beta[1] * ainfty * norm_w)
+                    logger.debug("C*** %f", theta_delta, max_zeta)
+                    logger.debug("D*** %f", theta_delta * max_zeta)
+                    logger.debug("E*** %s", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta))
                     
                     if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
                         val1 = beta[1] * ainfty * norm_w
                         if mu1 not in Ldelta.keys() or (mu1 in Ldelta.keys() and Ldelta[mu1] < val1):
                             Ldelta[mu1] = val1
                     
-        print "POSSIBLE NEW MULTIINDICES ", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)
+        logger.debug("POSSIBLE NEW MULTIINDICES %s", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True))
         Ldelta = sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Ldelta), deltaN)]
-        print "SELECTED NEW MULTIINDICES ", Ldelta
-        return Ldelta
+        logger.info("SELECTED NEW MULTIINDICES %s", Ldelta)
+        return dict(Ldelta)

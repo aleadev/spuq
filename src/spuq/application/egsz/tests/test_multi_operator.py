@@ -1,5 +1,6 @@
 from __future__ import division
 import numpy as np
+import logging
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.application.egsz.multi_operator import MultiOperator
@@ -21,6 +22,8 @@ try:
 except:
     HAVE_FENICS = False
 
+# setup logging
+logging.basicConfig(filename=__file__[:-2] + 'log', level=logging.INFO)
 
 class SimpleProjectBasis(CanonicalBasis):
     def project_onto(self, vec):

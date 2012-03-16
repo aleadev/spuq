@@ -41,6 +41,8 @@ from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
 
+import logging
+logger = logging.getLogger(__name__)
 
 class ResidualEstimator(object):
     """Evaluation of the residual error estimator which consists of volume/edge terms and the projection error between different FE meshes.
@@ -55,7 +57,7 @@ class ResidualEstimator(object):
     def evaluateResidualEstimator(cls, w, CF, f):
         """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
         # evaluate residual estimator for all multi indices
-        print "XXXXXXXXXXXXXXXXXXXXXXXXX", type(MultiVector)
+        from spuq.application.egsz.multi_vector import MultiVector
         eta = MultiVector()
         err = dict()
         for mu in w.active_indices():
@@ -94,7 +96,7 @@ class ResidualEstimator(object):
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
         if CF.length < maxm:
-            print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", CF.length, "instead of", maxm, ")"
+            logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", CF.length, maxm)
             maxm = CF.length  
 #        assert CF.length >= maxm        # ensure CF expansion is sufficiently long
         for m in range(1, maxm):
@@ -135,8 +137,8 @@ class ResidualEstimator(object):
         R_T = 1 / sqrt(a0_f) * R_T ** 2
         R_E = 1 / sqrt(a0_f) * R_E ** 2
         res_form = (h ** 2 * R_T * s * dx
-                    + avg(h) * avg(R_E) * 2 * avg(s) * dS
-                    + h * R_E * s * ds)
+                    + avg(h) * avg(R_E) * 2 * avg(s) * dS)
+#                    + h * R_E * s * ds)    NOTE: this term is incorrect for Dirichlet BC, Neumann data is not supported yet!
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
@@ -169,7 +171,7 @@ class ResidualEstimator(object):
         for mu in Delta:
             maxm = max(len(mu) for mu in Delta) + 1
             if CF.length < maxm:
-                print "[ResidualEstimator] WARNING: insufficient length of coefficient field for MultiVector (", CF.length, "instead of", maxm, ")"
+                logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", CF.length, maxm)
                 maxm = CF.length  
             dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, maxh, local)
                                                         for m in range(1, maxm))
@@ -200,7 +202,7 @@ class ResidualEstimator(object):
         ufl = V.ufl_element()
         mesh = V.mesh()
         while maxh > 0 and mesh.hmax() > maxh:
-            # TODO: log message
+            logger.debug("refining mesh for projection error evaluation")
             mesh = refine(mesh)
         V = FunctionSpace(mesh, ufl.family(), ufl.degree())
         # interpolate coefficient functions on mesh
@@ -211,7 +213,7 @@ class ResidualEstimator(object):
         ammax = max(f.vector().array())
         ainfty = ammax / amin
         assert isinstance(ainfty, float)
-#        print "\namin, amax, ainfty ", amin, ammax, ainfty
+        logger.info("amin = %f  amax = %f  ainfty = %f", amin, ammax, ainfty)
 
         # prepare FEniCS discretisation variables
         if local:
