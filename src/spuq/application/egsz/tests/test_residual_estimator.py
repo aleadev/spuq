@@ -4,6 +4,7 @@ from operator import itemgetter
 from collections import defaultdict
 from itertools import count
 import logging
+import os
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -28,7 +29,11 @@ except:
 logging.basicConfig(filename=__file__[:-2] + 'log', level=logging.ERROR,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-    
+
+# determine path of this module
+path = os.path.dirname(__file__)
+lshape_xml = os.path.join(path, 'lshape.xml')
+
 @skip_if(not HAVE_FENICS, "FEniCS not installed.")
 def test_estimator():
     # setup solution multi vector
@@ -65,7 +70,7 @@ def test_estimator():
     print "residual error estimate for mu"
     for mu in reserr:
         print "\t", mu, " is ", reserr[mu]
-    
+
     assert_equal(w.active_indices(), resind.active_indices())
     print "active indices are ", resind.active_indices()
 
@@ -77,11 +82,11 @@ def test_estimator_refinement():
 #    f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
 
     # set default vector for new indices
-    mesh0 = refine(Mesh('lshape.xml'))
+    mesh0 = refine(Mesh(lshape_xml))
     fs0 = FunctionSpace(mesh0, "CG", 1)
     B = FEniCSBasis(fs0)
     u0 = Function(fs0)
-    diffcoeff = Constant("1.0") 
+    diffcoeff = Constant("1.0")
     fem_A = FEMPoisson.assemble_lhs(diffcoeff, B)
     fem_b = FEMPoisson.assemble_rhs(f, B)
     solve(fem_A, u0.vector(), fem_b)
@@ -95,7 +100,7 @@ def test_estimator_refinement():
     N = len(mis)
 
 #    meshes = [UnitSquare(i + 3, 3 + N - i) for i in range(N)]
-    meshes = [refine(Mesh('lshape.xml')) for _ in range(N)]
+    meshes = [refine(Mesh(lshape_xml)) for _ in range(N)]
     fss = [FunctionSpace(mesh, "CG", 1) for mesh in meshes]
 
     # solve Poisson problem
@@ -125,26 +130,26 @@ def test_estimator_refinement():
         print "*****************************"
         print "REFINEMENT LOOP iteration ", refinement + 1
         print "*****************************"
-        
+
         # evaluate residual and projection error estimates
         # ================================================
         maxh = 1 / 10
         resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         projind = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
-    
+
         # testing -->
         projglobal = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
         for mu, val in projglobal.iteritems():
             print "GLOBAL Projection Error for", mu, "=", val
         # <-- testing
-    
+
         # ==============
         # MARK algorithm
         # ==============
-    
+
         # setup marking sets
         mesh_markers = defaultdict(set)
-    
+
         # residual marking
         # ================
         theta_eta = 0.8
@@ -160,9 +165,9 @@ def test_estimator_refinement():
                 break
             mesh_markers[res[2]].add(res[1])
             marked_res += res[0]
-            
+
         print "RES MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
-        
+
         # projection marking
         # ==================
         theta_zeta = 0.8
@@ -172,13 +177,13 @@ def test_estimator_refinement():
         if max_zeta >= min_zeta:
             for mu, vec in projind.iteritems():
                 indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
-                mesh_markers[mu] = mesh_markers[mu].union(set(indmu)) 
+                mesh_markers[mu] = mesh_markers[mu].union(set(indmu))
                 print "PROJ MARKING", len(indmu), "elements in", mu
-        
+
             print "FINAL MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
         else:
             print "NO PROJECTION MARKING due to very small projection error!"
-    
+
         # new multiindex activation
         # =========================
         # determine possible new indices
@@ -186,7 +191,7 @@ def test_estimator_refinement():
         maxm = 10
         a0_f, _ = coeff_field[0]
         Ldelta = {}
-        Delta = w.active_indices()     
+        Delta = w.active_indices()
         deltaN = int(ceil(0.1 * len(Delta)))               # max number new multiindices
         for mu in Delta:
             norm_w = norm(w[mu].coeffs, 'L2')
@@ -194,7 +199,7 @@ def test_estimator_refinement():
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
                     if m > maxm or m >= len(coeff_field):  # or len(Ldelta) >= deltaN
-                        break 
+                        break
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)
                     # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
@@ -205,25 +210,25 @@ def test_estimator_refinement():
                     max_am = max(f.vector().array())
                     ainfty = max_am / min_a0
                     assert isinstance(ainfty, float)
-                    
+
 #                    print "A***", beta[1], ainfty, norm_w
 #                    print "B***", beta[1] * ainfty * norm_w
 #                    print "C***", theta_delta, max_zeta
 #                    print "D***", theta_delta * max_zeta
 #                    print "E***", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta)
-                    
+
                     if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
                         val1 = beta[1] * ainfty * norm_w
                         if mu1 not in Ldelta.keys() or (mu1 in Ldelta.keys() and Ldelta[mu1] < val1):
                             Ldelta[mu1] = val1
-                    
+
         print "POSSIBLE NEW MULTIINDICES ", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)
         Ldelta = sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Ldelta), deltaN)]
         # add new multiindices to solution vector
         for mu, _ in Ldelta:
             w[mu] = vec0
         print "SELECTED NEW MULTIINDICES ", Ldelta
-    
+
         # create new refined (and enlarged) multi vector
         # ==============================================
         for mu, cell_ids in mesh_markers.iteritems():
@@ -252,7 +257,7 @@ def test_marking():
     # define source term and diffusion coefficient
 #    f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
     f = Constant("1.0")
-    diffcoeff = Constant("1.0") 
+    diffcoeff = Constant("1.0")
 
     # setup multivector
     #==================
@@ -260,7 +265,7 @@ def test_marking():
     def eval_poisson(vec=None):
         if vec == None:
             # set default vector for new indices
-            #    mesh0 = refine(Mesh('lshape.xml'))
+            #    mesh0 = refine(Mesh(lshape_xml))
             mesh0 = UnitSquare(4, 4)
             fs = FunctionSpace(mesh0, "CG", 1)
             vec = FEniCSVector(Function(fs))
@@ -297,23 +302,23 @@ def test_marking():
     theta_zeta = 0.8
     min_zeta = 1e-10
     maxh = 1 / 10
-    theta_delta = 0.8 
+    theta_delta = 0.8
     refinements = 1
 
     for refinement in range(refinements):
         logger.info("*****************************")
         logger.info("REFINEMENT LOOP iteration %i", refinement + 1)
         logger.info("*****************************")
-        
+
         # evaluate residual and projection error estimates
         # ================================================
         mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
         mesh_markers = mesh_markers_R.copy()
         mesh_markers.update(mesh_markers_P)
         Marking.refine(w, mesh_markers, new_multiindices.keys(), eval_poisson)
- 
+
     # show refined meshes
-    plot_meshes = False    
+    plot_meshes = False
     if plot_meshes:
         for mu, vec in w.iteritems():
             plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
