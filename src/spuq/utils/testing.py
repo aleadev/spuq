@@ -95,7 +95,7 @@ def get_base_module(fullfile):
     return ".".join(packlist) + "." + modname
 
 @dec.setastest(False)
-def test_main(with_coverage=True):
+def test_main(with_coverage=False):
     """``main`` function for test modules"""
     frame = sys._getframe(1)
     mod_name = frame.f_locals.get('__name__', None)
@@ -108,7 +108,9 @@ def test_main(with_coverage=True):
                 if module is not None:
                     argv = argv + ['--with-coverage', '--cover-package', module]
                     # reload module so it can be instrumented by coverage
-                    reload(sys.modules[module])
+                    sys.modules.pop(module)
+                    # reloading here 
+                    #reload(sys.modules[module])
             import_nose().run(argv=argv)
             #run_module_suite(file_to_run)
         else:
