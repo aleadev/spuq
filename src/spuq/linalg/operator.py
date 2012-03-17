@@ -357,10 +357,10 @@ class DiagonalMatrixOperator(BaseOperator):
                             self.codomain,
                             self.domain)
     def inverse(self):
-        return DiagonalMatrixOperator(1.0/self._diag,
+        return DiagonalMatrixOperator(1.0 / self._diag,
                             self.codomain,
                             self.domain)
-        
+
 
 class MatrixSolveOperator(BaseOperator):
 
@@ -409,15 +409,13 @@ class MatrixSolveOperator(BaseOperator):
 class MultiplicationOperator(BaseOperator):
     def __init__(self, a, domain):
         self._a = a
-        if domain is None:
-            domain = CanonicalBasis(diag.shape[0])
         BaseOperator.__init__(self, domain, domain)
     def apply(self, vec):
         return self._a * vec
     def transpose(self):
         return self
     def inverse(self):
-        return MultiplicationOperator(1.0/self._a, self.domain)
+        return MultiplicationOperator(1.0 / self._a, self.domain)
 
 
 # class TensorOperator(Operator):

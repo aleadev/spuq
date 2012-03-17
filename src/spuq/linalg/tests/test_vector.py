@@ -3,12 +3,7 @@ import numpy as np
 from spuq.utils.testing import *
 from spuq.linalg.vector import *
 from spuq.linalg.basis import *
-
-
-class FooBasis(CanonicalBasis):
-    """Dummy basis class for testing that vector methods correcly
-    check for equality of bases."""
-    pass
+from spuq.linalg.test_support import *
 
 
 def test_vector_is_abstract():

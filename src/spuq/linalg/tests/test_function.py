@@ -109,4 +109,4 @@ def test_function_tensorise():
 #        f2 = SimpleFunction(f=lambda x: x[0]**2+3*x[1])
 #        print f1(range(3))
 
-test_main()
+test_main(True)

@@ -3,22 +3,7 @@ import numpy as np
 from spuq.utils.type_check import InputParameterError
 from spuq.utils.testing import *
 from spuq.linalg.operator import *
-
-class FooBasis(CanonicalBasis):
-    """Dummy basis class for testing that operator methods correctly
-    respect bases."""
-    pass
-
-class BarBasis(CanonicalBasis):
-    """Dummy basis class for testing that operator methods correctly
-    respect bases."""
-    pass
-
-class FooVector(FlatVector):
-    """Dummy vector class for testing that operator methods correctly
-    respect vector classes."""
-    pass
-
+from spuq.linalg.test_support import *
 
 def test_matrixop_init():
     l = [[1, 2, 4], [3, 4, 5]]
@@ -127,55 +112,15 @@ def test_diag_operator_apply():
     A = DiagonalMatrixOperator(diag)
     assert_equal(A * x, y)
 
-def assert_vector_almost_equal(vec1, vec2):
-    assert_equal(type(vec1), type(vec2))
-    assert_almost_equal(vec1.coeffs, vec2.coeffs)
-    #assert_equal(vec1, vec2)
+def assert_operator_consistency():
+    A = MatrixOperator.from_sequence([[1, 2], [3, 4]], FooBasis(2), BarBasis(2))
+    assert_operator_is_consistent(A)
 
-def test_operator_consistency():
-    def do_consistency_check(op):
-        vec = FooVector(np.random.random(op.domain.dim), 
-                        op.domain)
-
-        res = op * vec
-        assert_equal(res.basis, op.codomain)
-        assert_equal(type(res), type(vec))
-
-        assert_vector_almost_equal((3.0 * op) * vec, 3.0 * res)
-        assert_vector_almost_equal((op * 3.0) * vec, 3.0 * res)
-
-        if hasattr(op, "inverse") and op.domain.dim==op.codomain.dim:
-            inv = op.inverse()
-            assert_vector_almost_equal(vec, inv * res)
-            assert_equal(inv.domain, op.codomain)
-            assert_equal(inv.codomain, op.domain)
-
-            iinv = inv.inverse()
-            assert_vector_almost_equal(res, iinv * vec)
-            assert_equal(inv.domain, op.domain)
-            assert_equal(inv.codomain, op.codomain)
-
-        if hasattr(op, "transpose"):
-            trans = op.transpose()
-            #assert_equal(vec, trans * res)
-            assert_equal(trans.domain, op.codomain)
-            assert_equal(trans.codomain, op.domain)
-
-            ttrans = trans.transpose()
-            assert_vector_almost_equal(res, ttrans * vec)
-            assert_equal(ttrans.domain, op.domain)
-            assert_equal(ttrans.codomain, op.codomain)
-
-
-        pass
-    A = MatrixOperator.from_sequence([[1,2], [3,4]], FooBasis(2), BarBasis(2))
-    do_consistency_check(A)
-
-    A = MatrixOperator.from_sequence([[1,2], [3,4], [4,5]])
-    do_consistency_check(A)
+    A = MatrixOperator.from_sequence([[1, 2], [3, 4], [4, 5]])
+    assert_operator_is_consistent(A)
 
     A = MultiplicationOperator(3.0, FooBasis(4))
-    do_consistency_check(A)
+    assert_operator_is_consistent(A)
 
 
 

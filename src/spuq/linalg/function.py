@@ -6,6 +6,20 @@ from abc import ABCMeta, abstractmethod
 from spuq.utils.decorators import copydocs
 from spuq.utils.type_check import *
 
+class Differentiable(object):
+    @property
+    def D(self):
+        "return derivative Df = f.D() = f.diff()"
+        if not hasattr(self, "_diff"):
+            self._diff = self.diff()
+        return self._diff
+
+    @abstractmethod
+    def diff(self):  # pragma: no coverage
+        """return derivative GenericFunction"""
+        return NotImplemented
+
+
 class GenericFunction(object):
     """generic function interface
     
@@ -16,10 +30,18 @@ class GenericFunction(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, domain_dim=1, codomain_dim=1, factor=1):
-        self.domain_dim = domain_dim
-        self.codomain_dim = codomain_dim
-        self.factor = factor
+    def __init__(self, domain_dim=1, codomain_dim=1):
+        self._domain_dim = domain_dim
+        self._codomain_dim = codomain_dim
+        #self.factor = factor
+
+    @property
+    def domain_dim(self):
+        return self._domain_dim
+
+    @property
+    def codomain_dim(self):
+        return self._codomain_dim
 
     def __call__(self, *x):
         if len(x) == 1 and isinstance(x[0], GenericFunction):
@@ -35,17 +57,6 @@ class GenericFunction(object):
     def eval(self, *x):  # pragma: no coverage
         """function evaluation
            return evaluated function at x or function string if x in not set"""
-        return NotImplemented
-
-    @property
-    def D(self):
-        "return derivative Df = f.D() = f.diff()"
-        if not hasattr(self, "_diff"):
-            self._diff = self.diff()
-        return self._diff
-
-    def diff(self):  # pragma: no coverage
-        """return derivative GenericFunction"""
         return NotImplemented
 
     def __add__(self, g):
@@ -112,8 +123,10 @@ def _make_matching_funcs(f, g):
         return (_make_const_func(f, g), g)
 
 
-class _BinaryFunction(GenericFunction):
+class _BinaryFunction(GenericFunction, Differentiable):
     def __init__(self, f, g, op):
+        #TODO: should be only diffable if f and g are and the 
+        # binary operation supports it
         (f, g) = _make_matching_funcs(f, g)
         assert f.domain_dim == g.domain_dim
         assert f.codomain_dim == g.codomain_dim
@@ -182,8 +195,9 @@ class _BinaryFunction(GenericFunction):
 
 
 def _compose(f, g):
-    class ComposedFunction(GenericFunction):
+    class ComposedFunction(GenericFunction, Differentiable):
         def __init__(self, f, g):
+            #TODO: should be only diffable if f and g are
             assert g.codomain_dim == f.domain_dim
             GenericFunction.__init__(self, g.domain_dim, f.codomain_dim)
             self.f = f
@@ -198,8 +212,9 @@ def _compose(f, g):
     return ComposedFunction(f, g)
 
 def _tensorise(f, g):
-    class TensorisedFunction(GenericFunction):
+    class TensorisedFunction(GenericFunction, Differentiable):
         def __init__(self, f, g):
+            #TODO: should be only diffable if f and g are
             assert f.codomain_dim == g.codomain_dim
             GenericFunction.__init__(self, f.domain_dim + g.domain_dim,
                                      f.codomain_dim)
@@ -217,10 +232,11 @@ def _tensorise(f, g):
     return TensorisedFunction(f, g)
 
 
-class SimpleFunction(GenericFunction):
+class SimpleFunction(GenericFunction, Differentiable):
     """python function interface"""
 
     def __init__(self, f, Df=None, domain_dim=1, codomain_dim=1):
+        #TODO: should be only diffable if f and g are
         GenericFunction.__init__(self, domain_dim=domain_dim,
                                  codomain_dim=codomain_dim)
         self._f = f
@@ -235,7 +251,7 @@ class SimpleFunction(GenericFunction):
                                   codomain_dim=self.codomain_dim * self.domain_dim)
 
 
-class ConstFunction(GenericFunction):
+class ConstFunction(GenericFunction, Differentiable):
     def __init__(self, const=1, domain_dim=1, codomain_dim=1):
         GenericFunction.__init__(self, domain_dim=domain_dim, codomain_dim=codomain_dim)
         self.const = const
