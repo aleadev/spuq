@@ -113,4 +113,4 @@ def test_flatvec_repr():
                  "coeffs=[ 1.  2.  3.]>")
 
 
-test_main()
+test_main(True)

@@ -6,6 +6,8 @@ from spuq.linalg.operator import Operator
 from spuq.linalg.vector import Vector, inner
 from spuq.utils.forgetful_vector import ForgetfulVector
 
+__all__ = ["pcg"]
+
 @takes(Operator, Vector, Operator, Vector, optional(float), optional(int))
 def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
     # for most quantities in PCG (except zeta) only the most recent 

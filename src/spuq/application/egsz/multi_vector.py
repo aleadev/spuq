@@ -1,6 +1,6 @@
 # from weakref import WeakValueDictionary
 
-from spuq.linalg.vector import Scalar, Vector
+from spuq.linalg.vector import Scalar, Vector, inner
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import takes, anything, optional
@@ -93,10 +93,10 @@ class MultiVector(Vector):
 
     def __inner__(self, other):
         assert isinstance(other, MultiVector)
-        inner=0.0
+        s = 0.0
         for mi in self.keys():
-            inner += inner(self[mi], other[mi])
-        return inner
+            s += inner(self[mi], other[mi])
+        return s
 
 
     def __repr__(self):

@@ -4,6 +4,11 @@ from spuq.linalg.basis import CanonicalBasis
 from spuq.linalg.vector import FlatVector
 from spuq.utils.testing import assert_equal, assert_almost_equal
 
+__all__ = ["FooBasis", "BarBasis", "FooVector",
+       "assert_vector_almost_equal",
+       "assert_operator_is_consistent"]
+
+
 class FooBasis(CanonicalBasis):
     """Dummy basis class for testing that operator and vector methods 
     correctly respect bases."""

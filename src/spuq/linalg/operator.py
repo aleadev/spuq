@@ -7,6 +7,10 @@ from spuq.utils.type_check import takes, returns, anything, optional, list_of
 from spuq.linalg.basis import Basis, CanonicalBasis, BasisMismatchError
 from spuq.linalg.vector import Scalar, Vector, FlatVector
 
+__all__ = ["Operator", "BaseOperator", "ComposedOperator", "SummedOperator",
+           "MatrixOperator", "DiagonalMatrixOperator", "MatrixSolveOperator",
+           "MultiplicationOperator"]
+
 @with_equality
 class Operator(object):
     """Abstract base class for (linear) operators mapping elements from

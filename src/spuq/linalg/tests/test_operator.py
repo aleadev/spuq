@@ -2,8 +2,12 @@ import numpy as np
 
 from spuq.utils.type_check import InputParameterError
 from spuq.utils.testing import *
+from spuq.linalg.basis import *
+from spuq.linalg.vector import *
 from spuq.linalg.operator import *
 from spuq.linalg.test_support import *
+import spuq.linalg.test_support as foo
+
 
 def test_matrixop_init():
     l = [[1, 2, 4], [3, 4, 5]]
@@ -123,6 +127,4 @@ def assert_operator_consistency():
     assert_operator_is_consistent(A)
 
 
-
-
-test_main()
+test_main(True)

@@ -1,11 +1,12 @@
 """FEniCS FEM discretisation implementation for Poisson model problem"""
 
-from dolfin import nabla_grad, TrialFunction, TestFunction, inner, assemble, dx, Constant, DirichletBC, Matrix
+from dolfin import (nabla_grad, TrialFunction, TestFunction, solve,
+                    inner, assemble, dx, Constant, DirichletBC, Matrix)
 import numpy as np
 
 from spuq.fem.fenics.fenics_vector import FEniCSBasis
 from spuq.fem.fem_discretisation import FEMDiscretisation
-from spuq.linalg.operator import Operator
+from spuq.linalg.operator import Operator, MatrixOperator
 from spuq.utils.type_check import takes, anything
 
 class FEMPoisson(FEMDiscretisation):
@@ -18,18 +19,22 @@ class FEMPoisson(FEMDiscretisation):
     """
 
     @classmethod
-    def assemble_operator(cls, coeff, basis):
+    def assemble_operator(cls, coeff, basis, do_solve=False):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-        
+
         class MatrixWrapper(Operator):
-            @takes(anything, Matrix, FEniCSBasis)
-            def __init__(self, matrix):
+            @takes(anything, Matrix, FEniCSBasis, bool)
+            def __init__(self, matrix, basis, do_solve):
                 self._matrix = matrix
                 self._basis = basis
+                self._do_solve = do_solve
             @takes(anything, np.array)
             def apply(self, vec):
                 new_vec = vec.copy()
-                new_vec.coeffs = self._matrix * vec.coeffs
+                if not self._do_solve:
+                    new_vec.coeffs = self._matrix * vec.coeffs
+                else:
+                    new_vec.coeffs = solve(self._matrix, new_vec.coeffs, vec.coeffs)
                 return new_vec
             @property
             def domain(self):
@@ -37,8 +42,13 @@ class FEMPoisson(FEMDiscretisation):
             @property
             def codomain(self):
                 return self._basis
-        
-        return MatrixWrapper(cls.assemble_lhs(coeff, basis))
+
+        return MatrixWrapper(cls.assemble_lhs(coeff, basis), basis, do_solve)
+        #return MatrixOperator(cls.assemble_lhs(coeff, basis))
+
+    @classmethod
+    def assemble_solve_operator(cls, coeff, basis):
+        return cls.assemble_operator(coeff, basis, do_solve=True)
 
     @classmethod
     def assemble_lhs(cls, coeff, basis):
@@ -49,7 +59,7 @@ class FEMPoisson(FEMDiscretisation):
         # define boundary conditions
         def u0_boundary(x, on_boundary):
             return on_boundary
-        u0 = Constant(0.0)        
+        u0 = Constant(0.0)
         bc = DirichletBC(V, u0, u0_boundary)
 
         # setup problem, assemble and apply boundary conditions
@@ -63,16 +73,16 @@ class FEMPoisson(FEMDiscretisation):
     @classmethod
     def assemble_rhs(cls, f, basis):
         """Assemble the discrete right-hand side."""
-        
+
         # get FEniCS function space
         V = basis._fefs
 
         # define boundary conditions
         def u0_boundary(x, on_boundary):
             return on_boundary
-        u0 = Constant(0.0)        
+        u0 = Constant(0.0)
         bc = DirichletBC(V, u0, u0_boundary)
-        
+
         # assemble and apply boundary conditions
         v = TestFunction(V)
         l = (f * v) * dx

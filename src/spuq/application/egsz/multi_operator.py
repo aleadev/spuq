@@ -42,7 +42,7 @@ class MultiOperator(Operator):
         maxm = max(len(mu) for mu in Delta) + 1
         if self._CF.length < maxm:
             logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i", self._CF.length, maxm)
-            maxm = self._CF.length  
+            maxm = self._CF.length
 #        assert self._CF.length >= maxm        # ensure CF expansion is sufficiently long
         for mu in Delta:
             logger.debug("apply on mu = %s", str(mu))
@@ -94,7 +94,7 @@ class PreconditioningOperator(Operator):
     def __init__(self, mean_func, assemble_solver, domain=None, codomain=None):
         """Initialise operator with FEM discretisation and
         mean diffusion coefficient"""
-        self._assemble = assemble_solver
+        self._assemble_solver = assemble_solver
         self._mean_func = mean_func
         self._domain = domain
         self._codomain = codomain
