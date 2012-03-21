@@ -4,7 +4,8 @@ from dolfin import (nabla_grad, TrialFunction, TestFunction, solve,
                     inner, assemble, dx, Constant, DirichletBC, Matrix)
 import numpy as np
 
-from spuq.fem.fenics.fenics_vector import FEniCSBasis
+from spuq.fem.fenics.fenics_basis import FEniCSBasis
+from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
 from spuq.fem.fem_discretisation import FEMDiscretisation
 from spuq.linalg.operator import Operator, MatrixOperator
 from spuq.utils.type_check import takes, anything
@@ -19,36 +20,15 @@ class FEMPoisson(FEMDiscretisation):
     """
 
     @classmethod
-    def assemble_operator(cls, coeff, basis, do_solve=False):
+    def assemble_operator(cls, coeff, basis):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-
-        class MatrixWrapper(Operator):
-            @takes(anything, Matrix, FEniCSBasis, bool)
-            def __init__(self, matrix, basis, do_solve):
-                self._matrix = matrix
-                self._basis = basis
-                self._do_solve = do_solve
-            @takes(anything, np.array)
-            def apply(self, vec):
-                new_vec = vec.copy()
-                if not self._do_solve:
-                    new_vec.coeffs = self._matrix * vec.coeffs
-                else:
-                    new_vec.coeffs = solve(self._matrix, new_vec.coeffs, vec.coeffs)
-                return new_vec
-            @property
-            def domain(self):
-                return self._basis
-            @property
-            def codomain(self):
-                return self._basis
-
-        return MatrixWrapper(cls.assemble_lhs(coeff, basis), basis, do_solve)
-        #return MatrixOperator(cls.assemble_lhs(coeff, basis))
+        matrix = cls.assemble_lhs(coeff, basis)
+        return FEniCSOperator(matrix, basis)
 
     @classmethod
     def assemble_solve_operator(cls, coeff, basis):
-        return cls.assemble_operator(coeff, basis, do_solve=True)
+        matrix = cls.assemble_lhs(coeff, basis)
+        return FEniCSSolveOperator(matrix, basis)
 
     @classmethod
     def assemble_lhs(cls, coeff, basis):

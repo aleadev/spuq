@@ -8,13 +8,16 @@ from spuq.application.egsz.pcg import pcg
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.math_utils.multiindex import Multiindex
 from spuq.linalg.vector import inner
+from spuq.linalg.operator import MultiplicationOperator
 
 from dolfin import Expression, FunctionSpace, UnitSquare, interpolate
 from spuq.application.egsz.fem_discretisation import FEMPoisson
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 
-a = [Expression('A*sin(pi*I*x[0]*x[1])', A=1, I=i, degree=2) for i in range(1, 4)]
-rvs = [UniformRV(), NormalRV(mu=0.5)]
+def A(i, j):
+    return 1 / ((i + 1) ** 2 + (j + 1) ** 2)
+a = [Expression('A*cos(pi*I*x[0])*cos(pi*J*x[1])', A=A(i, j), I=i, J=j, degree=2) for i in range(3) for j in range(3)]
+rvs = [UniformRV()] * 8
 coeff_field = CoefficientField(a, rvs)
 
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -32,10 +35,14 @@ for mi, vec in zip(mis, vecs):
     w[mi] = vec
 v = A * w
 P = PreconditioningOperator(a[0], FEMPoisson.assemble_solve_operator)
+#P = MultiplicationOperator(1, vecs[0].basis)
 w2, zeta, numit = pcg(A, v, P, 0 * v)
 
+print zeta, numit
 print v
 print w
 print w2
 print inner(w, w)
 print inner(w - w2, w - w2)
+v2 = A * w2
+print inner(v - v2, v - v2)
