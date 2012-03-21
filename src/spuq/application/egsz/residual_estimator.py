@@ -57,7 +57,6 @@ class ResidualEstimator(object):
     def evaluateResidualEstimator(cls, w, CF, f):
         """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
         # evaluate residual estimator for all multi indices
-        from spuq.application.egsz.multi_vector import MultiVector
         eta = MultiVector()
         err = dict()
         for mu in w.active_indices():

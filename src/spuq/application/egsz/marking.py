@@ -123,7 +123,7 @@ class Marking(object):
             for m in count(1):
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
-                    if m > maxm or m >= len(coeff_field):  # or len(Ldelta) >= deltaN
+                    if m > maxm or m >= coeff_field.length:  # or len(Ldelta) >= deltaN
                         break 
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)

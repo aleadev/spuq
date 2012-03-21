@@ -61,7 +61,7 @@ class ParametricCoefficientField(CoefficientField):
     """Expansion of a coefficient field according to EGSZ (1.2)."""
 
     @takes(anything, GeneratorType, GeneratorType)
-    def __init__(self, func_gen, rv_gen):
+    def __init__(self, func_gen, rv_gen, a0=None):
         """Initialise with function and random variable generators.
         
         The first function is the mean field with which a
@@ -71,7 +71,10 @@ class ParametricCoefficientField(CoefficientField):
         self._funcs = list()
         self._rvs = list()
         # first function is deterministic mean field
-        self._funcs.append(self._func_gen.next())
+        if a0 is None:
+            self._funcs.append(self._func_gen.next())
+        else:
+            self._funcs.append(a0)
         self._rvs.append(DeterministicPseudoRV)
 
     @classmethod
@@ -99,5 +102,4 @@ class ParametricCoefficientField(CoefficientField):
 
     def __len__(self):
         """Length of coefficient field expansion."""
-        # TODO: how shall we handle this?
         raise Exception("length of ParametricCoefficientField is infinite")

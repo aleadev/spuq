@@ -7,7 +7,7 @@ import logging
 import os
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-from spuq.application.egsz.coefficient_field import CoefficientField
+from spuq.application.egsz.coefficient_field import CoefficientField, ParametricCoefficientField
 from spuq.math_utils.multiindex import Multiindex
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_main, assert_raises
@@ -115,12 +115,12 @@ def test_estimator_refinement():
 #        plot(w[mi]._fefunc)
 
     # define coefficient field
-    aN = 15
+    a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
 #    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
-    a = [Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
-                        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in range(1, aN)]
-    rvs = [NormalRV(mu=0.5) for _ in range(1, aN - 1)]
-    coeff_field = CoefficientField(a, rvs)
+    a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
+                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
+    rvs = (NormalRV(mu=0.5) for _ in count())
+    coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
 
     # refinement loop
     # ===============
@@ -198,7 +198,7 @@ def test_estimator_refinement():
             for m in count(1):
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
-                    if m > maxm or m >= len(coeff_field):  # or len(Ldelta) >= deltaN
+                    if m > maxm or m >= coeff_field.length:  # or len(Ldelta) >= deltaN
                         break
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)
@@ -287,14 +287,13 @@ def test_marking():
 
     # define coefficient field
     # ========================
-    aN = 15
+    # define coefficient field
+    a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
 #    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
-    a = [Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
-                        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in range(1, aN)]
-    rvs = [NormalRV(mu=0.5) for _ in range(1, aN - 1)]
-    coeff_field = CoefficientField(a, rvs)
-#   TODO: coeff_field = ParametricCoefficientField((Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
-#                        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count()), (NormalRV(mu=0.5) for _ in count()))
+    a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
+                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
+    rvs = (NormalRV(mu=0.5) for _ in count())
+    coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
 
     # refinement loop
     # ===============
