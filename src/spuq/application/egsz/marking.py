@@ -71,7 +71,7 @@ class Marking(object):
                 break
             mesh_markers[res[2]].add(res[1])
             marked_res += res[0]
-        print "RES MARKED elements:\n", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]
+        logger.debug("(mark_residual) MARKED elements: %s", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()])
         return mesh_markers
     
     
@@ -99,7 +99,7 @@ class Marking(object):
             for mu, vec in projind.iteritems():
                 indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
                 mesh_markers[mu] = mesh_markers[mu].union(set(indmu)) 
-                logger.debug("PROJ MARKING %i elements in %s", len(indmu), str(mu))
+                logger.debug("PROJ MARKING %i elements in %s", len(indmu), mu)
         
             logger.info("FINAL MARKED elements: %s", str([(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]))
         else:
@@ -123,7 +123,7 @@ class Marking(object):
             for m in count(1):
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
-                    if m > maxm or m >= len(coeff_field):  # or len(Ldelta) >= deltaN
+                    if m > maxm or m >= coeff_field.length:  # or len(Ldelta) >= deltaN
                         break 
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)
@@ -138,7 +138,7 @@ class Marking(object):
                     
                     logger.debug("A*** %f -- %f -- %f", beta[1], ainfty, norm_w)
                     logger.debug("B*** %f", beta[1] * ainfty * norm_w)
-                    logger.debug("C*** %f", theta_delta, max_zeta)
+                    logger.debug("C*** %f -- %f", theta_delta, max_zeta)
                     logger.debug("D*** %f", theta_delta * max_zeta)
                     logger.debug("E*** %s", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta))
                     

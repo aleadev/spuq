@@ -7,7 +7,7 @@ import logging
 import os
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-from spuq.application.egsz.coefficient_field import CoefficientField
+from spuq.application.egsz.coefficient_field import CoefficientField, ParametricCoefficientField
 from spuq.math_utils.multiindex import Multiindex
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_main, assert_raises
@@ -26,15 +26,18 @@ except:
     HAVE_FENICS = False
 
 # setup logging
-logging.basicConfig(filename=__file__[:-2] + 'log', level=logging.ERROR,
+logging.basicConfig(filename=__file__[:-2] + 'log', level=logging.INFO,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+fenics_logger = logging.getLogger("FFC")
+fenics_logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
+
 
 # determine path of this module
 path = os.path.dirname(__file__)
 lshape_xml = os.path.join(path, 'lshape.xml')
 
-@skip_if(not HAVE_FENICS, "FEniCS not installed.")
+@skip_if(not HAVE_FENICS or True, "FEniCS not installed.")
 def test_estimator():
     # setup solution multi vector
     mis = [Multiindex([0]),
@@ -115,12 +118,12 @@ def test_estimator_refinement():
 #        plot(w[mi]._fefunc)
 
     # define coefficient field
-    aN = 15
+    a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
 #    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
-    a = [Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
-                        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in range(1, aN)]
-    rvs = [NormalRV(mu=0.5) for _ in range(1, aN - 1)]
-    coeff_field = CoefficientField(a, rvs)
+    a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
+                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
+    rvs = (NormalRV(mu=0.5) for _ in count())
+    coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
 
     # refinement loop
     # ===============
@@ -198,7 +201,7 @@ def test_estimator_refinement():
             for m in count(1):
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
-                    if m > maxm or m >= len(coeff_field):  # or len(Ldelta) >= deltaN
+                    if m > maxm or m >= coeff_field.length:  # or len(Ldelta) >= deltaN
                         break
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)
@@ -279,7 +282,7 @@ def test_marking():
            Multiindex([1]),
            Multiindex([0, 1]),
            Multiindex([0, 2])]
-
+    
     # setup initial multivector
     w = MultiVectorWithProjection()
     Marking.refine(w, {}, mis, eval_poisson)
@@ -287,14 +290,13 @@ def test_marking():
 
     # define coefficient field
     # ========================
-    aN = 15
+    # define coefficient field
+    a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
 #    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
-    a = [Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
-                        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in range(1, aN)]
-    rvs = [NormalRV(mu=0.5) for _ in range(1, aN - 1)]
-    coeff_field = CoefficientField(a, rvs)
-#   TODO: coeff_field = ParametricCoefficientField((Expression('2./I+sin(2.*pi*I*x[0]+x[1])/I', I=i, degree=3,
-#                        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count()), (NormalRV(mu=0.5) for _ in count()))
+    a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
+                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
+    rvs = (NormalRV(mu=0.5) for _ in count())
+    coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
 
     # refinement loop
     # ===============
