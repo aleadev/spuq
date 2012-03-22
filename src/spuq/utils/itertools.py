@@ -1,5 +1,6 @@
 """Recipes from http://docs.python.org/library/itertools.html#recipes"""
 
+from __future__ import absolute_import
 from itertools import *
 import operator
 

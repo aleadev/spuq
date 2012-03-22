@@ -41,8 +41,22 @@ class MultiindexSet(object):
     def factorial(self):
         return sp.factorial(self.arr).prod(1)
 
+    @staticmethod
+    def _makeGenerator(m, func):
+        p = 0
+        k = 0
+        while True:
+            mis = func(m, p)
+            for i in xrange(k, len(mis)):
+                yield mis[i]
+            k = len(mis)
+            p = p + 1
+
     @classmethod
-    def createCompleteOrderSet(cls, m, p):
+    def createCompleteOrderSet(cls, m, p=None):
+        if p is None:
+            return cls._makeGenerator(m, cls.createCompleteOrderSet)
+
         def create(m, p):
             if m == 0:
                 return np.zeros((1, 0), np.int8)
