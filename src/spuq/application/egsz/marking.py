@@ -17,7 +17,7 @@ from dolfin import Expression, Function, norm
 from spuq.application.egsz.residual_estimator import ResidualEstimator
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.utils.type_check import takes, anything, optional
+from spuq.utils.type_check import takes, anything, optional, sequence_of
 
 import logging
 logger = logging.getLogger(__name__)
@@ -58,14 +58,18 @@ class Marking(object):
         # residual marking
         # ================
         global_res = sum([res[1] for res in reserr.items()])
+        logger.debug("(mark_residual) global residual is %f, want to mark for %f", global_res, theta_eta * global_res)
+        if logger.isEnabledFor(logging.DEBUG):
+            for mu, cellres in resind.iteritems():
+                logger.debug("resind[%s] = %s", mu, cellres)
         allresind = list()
         for mu, resmu in resind.iteritems():
             allresind = allresind + [(resmu.coeffs[i], i, mu) for i in range(len(resmu.coeffs))]
-        allresind = sorted(allresind, key=itemgetter(1))
+        allresind = sorted(allresind, key=itemgetter(0), reverse=True)
         # TODO: check that indexing and cell ids are consistent (it would be safer to always work with cell indices) 
         # setup marking sets
         mesh_markers = defaultdict(set)
-        marked_res = 0
+        marked_res = 0.0
         for res in allresind:
             if marked_res >= theta_eta * global_res:
                 break

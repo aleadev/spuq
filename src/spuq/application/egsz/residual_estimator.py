@@ -133,8 +133,8 @@ class ResidualEstimator(object):
         h = CellSize(mesh)
         
         # scaling of residual terms and definition of residual form
-        R_T = 1 / sqrt(a0_f) * R_T ** 2
-        R_E = 1 / sqrt(a0_f) * R_E ** 2
+        R_T = a0_f * R_T ** 2
+        R_E = 1 / a0_f * R_E ** 2
         res_form = (h ** 2 * R_T * s * dx
                     + avg(h) * avg(R_E) * 2 * avg(s) * dS)
 #                    + h * R_E * s * ds)    NOTE: this term is incorrect for Dirichlet BC, Neumann data is not supported yet!
@@ -142,7 +142,7 @@ class ResidualEstimator(object):
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
         eta_indicator = np.array([sqrt(e) for e in eta])
-        error = sqrt(sum(i for i in eta.array()))
+        error = sqrt(sum(e for e in eta.array()))
         return (FlatVector(eta_indicator), error)
 
 
@@ -212,7 +212,7 @@ class ResidualEstimator(object):
         ammax = max(f.vector().array())
         ainfty = ammax / amin
         assert isinstance(ainfty, float)
-        logger.info("amin = %f  amax = %f  ainfty = %f", amin, ammax, ainfty)
+        logger.debug("amin = %f  amax = %f  ainfty = %f", amin, ammax, ainfty)
 
         # prepare FEniCS discretisation variables
         if local:

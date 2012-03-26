@@ -3,6 +3,8 @@ from functools import partial
 import logging
 import os
 
+from spuq.application.egsz.pcg import pcg
+from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
@@ -17,18 +19,31 @@ except:
     print "FEniCS has to be available"
     os.sys.exit(1)
 
+# flag for final solution plotting
 PLOT_MESHES = True
+# flags for residual, projection, new mi refinement 
+REFINEMENT = (True, False, False)
+#REFINEMENT = (True, True, False)
+#REFINEMENT = (True, True, True)
+# log level
+LOG_LEVEL = logging.DEBUG
+
+
+# ------------------------------------------------------------
 
 # setup logging
-logging.basicConfig(filename=__file__[:-2] + 'log', level=logging.INFO,
+logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 fenics_logger = logging.getLogger("FFC")
+fenics_logger.setLevel(logging.WARNING)
+fenics_logger = logging.getLogger("UFL")
 fenics_logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # determine path of this module
 path = os.path.dirname(__file__)
 lshape_xml = os.path.join(path, 'lshape.xml')
+
 
 # ============================================================
 # PART A: Problem Setup
@@ -40,7 +55,7 @@ f = Constant("1.0")
 diffcoeff = Constant("1.0")
 
 # define initial multiindices
-mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
+mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # setup meshes 
 mesh0 = refine(Mesh(lshape_xml))
@@ -68,14 +83,12 @@ zero_vec = partial(setup_vec, with_solve=False)
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), zero_vec)
 logger.info("active indices of after initialisation: %s", w.active_indices())
 
-#if PLOT_MESHES:
-#    for mu, vec in w.iteritems():
-#        plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
-#        plot(vec._fefunc)
-#    interactive()
-
 # define coefficient field
 coeff_field = SampleProblem.setupCF("EF-square")
+a0, _ = coeff_field[0]
+
+# define multioperator
+A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 
 
 # ============================================================
@@ -84,28 +97,44 @@ coeff_field = SampleProblem.setupCF("EF-square")
 
 # refinement loop
 # ===============
-theta_eta = 0.3
+theta_eta = 0.4
 theta_zeta = 0.8
-min_zeta = 1e-10
+min_zeta = 1e-5
 maxh = 1 / 10
 theta_delta = 0.8
-refinements = 5
+refinements = 2
 
 for refinement in range(refinements):
     logger.info("*****************************")
     logger.info("REFINEMENT LOOP iteration %i", refinement + 1)
     logger.info("*****************************")
 
+    # apply multioperator
+    v = A * w
+    P = PreconditioningOperator(a0, FEMPoisson.assemble_solve_operator)
+    w, zeta, numit = pcg(A, v, P, 0 * v)
+    logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
+
     # evaluate residual and projection error estimates
     # ================================================
     mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
-    mesh_markers = mesh_markers_R.copy()
-    mesh_markers.update(mesh_markers_P)
+    if REFINEMENT[0]:
+        mesh_markers = mesh_markers_R.copy()
+    else:
+        mesh_markers = {}
+        logger.debug("SKIP residual refinement")
+    if REFINEMENT[1]:
+        mesh_markers.update(mesh_markers_P)
+    else:
+        logger.debug("SKIP projection refinement")
+    if not REFINEMENT[2] or refinement == refinements:
+        new_multiindices = {}
+        logger.debug("SKIP new multiindex refinement")
     Marking.refine(w, mesh_markers, new_multiindices.keys(), eval_poisson)
 
 # show refined meshes
 if PLOT_MESHES:
     for mu, vec in w.iteritems():
         plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
-        plot(vec._fefunc)
+        plot(vec._fefunc, title=str(mu), interactive=False, axes=True)
     interactive()
