@@ -28,8 +28,6 @@ class FEniCSOperator(FEniCSOperatorBase):
         new_vec.coeffs = self._matrix * vec.coeffs
         return new_vec
 
-
-
 class FEniCSSolveOperator(FEniCSOperatorBase):
     @takes(anything, FEniCSVector)
     def apply(self, vec):

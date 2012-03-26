@@ -2,51 +2,76 @@ from __future__ import division
 
 from spuq.application.egsz.coefficient_field import ParametricCoefficientField
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-from spuq.fem.fenics.fenics_function import FEniCSExpression, FEniCSFunction
 from spuq.stochastics.random_variable import NormalRV
+from spuq.math_utils.multiindex_set import MultiindexSet
+from spuq.utils.type_check import takes, anything, optional
 
-from dolfin import UnitSquare, Expression
-from exceptions import TypeError
-from itertools import repeat
+from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement
+import ufl
+from itertools import count
+from exceptions import KeyError, NameError
 from numpy import array, random
-
+from math import ceil
 
 class SampleProblem(object):
     @classmethod
-    def createMeshes(cls, domain, params):
-        assert domain == "square"
-        if params[0] == "uniform":
-            M = [m for m in repeat(UnitSquare(params[1][0], params[1][1])), params[2]]
-        elif params[0] == "random":
-            r = array(map(int, 10 * random(params[2] * 2)))
-            r.shape = params[2], 2
-            size1 = params[1][0]
-            size2 = params[1][1]
-            r[:, 0] *= (size2[0] - size1[0]) / 10
-            r[:, 1] *= (size2[1] - size1[1]) / 10
-            r[:, 0] += size1[0]
-            r[:, 1] += size1[1]
-            M = [UnitSquare(r[i, 0], r[i, 1]) for i in range(params[2])]
-        else:
-            raise TypeError
-        return M
+    @takes(anything, Mesh, int, optional(dict))
+    def setupMeshes(cls, mesh, N, params=None):
+        """Create set of N meshes based on provided mesh. Parameters refine>=0 and 0<random<=1.0 specify refinement adjustments."""
+        try:
+            ref = int(params["refine"])
+            assert ref >= 0
+        except (KeyError, NameError):
+            ref = 0
+        try:
+            randref = params["random"]
+            assert 0 < randref[0] <= 1.0
+            assert 0 < randref[1] <= 1.0
+        except (KeyError, NameError):
+            randref = (1.0, 1.0)
+        # create set of (refined) meshes
+        meshes = list();
+        for _ in range(N):
+            m = Mesh(mesh)
+            for _ in range(ref):
+                cell_markers = CellFunction("bool", m)
+                if randref == 1.0:
+                    cell_markers.set_all(True)
+                else:
+                    cell_markers.set_all(False)
+                    if random.random() <= randref[0]: 
+                        cids = set()
+                        while len(cids) < ceil(m.num_cells() * randref[1]):
+                            cids.add(random.randint(0, m.num_cells()))
+                        for cid in cids:
+                            cell_markers[cid] = True
+                m = refine(m, cell_markers)
+            meshes.append(m)
+        return meshes
 
     @classmethod
-    def createCF(cls, cftype, cfsize):
-        if cftype[0] == "EF":
-            f = lambda a, b: Expression("sin(A*pi*x[0])*sin(B*pi*x[1])", A=a, B=b)
-            Df = lambda a, b: Expression(("A*pi*cos(A*pi*x[0])*sin(B*pi*x[1])",
-                                         "B*pi*sin(A*pi*x[0])*cos(B*pi*x[1])"),
-                                        A=a, B=b)
-        elif cftype[0] == "monomials":
-            f = lambda a, b: Expression("*".join(["x[0]" for _ in range(a)]) + "+"
-                                       + "*".join(["x[1]" for _ in range(b)]))
-            Df = lambda a, b: Expression((str(a) + "*" + "*".join(["x[0]" for _ in range(a - 1)]),
-                                         str(b) + "+" + "*".join(["x[1]" for _ in range(b - 1)])))
+    @takes(anything, dict, callable)
+    def setupMultiVector(cls, mi_mesh, setup_vec):
+        w = MultiVectorWithProjection()
+        for mu, mesh in mi_mesh.iteritems():
+            w[mu] = setup_vec(mesh)
+        return w
+
+    @classmethod
+    @takes(anything, str, optional(dict))
+    def setupCF(cls, cftype, params=None):
+        if cftype == "EF-square":
+            mis = MultiindexSet.createCompleteOrderSet(2)
+            a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
+            a = (Expression('A*cos(pi*m*x[0])*cos(pi*n*x[1])', A=1 / (int(i) + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
+                            element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
+            rvs = (NormalRV(mu=0.5) for _ in count())
+            coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
+#        elif cftype[0] == "monomials":
+#            f = lambda a, b: Expression("*".join(["x[0]" for _ in range(a)]) + "+"
+#                                       + "*".join(["x[1]" for _ in range(b)]))
+#            Df = lambda a, b: Expression((str(a) + "*" + "*".join(["x[0]" for _ in range(a - 1)]),
+#                                         str(b) + "+" + "*".join(["x[1]" for _ in range(b - 1)])))
         else:
             raise TypeError('unsupported function type')
-
-        F = [FEniCSExpression(fexpression=f(a, b), Dfexpression=Df(a, b)) 
-             for a in range(4) for b in range(3) if a + b < 4]
-        RV = NormalRV()
-        return CoefficientField(F, RV)
+        return coeff_field

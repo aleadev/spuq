@@ -79,15 +79,20 @@ def evaluate_evp(basis):
 
 @skip_if(not HAVE_FENICS)
 def test_fenics_vector():
-    k1, k2 = 1, 1
+#    quad_degree = 13
+#    dolfin.parameters["form_compiler"]["quadrature_degree"] = quad_degree
     pi = 3.14159265358979323
-    mesh = UnitSquare(3, 3)
-    fs = FunctionSpace(mesh, "CG", 2)
-    ex = Expression("A*sin(k1*pi*x[0])*sin(k2*pi*x[1])", degree=3, k1=k1, k2=k2, A=1.0)
+    k1, k2 = 1, 1
+    EV = pi * pi * (k1 * k1 + k2 * k2) 
+    N = 10
+    degree = 4
+    mesh = UnitSquare(N, N)
+    fs = FunctionSpace(mesh, "CG", degree)
+    ex = Expression("A*sin(k1*pi*x[0])*sin(k2*pi*x[1])", degree=3, k1=k1, k2=k2, A=1.0)    
     x = FEniCSVector(interpolate(ex, fs))
     print "x.coeff", x.coeffs.array()
-
-    ex.A = pi * pi * (k1 * k1 + k2 * k2)
+    
+    ex.A = EV
     b_ex = assemble_rhs(ex, x.basis)
     print b_ex.array()
     print b_ex.array() / (2 * pi * pi * x.coeffs.array())
@@ -102,7 +107,8 @@ def test_fenics_vector():
     # evaluate solution for eigenfunction rhs
     b_num = Function(fs)
     solve(M, b_num.vector(), b_ex)
-    
+    bnv = M * b_num.vector()
+    b3 = Function(fs, bnv / EV)
 
     print b.coeffs.array() / x.coeffs.array()
     print b_ex.array() / b.coeffs.array()
@@ -120,11 +126,20 @@ def test_fenics_vector():
 #    ef0 = Function(fs)
 #    ef0.vector()[:] = rx
 
-    #dolfin.plot(x._fefunc, title="x")
-    dolfin.plot(b._fefunc, title="b", rescale=False, axes=True)
-    dolfin.plot(b2, title="b_ex", rescale=False, axes=True)
-    dolfin.plot(b_num, title="b_num", rescale=False, axes=True)
-#    dolfin.plot(ef0, title="ef0", rescale=False, axes=True)
+    # export
+    out_b = dolfin.File(__name__ + "_b.pvd", "compressed")
+    out_b << b._fefunc
+    out_b_ex = dolfin.File(__name__ + "_b_ex.pvd", "compressed")
+    out_b_ex << b2
+    out_b_num = dolfin.File(__name__ + "_b_num.pvd", "compressed")
+    out_b_num << b_num
+
+    dolfin.plot(x._fefunc, title="interpolant x", rescale=False, axes=True, legend=True)
+    dolfin.plot(b._fefunc, title="b", rescale=False, axes=True, legend=True)
+    dolfin.plot(b2, title="b_ex", rescale=False, axes=True, legend=True)
+    dolfin.plot(b_num, title="b_num", rescale=False, axes=True, legend=True)
+    dolfin.plot(b3, title="M*b_num", rescale=False, axes=True, legend=True)
+#    dolfin.plot(ef0, title="ef0", rescale=False, axes=True, legend=True)
     print dolfin.errornorm(u=b._fefunc, uh=b2) #, norm_type, degree, mesh)
     dolfin.interactive()
 
