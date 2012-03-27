@@ -57,8 +57,6 @@ class Marking(object):
         resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         # residual marking
         # ================
-        global_res = sum([res[1] for res in reserr.items()])
-        logger.debug("(mark_residual) global residual is %f, want to mark for %f", global_res, theta_eta * global_res)
         if logger.isEnabledFor(logging.DEBUG):
             for mu, cellres in resind.iteritems():
                 logger.debug("resind[%s] = %s", mu, cellres)
@@ -66,6 +64,8 @@ class Marking(object):
         for mu, resmu in resind.iteritems():
             allresind = allresind + [(resmu.coeffs[i], i, mu) for i in range(len(resmu.coeffs))]
         allresind = sorted(allresind, key=itemgetter(0), reverse=True)
+        global_res = sum([res[0] for res in allresind])
+        logger.debug("(mark_residual) global residual is %f, want to mark for %f", global_res, theta_eta * global_res)
         # TODO: check that indexing and cell ids are consistent (it would be safer to always work with cell indices) 
         # setup marking sets
         mesh_markers = defaultdict(set)

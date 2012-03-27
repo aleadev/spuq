@@ -11,7 +11,7 @@ from spuq.math_utils.multiindex_set import MultiindexSet
 
 try:
     from dolfin import (Function, FunctionSpace, Constant, Mesh,
-                        refine, plot, interactive, solve)
+                        UnitSquare, refine, plot, interactive, solve)
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -22,8 +22,8 @@ except:
 # flag for final solution plotting
 PLOT_MESHES = True
 # flags for residual, projection, new mi refinement 
-REFINEMENT = (True, False, False)
-#REFINEMENT = (True, True, False)
+#REFINEMENT = (True, False, False)
+REFINEMENT = (True, True, False)
 #REFINEMENT = (True, True, True)
 # log level
 LOG_LEVEL = logging.DEBUG
@@ -58,8 +58,8 @@ diffcoeff = Constant("1.0")
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # setup meshes 
-mesh0 = refine(Mesh(lshape_xml))
-#mesh0 = UnitSquare(3, 3)
+#mesh0 = refine(Mesh(lshape_xml))
+mesh0 = UnitSquare(2, 2)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":10, "random":(0.4, 0.3)})
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":1})
 
@@ -102,7 +102,7 @@ theta_zeta = 0.8
 min_zeta = 1e-5
 maxh = 1 / 10
 theta_delta = 0.8
-refinements = 2
+refinements = 10
 
 for refinement in range(refinements):
     logger.info("*****************************")

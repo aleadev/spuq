@@ -63,7 +63,8 @@ class SampleProblem(object):
         if cftype == "EF-square":
             mis = MultiindexSet.createCompleteOrderSet(2)
             a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
-            a = (Expression('A*cos(pi*m*x[0])*cos(pi*n*x[1])', A=1 / (int(i) + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
+            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (int(i) + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
+#            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
                             element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
             rvs = (NormalRV(mu=0.5) for _ in count())
             coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
