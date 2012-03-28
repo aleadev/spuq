@@ -118,3 +118,6 @@ def test_main(with_coverage=False):
 
 skip_if = dec.skipif
 slow = dec.slow
+no_test = dec.setastest(False)
+no_test = no_test(no_test)
+
