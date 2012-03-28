@@ -26,6 +26,8 @@ def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
     v[0] = s[0]
     zeta[0] = inner(rho[0], s[0])
     for i in xrange(1, maxiter):
+        if zeta[i - 1] < 0:
+            raise Exception("Preconditioner for PCG is not positive definite")
         if zeta[i - 1] <= eps ** 2:
             return (w[i - 1], zeta[i - 1], i)
         z[i - 1] = A * v[i - 1]

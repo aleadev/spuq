@@ -31,13 +31,21 @@ class FEniCSOperator(FEniCSOperatorBase):
 class FEniCSSolveOperator(FEniCSOperatorBase):
     @takes(anything, FEniCSVector)
     def apply(self, vec):
-        ind = 7
-        a0 = vec.coeffs[ind]
+        # debug---        
+#        ind = 7
+#        a0 = vec.coeffs[ind]
+        # ---debug        
+
         new_vec = vec.copy()
-        new_vec.coeffs = dolfin.solve(self._matrix, new_vec.coeffs, vec.coeffs)
-        print a0, vec.coeffs[ind], new_vec.coeffs[ind]
-        print (vec - new_vec).coeffs.array()
-        print (vec.coeffs - self._matrix * new_vec.coeffs).array()
+        dolfin.solve(self._matrix, new_vec.coeffs, vec.coeffs)
+
+        # debug---        
+#        ind = 7
+#        print a0, vec.coeffs[ind], new_vec.coeffs[ind]
+#        print (vec - new_vec).coeffs.array()
+#        print (vec.coeffs - self._matrix * new_vec.coeffs).array()
+        # ---debug        
+
         return new_vec
 
     @property

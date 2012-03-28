@@ -43,11 +43,8 @@ v = A * w
 P = PreconditioningOperator(a0, FEMPoisson.assemble_solve_operator)
 w2, zeta, numit = pcg(A, v, P, 0 * v)
 
+print
 print zeta, numit
-print v
-print w
-print w2
-print inner(w, w)
-print inner(w - w2, w - w2)
+print inner(w - w2, w - w2) / inner(w, w)
 v2 = A * w2
-print inner(v - v2, v - v2)
+print inner(v - v2, v - v2) / inner(v, v)
