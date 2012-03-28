@@ -3,7 +3,7 @@ import numpy as np
 from spuq.utils.testing import *
 
 try:
-    from dolfin import UnitSquare, FunctionSpace, Expression, interpolate
+    from dolfin import UnitSquare, FunctionSpace, Expression, interpolate, Function
     from spuq.fem.fenics.fenics_basis import FEniCSBasis
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     HAVE_FENICS = True
@@ -29,6 +29,18 @@ def test_fenics_basis():
     assert_equal(basis1.domain_dim, 2)
 
     basis1.gramian.as_matrix()
+
+@skip_if(not HAVE_FENICS)
+def test_fenics_vector_copy():
+    mesh = UnitSquare(3, 3)
+    fs = FunctionSpace(mesh, "CG", 1)
+    vec1 = FEniCSVector(Function(fs))
+    vec1.coeffs = np.array(range(fs.dim()))
+    assert_equal(vec1.coeffs[0], 0)
+    vec2 = vec1.copy()
+    vec2.coeffs[0] = 5
+    assert_equal(vec1.coeffs[0], 0)
+
 
 @skip_if(not HAVE_FENICS)
 def test_fenics_vector():
@@ -95,7 +107,7 @@ def test_fenics_project():
     assert_equal(vec2a.basis.project_onto(vec1b), vec2b)
     #assert_equal(vec1a.basis.project_onto(vec2b).array(), vec1b.array())
 
-@skip_if(not HAVE_FENICS)
+@skip_if(True or not HAVE_FENICS)
 def test_fenics_refine():
     mesh1 = UnitSquare(3, 3)
     fs1 = FunctionSpace(mesh1, "CG", 2)
@@ -110,4 +122,13 @@ def test_fenics_refine():
     assert_almost_equal(vec1a.array(), vec1b.array())
 
 
-test_main()
+@skip_if(not HAVE_FENICS)
+def test_fenics_vector_inner():
+    mesh = UnitSquare(3, 3)
+    fs = FunctionSpace(mesh, "CG", 1)
+    vec = FEniCSVector(Function(fs))
+    vec.coeffs = np.array(range(fs.dim()))
+    assert_equal(vec.__inner__(vec), 1240)
+
+
+test_main(True)

@@ -31,26 +31,6 @@ class FEniCSOperator(FEniCSOperatorBase):
 class FEniCSSolveOperator(FEniCSOperatorBase):
     @takes(anything, FEniCSVector)
     def apply(self, vec):
-        # debug---        
-#        ind = 7
-#        a0 = vec.coeffs[ind]
-        # ---debug        
-
         new_vec = vec.copy()
         dolfin.solve(self._matrix, new_vec.coeffs, vec.coeffs)
-
-        # debug---        
-#        ind = 7
-#        print a0, vec.coeffs[ind], new_vec.coeffs[ind]
-#        print (vec - new_vec).coeffs.array()
-#        print (vec.coeffs - self._matrix * new_vec.coeffs).array()
-        # ---debug        
-
         return new_vec
-
-    @property
-    def domain(self):
-        return self._basis
-    @property
-    def codomain(self):
-        return self._basis

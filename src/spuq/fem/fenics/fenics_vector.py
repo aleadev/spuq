@@ -16,6 +16,9 @@ class FEniCSVector(FEMVector):
         '''Initialise with coefficient vector and Function.'''
         self._fefunc = fefunc
 
+    def copy(self):
+        return self._create_copy(self.coeffs.copy())
+
     @property
     def basis(self):
         '''return FEniCSBasis'''
@@ -88,3 +91,9 @@ class FEniCSVector(FEMVector):
     def __imul__(self, other):
         self.coeffs *= other
         return self
+
+    @takes(anything, "FEniCSVector")
+    def __inner__(self, other):
+        v1 = self._fefunc.vector()
+        v2 = other._fefunc.vector()
+        return v1.inner(v2)

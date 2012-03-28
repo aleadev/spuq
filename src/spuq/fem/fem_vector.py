@@ -1,7 +1,7 @@
 from abc import abstractproperty, abstractmethod
-from spuq.linalg.vector import FlatVector
+from spuq.linalg.vector import Vector, Flat
 
-class FEMVector(FlatVector):
+class FEMVector(Vector, Flat):
     '''ABC FEM vector which contains a coefficient vector and a discrete basis.'''
 
     @abstractmethod
@@ -22,6 +22,9 @@ class FEMVector(FlatVector):
     def coeffs(self, val):
         '''set coefficient vector'''
         raise NotImplementedError
+
+    def flatten(self):
+        return self
 
     @abstractmethod
     def __eq__(self, other):
