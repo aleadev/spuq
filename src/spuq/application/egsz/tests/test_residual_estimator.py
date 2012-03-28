@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 path = os.path.dirname(__file__)
 lshape_xml = os.path.join(path, 'lshape.xml')
 
-@skip_if(not HAVE_FENICS or True, "FEniCS not installed.")
+@skip_if(not HAVE_FENICS, "FEniCS not installed.")
 def test_estimator():
     # setup solution multi vector
     mis = [Multiindex([0]),
@@ -66,13 +66,14 @@ def test_estimator():
 
     # evaluate residual and projection error estimators
     resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
-    projind = ResidualEstimator.evaluateProjectionError(w, coeff_field)
+    projind, projerr = ResidualEstimator.evaluateProjectionError(w, coeff_field)
     print resind[mis[0]].as_array().shape, projind[mis[0]].as_array().shape
     print "RESIDUAL:", resind[mis[0]].as_array()
     print "PROJECTION:", projind[mis[0]].as_array()
     print "residual error estimate for mu"
     for mu in reserr:
-        print "\t", mu, " is ", reserr[mu]
+        print "\t eta", mu, " is ", reserr[mu]
+        print "\t delta", mu, " is ", projerr[mu]
 
     assert_equal(w.active_indices(), resind.active_indices())
     print "active indices are ", resind.active_indices()
@@ -138,10 +139,10 @@ def test_estimator_refinement():
         # ================================================
         maxh = 1 / 10
         resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
-        projind = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
+        projind, projerr = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
 
         # testing -->
-        projglobal = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
+        projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
         for mu, val in projglobal.iteritems():
             print "GLOBAL Projection Error for", mu, "=", val
         # <-- testing
@@ -314,7 +315,7 @@ def test_marking():
 
         # evaluate residual and projection error estimates
         # ================================================
-        mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
+        mesh_markers_R, mesh_markers_P, new_multiindices = Marking.estimate_mark(w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
         mesh_markers = mesh_markers_R.copy()
         mesh_markers.update(mesh_markers_P)
         Marking.refine(w, mesh_markers, new_multiindices.keys(), eval_poisson)

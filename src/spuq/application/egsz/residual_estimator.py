@@ -53,16 +53,27 @@ class ResidualEstimator(object):
     """
 
     @classmethod
+    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float))
+    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=1 / 10):
+        """Evaluate EGSZ Error (7.5)."""
+        resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
+        projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
+        eta = sum([reserror[mu] for mu in reserror.keys()])
+        delta = sum([projerror[mu] for mu in projerror.keys()])
+        xi = ( ceta/sqrt(1-gamma)*sqrt(eta) + cQ/sqrt(1-gamma)*sqrt(delta) + cQ*sqrt(zeta/(1-gamma)))**2 + zeta/(1-gamma)
+        return (xi, resind, projind)
+
+
+    @classmethod
     @takes(anything, MultiVectorWithProjection, CoefficientField, anything)
     def evaluateResidualEstimator(cls, w, CF, f):
         """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
         # evaluate residual estimator for all multi indices
         eta = MultiVector()
-        err = dict()
+        global_error = {}
         for mu in w.active_indices():
-            err[mu] = 1
-            eta[mu], err[mu] = cls._evaluateResidualEstimator(mu, w, CF, f)
-        return (eta, err)
+            eta[mu], global_error[mu] = cls._evaluateResidualEstimator(mu, w, CF, f)
+        return (eta, global_error)
 
 
     @classmethod
@@ -142,8 +153,8 @@ class ResidualEstimator(object):
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
         eta_indicator = np.array([sqrt(e) for e in eta])
-        error = sqrt(sum(e for e in eta.array()))
-        return (FlatVector(eta_indicator), error)
+        global_error = sqrt(sum(e**2 for e in eta))
+        return (FlatVector(eta_indicator), global_error)
 
 
     @classmethod
@@ -162,6 +173,7 @@ class ResidualEstimator(object):
             \zeta_{\mu,T,m}^{\mu\pm e_m} := ||a_m/\overline{a}||_{L^\infty(D)} \alpha_{\mu_m\pm 1}\int_T | \nabla( \Pi_{\mu\pm e_m}^\mu(\Pi_\mu^{\mu\pm e_m} w_{N,mu\pm e_)m})) - w_{N,mu\pm e_)m} |^2\;dx
         """
 
+        global_error = {}
         Delta = w.active_indices()
         if local:
             proj_error = MultiVector()
@@ -176,9 +188,11 @@ class ResidualEstimator(object):
                                                         for m in range(1, maxm))
             if local:
                 proj_error[mu] = FlatVector(dmu)
+                global_error[mu] = sum([e for e in dmu])
             else:
                 proj_error[mu] = dmu
-        return proj_error
+                global_error = dmu
+        return proj_error, global_error
 
 
     @classmethod
@@ -233,9 +247,11 @@ class ResidualEstimator(object):
             # evaluate H1 semi-norm of projection error
             error1 = w_mu1_back - w[mu1]
             a1 = inner(nabla_grad(error1._fefunc), nabla_grad(error1._fefunc)) * s * dx
-            zeta1 = beta[1] * assemble(a1)
-            if local:  
-                zeta1 = zeta1.array()
+            pe = assemble(a1)
+            if local:
+                zeta1 = beta[1] * np.array([sqrt(e) for e in pe])
+            else:
+                zeta1 = beta[1] * sqrt(pe)
         else:
             if local:
                 zeta1 = np.zeros(mesh.num_cells())
@@ -249,9 +265,11 @@ class ResidualEstimator(object):
             # evaluate H1 semi-norm of projection error
             error2 = w_mu2_back - w[mu2]
             a2 = inner(nabla_grad(error2._fefunc), nabla_grad(error2._fefunc)) * s * dx
-            zeta2 = beta[-1] * assemble(a2)
+            pe = assemble(a2)
             if local:
-                zeta2 = zeta2.array()
+                zeta2 = beta[-1] * np.array([sqrt(e) for e in pe])
+            else:
+                zeta2 = beta[-1] * pe
         else:
             if local:
                 zeta2 = np.zeros(mesh.num_cells())

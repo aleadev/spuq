@@ -13,6 +13,7 @@ try:
     from dolfin import (Function, FunctionSpace, Constant, Mesh,
                         UnitSquare, refine, plot, interactive, solve)
     from spuq.application.egsz.marking import Marking
+    from spuq.application.egsz.residual_estimator import ResidualEstimator
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
@@ -97,27 +98,44 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 
 # refinement loop
 # ===============
+# error constants
+gamma = 0.9
+cQ = 1.0
+ceta = 1.0
+# marking parameters
 theta_eta = 0.4
 theta_zeta = 0.8
 min_zeta = 1e-5
 maxh = 1 / 10
 theta_delta = 0.8
-refinements = 10
+# solver
+pcg_eps = 1e-4
+pcg_maxiter = 100
+error_eps = 1e-2
+max_refinements = 10
 
-for refinement in range(refinements):
+for refinement in range(max_refinements):
     logger.info("*****************************")
     logger.info("REFINEMENT LOOP iteration %i", refinement + 1)
     logger.info("*****************************")
 
     # apply multioperator
+    # -------------------
     v = A * w
     P = PreconditioningOperator(a0, FEMPoisson.assemble_solve_operator)
-    w, zeta, numit = pcg(A, v, P, 0 * v)
+    w, zeta, numit = pcg(A, v, P, 0 * v, pcg_eps, pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
-    # evaluate residual and projection error estimates
-    # ================================================
-    mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
+    # error evaluation
+    # ----------------
+    xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, 1 / 10)
+    if xi <= error_eps:
+        logger.info("error reached requested accuracy, xi=%f", xi)
+        break
+
+    # marking
+    # -------
+    mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
     if REFINEMENT[0]:
         mesh_markers = mesh_markers_R.copy()
     else:
@@ -131,8 +149,9 @@ for refinement in range(refinements):
         new_multiindices = {}
         logger.debug("SKIP new multiindex refinement")
     Marking.refine(w, mesh_markers, new_multiindices.keys(), eval_poisson)
+logger.info("ENDED refinement loop at refinement %i", refinement)
 
-# show refined meshes
+# plot final meshes
 if PLOT_MESHES:
     for mu, vec in w.iteritems():
         plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)

@@ -54,21 +54,27 @@ for p in range(1, 3):
     u = TrialFunction(V)
     v = TestFunction(V)
     a = dot(grad(u), grad(v)) * dx
+    m = u*v*dx
     
     # Assemble stiffness form
     A = PETScMatrix()
     assemble(a, tensor=A)
+#    M = PETScMatrix()
+#    assemble(m, tensor=M)
     
     # Create eigensolver
     eigensolver = SLEPcEigenSolver(A)
 #    eigensolver.parameters["solver"] = "arnoldi"
-    
+#    eigensolver2 = SLEPcEigenSolver(A, M)
+
     # Compute all eigenvalues of A x = \lambda x
-    print "Computing eigenvalues for p", p
+    print "[1] Computing eigenvalues for p", p
     eigensolver.solve()
-    
+#    print "[2] Computing eigenvalues for p", p
+#    eigensolver2.solve()
+
     # Extract largest (first) eigenpair
-    r, c, rx, cx = eigensolver.get_eigenpair(10)
+    r, c, rx, cx = eigensolver.get_eigenpair(0)
     R.append(r)
     
     # Initialize function and assign eigenvector

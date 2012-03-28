@@ -40,21 +40,38 @@ class Marking(object):
     
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float)
-    def mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh):
+    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float))
+    def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10):
+        """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
+        # testing -->
+        if logger.isEnabledFor(logging.DEBUG):
+            projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
+            for mu, val in projglobal.iteritems():
+                logger.debug("GLOBAL Projection Error for %s = %f", mu, val)
+        # <-- testing
+
+        # evaluate residual estimator
+        resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
+        # evaluate projection errors
+        projind, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
+        # mark
+        return cls.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
+
+
+    @classmethod
+    @takes(anything, MultiVector, MultiVector, MultiVector, CoefficientField, float, float, float, float, optional(float))
+    def mark(cls, resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10):
         """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
-        mesh_markers_R = cls.mark_residual(w, coeff_field, f, theta_eta)
-        mesh_markers_P, max_zeta = cls.mark_projection(w, coeff_field, theta_zeta, min_zeta, maxh)
+        mesh_markers_R = cls.mark_residual(resind, theta_eta)
+        mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh)
         new_mi = cls.mark_inactive_multiindices(w, coeff_field, theta_delta, max_zeta)
         return mesh_markers_R, mesh_markers_P, new_mi
     
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, float)
-    def mark_residual(cls, w, coeff_field, f, theta_eta):
+    @takes(anything, MultiVector, float)
+    def mark_residual(cls, resind, theta_eta):
         """Evaluate residual estimator and carry out Doerfler marking (bulk criterion) for elements with parameter theta."""
-        # evaluate residual estimator
-        resind, reserr = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         # residual marking
         # ================
         if logger.isEnabledFor(logging.DEBUG):
@@ -80,19 +97,9 @@ class Marking(object):
     
     
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, float, optional(float), optional(float))
-    def mark_projection(cls, w, coeff_field, theta_zeta, min_zeta=1e-10, maxh=1 / 10):
-        """Evaluate projection error for active multiindices and determine multiindices to be refined."""
-        # evaluate projection errors
-        projind = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
-        
-        # testing -->
-        if logger.isEnabledFor(logging.DEBUG):
-            projglobal = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
-            for mu, val in projglobal.iteritems():
-                logger.debug("GLOBAL Projection Error for %s = %f", mu, val)
-        # <-- testing
-
+    @takes(anything, MultiVector, float, optional(float), optional(float))
+    def mark_projection(cls, projind, theta_zeta, min_zeta=1e-10, maxh=1 / 10):
+        """Evaluate projection error for active multiindices and determine multiindices to be refined."""        
         # projection marking
         # ==================
         # setup marking sets
