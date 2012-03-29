@@ -8,6 +8,9 @@ from spuq.utils.forgetful_vector import ForgetfulVector
 
 __all__ = ["pcg"]
 
+import logging
+logger = logging.getLogger(__name__)
+
 @takes(Operator, Vector, Operator, Vector, optional(float), optional(int))
 def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
     # for most quantities in PCG (except zeta) only the most recent 
@@ -26,6 +29,7 @@ def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
     v[0] = s[0]
     zeta[0] = inner(rho[0], s[0])
     for i in xrange(1, maxiter):
+        logger.info("pcg iter: %s -> zeta=%s, rho^2=%s" % (i, zeta[i - 1], inner(rho[i - 1], rho[i - 1])))
         if zeta[i - 1] < 0:
             raise Exception("Preconditioner for PCG is not positive definite")
         if zeta[i - 1] <= eps ** 2:

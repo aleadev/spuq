@@ -1,4 +1,4 @@
-from dolfin import Function
+from dolfin import Function, plot
 
 from spuq.utils.type_check import takes, anything, sequence_of, set_of
 from spuq.linalg.vector import Scalar
@@ -97,3 +97,16 @@ class FEniCSVector(FEMVector):
         v1 = self._fefunc.vector()
         v2 = other._fefunc.vector()
         return v1.inner(v2)
+
+    def plot(self, **kwargs):
+        func = self._fefunc
+        # fix a bug in the fenics plot function that appears when 
+        # the maximum difference between data values is very small 
+        # compared to the magnitude of the data 
+        values = func.vector().array()
+        diff = max(values) - min(values)
+        magnitude = max(abs(values))
+        if diff < magnitude * 1e-8:
+            func = Function(func.function_space())
+            func.vector()[:] = values[0]
+        plot(func, **kwargs)

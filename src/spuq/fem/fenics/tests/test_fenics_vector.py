@@ -107,7 +107,7 @@ def test_fenics_project():
     assert_equal(vec2a.basis.project_onto(vec1b), vec2b)
     #assert_equal(vec1a.basis.project_onto(vec2b).array(), vec1b.array())
 
-@skip_if(True or not HAVE_FENICS)
+@skip_if(not HAVE_FENICS)
 def test_fenics_refine():
     mesh1 = UnitSquare(3, 3)
     fs1 = FunctionSpace(mesh1, "CG", 2)

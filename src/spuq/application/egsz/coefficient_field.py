@@ -90,10 +90,9 @@ class ParametricCoefficientField(CoefficientField):
             yield self[i]
 
     def __getitem__(self, i):
-        if i >= len(self._funcs):
-            for _ in range(i - len(self._funcs) + 1):
-                self._funcs.append(self._func_gen.next())
-                self._rvs.append(self._rvs_gen.next())
+        while i >= len(self._funcs):
+            self._funcs.append(self._func_gen.next())
+            self._rvs.append(self._rvs_gen.next())
         return self._funcs[i], self._rvs[i]
 
     @property

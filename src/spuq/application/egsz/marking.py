@@ -31,13 +31,12 @@ class Marking(object):
         """ """
         # create new refined (and enlarged) multi vector
         for mu, cell_ids in mesh_markers.iteritems():
-            vec = w[mu].refine(cell_ids, with_prolongation=False)
-            w[mu] = eval_vec(vec)
+            w[mu] = w[mu].refine(cell_ids, with_prolongation=True)
 
         # add new multiindices to solution vector
         for mu in new_multiindices:
             w[mu] = eval_vec()
-    
+
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float))
@@ -66,7 +65,7 @@ class Marking(object):
         mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh)
         new_mi = cls.mark_inactive_multiindices(w, coeff_field, theta_delta, max_zeta)
         return mesh_markers_R, mesh_markers_P, new_mi
-    
+
 
     @classmethod
     @takes(anything, MultiVector, float)
@@ -82,7 +81,7 @@ class Marking(object):
             allresind = allresind + [(resmu.coeffs[i], i, mu) for i in range(len(resmu.coeffs))]
         allresind = sorted(allresind, key=itemgetter(0), reverse=True)
         global_res = sum([res[0] for res in allresind])
-        logger.debug("(mark_residual) global residual is %f, want to mark for %f", global_res, theta_eta * global_res)
+        logger.info("(mark_residual) global residual is %f, want to mark for %f", global_res, theta_eta * global_res)
         # TODO: check that indexing and cell ids are consistent (it would be safer to always work with cell indices) 
         # setup marking sets
         mesh_markers = defaultdict(set)
@@ -92,14 +91,14 @@ class Marking(object):
                 break
             mesh_markers[res[2]].add(res[1])
             marked_res += res[0]
-        logger.debug("(mark_residual) MARKED elements: %s", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()])
+        logger.info("(mark_residual) MARKED elements: %s", [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()])
         return mesh_markers
-    
-    
+
+
     @classmethod
     @takes(anything, MultiVector, float, optional(float), optional(float))
     def mark_projection(cls, projind, theta_zeta, min_zeta=1e-10, maxh=1 / 10):
-        """Evaluate projection error for active multiindices and determine multiindices to be refined."""        
+        """Evaluate projection error for active multiindices and determine multiindices to be refined."""
         # projection marking
         # ==================
         # setup marking sets
@@ -109,15 +108,15 @@ class Marking(object):
         if max_zeta >= min_zeta:
             for mu, vec in projind.iteritems():
                 indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
-                mesh_markers[mu] = mesh_markers[mu].union(set(indmu)) 
+                mesh_markers[mu] = mesh_markers[mu].union(set(indmu))
                 logger.debug("PROJ MARKING %i elements in %s", len(indmu), mu)
-        
+
             logger.info("FINAL MARKED elements: %s", str([(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]))
         else:
             logger.info("NO PROJECTION MARKING due to very small projection error")
         return mesh_markers, max_zeta
-    
-    
+
+
     @classmethod
     @takes(anything, MultiVector, CoefficientField, float, float, float, optional(int))
     def mark_inactive_multiindices(cls, w, coeff_field, theta_delta, max_zeta, maxm=10):
@@ -127,7 +126,7 @@ class Marking(object):
         # determine possible new indices
         a0_f, _ = coeff_field[0]
         Ldelta = {}
-        Delta = w.active_indices()     
+        Delta = w.active_indices()
         deltaN = int(ceil(0.1 * len(Delta)))               # max number new multiindices
         for mu in Delta:
             norm_w = norm(w[mu].coeffs, 'L2')
@@ -135,7 +134,7 @@ class Marking(object):
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
                     if m > maxm or m >= coeff_field.length:  # or len(Ldelta) >= deltaN
-                        break 
+                        break
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)
                     # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
@@ -146,19 +145,19 @@ class Marking(object):
                     max_am = max(f.vector().array())
                     ainfty = max_am / min_a0
                     assert isinstance(ainfty, float)
-                    
-                    logger.debug("A*** %f -- %f -- %f", beta[1], ainfty, norm_w)
-                    logger.debug("B*** %f", beta[1] * ainfty * norm_w)
-                    logger.debug("C*** %f -- %f", theta_delta, max_zeta)
-                    logger.debug("D*** %f", theta_delta * max_zeta)
-                    logger.debug("E*** %s", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta))
-                    
+
+#                    logger.debug("A*** %f -- %f -- %f", beta[1], ainfty, norm_w)
+#                    logger.debug("B*** %f", beta[1] * ainfty * norm_w)
+#                    logger.debug("C*** %f -- %f", theta_delta, max_zeta)
+#                    logger.debug("D*** %f", theta_delta * max_zeta)
+#                    logger.debug("E*** %s", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta))
+
                     if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
                         val1 = beta[1] * ainfty * norm_w
                         if mu1 not in Ldelta.keys() or (mu1 in Ldelta.keys() and Ldelta[mu1] < val1):
                             Ldelta[mu1] = val1
-                    
-        logger.debug("POSSIBLE NEW MULTIINDICES %s", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True))
+
+        logger.info("POSSIBLE NEW MULTIINDICES %s", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True))
         Ldelta = sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Ldelta), deltaN)]
         logger.info("SELECTED NEW MULTIINDICES %s", Ldelta)
         return dict(Ldelta)

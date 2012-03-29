@@ -4,18 +4,20 @@ from spuq.utils.testing import *
 
 try:
     import dolfin
-    from dolfin import (UnitSquare, FunctionSpace, Expression, interpolate, dx, inner, nabla_grad, TrialFunction, TestFunction,
-                            assemble, Constant, DirichletBC, Mesh, PETScMatrix, SLEPcEigenSolver, Function, solve)
+    from dolfin import (UnitSquare, FunctionSpace, Expression, interpolate, dx,
+                        inner, nabla_grad, TrialFunction, TestFunction,
+                        assemble, Constant, DirichletBC, Mesh, PETScMatrix,
+                        SLEPcEigenSolver, Function, solve)
     from spuq.fem.fenics.fenics_basis import FEniCSBasis
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
     HAVE_FENICS = True
     # Test for PETSc and SLEPc
     HAVE_SLEPC = dolfin.has_linear_algebra_backend("PETSc") and dolfin.has_slepc()
+    TestFunction = no_test(TestFunction)
 except:
     HAVE_FENICS = False
 
-TestFunction = no_test(TestFunction)
 
 def homogeneous_bc(V):
     # define boundary conditions
