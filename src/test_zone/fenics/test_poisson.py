@@ -10,7 +10,7 @@ f = 2*x*(x-1) + 2*y*(y-1).
 from dolfin import *
 
 # create mesh and define function space
-mesh = UnitSquare(10, 10)
+mesh = UnitSquare(100, 100)
 V = FunctionSpace(mesh, 'CG', 1)
 
 # define boundary conditions
@@ -24,7 +24,7 @@ bc = DirichletBC(V, u0, u0_boundary)
 # define variational problem
 v = TestFunction(V)
 u = TrialFunction(V)
-f = Expression('-2*x[0]*(x[0]-1)-2*x[1]*(x[1]-1)')
+f = Expression('1')
 a = inner(grad(u), grad(v)) * dx
 L = f * v * dx
 
@@ -36,9 +36,9 @@ u = Function(V)
 solve(A, u.vector(), b)
 
 # plot solution and mesh
-#plot(u)
-#plot(mesh)
-#interactive()
+plot(u)
+plot(mesh)
+interactive()
 
 # assemble mass matrix and get numpy vector
 M = assemble((u * v) * dx)

@@ -68,7 +68,7 @@ class SampleProblem(object):
 #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
                             element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
 #            rvs = (NormalRV(mu=0.5) for _ in count())
-            rvs = (UniformRV().scale(0.00001) for _ in count())
+            rvs = (UniformRV().scale(0.5) for _ in count())
             coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
 #        elif cftype[0] == "monomials":
 #            f = lambda a, b: Expression("*".join(["x[0]" for _ in range(a)]) + "+"
