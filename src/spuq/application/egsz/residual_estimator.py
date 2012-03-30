@@ -60,7 +60,7 @@ class ResidualEstimator(object):
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
         eta = sum([reserror[mu] for mu in reserror.keys()])
         delta = sum([projerror[mu] for mu in projerror.keys()])
-        xi = ( ceta/sqrt(1-gamma)*sqrt(eta) + cQ/sqrt(1-gamma)*sqrt(delta) + cQ*sqrt(zeta/(1-gamma)))**2 + zeta/(1-gamma)
+        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta) + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
         return (xi, resind, projind)
 
 
@@ -144,7 +144,7 @@ class ResidualEstimator(object):
         h = CellSize(mesh)
         
         # scaling of residual terms and definition of residual form
-        R_T = a0_f * R_T ** 2
+        R_T = 1 / a0_f * R_T ** 2
         R_E = 1 / a0_f * R_E ** 2
         res_form = (h ** 2 * R_T * s * dx
                     + avg(h) * avg(R_E) * 2 * avg(s) * dS)
@@ -153,7 +153,7 @@ class ResidualEstimator(object):
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
         eta_indicator = np.array([sqrt(e) for e in eta])
-        global_error = sqrt(sum(e**2 for e in eta))
+        global_error = sqrt(sum(e ** 2 for e in eta))
         return (FlatVector(eta_indicator), global_error)
 
 
@@ -245,8 +245,8 @@ class ResidualEstimator(object):
         if mu1 in Delta:
             w_mu1_back = w.get_back_projection(mu1, mu)
             # evaluate H1 semi-norm of projection error
-            error1 = w_mu1_back - w[mu1]
-            a1 = inner(nabla_grad(error1._fefunc), nabla_grad(error1._fefunc)) * s * dx
+            error1 = Function(w[mu1]._fefunc.function_space(), w_mu1_back._fefunc.vector() - w[mu1]._fefunc.vector())
+            a1 = a0_f * inner(nabla_grad(error1), nabla_grad(error1)) * s * dx
             pe = assemble(a1)
             if local:
                 zeta1 = beta[1] * np.array([sqrt(e) for e in pe])
@@ -263,8 +263,8 @@ class ResidualEstimator(object):
         if mu2 in Delta:
             w_mu2_back = w.get_back_projection(mu2, mu)
             # evaluate H1 semi-norm of projection error
-            error2 = w_mu2_back - w[mu2]
-            a2 = inner(nabla_grad(error2._fefunc), nabla_grad(error2._fefunc)) * s * dx
+            error2 = Function(w[mu2]._fefunc.function_space(), w_mu2_back._fefunc.vector() - w[mu2]._fefunc.vector())
+            a2 = a0_f * inner(nabla_grad(error2), nabla_grad(error2)) * s * dx
             pe = assemble(a2)
             if local:
                 zeta2 = beta[-1] * np.array([sqrt(e) for e in pe])

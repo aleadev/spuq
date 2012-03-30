@@ -3,8 +3,9 @@ from spuq.utils.type_check import takes, anything, optional
 from dolfin import (UnitSquare, FunctionSpace, Expression, interpolate, dx,
                     inner, nabla_grad, TrialFunction, TestFunction,
                     assemble, Constant, DirichletBC, Mesh, PETScMatrix,
-                    SLEPcEigenSolver, Function, solve)
+                    SLEPcEigenSolver, Function, solve, norm)
 from dolfin.cpp import BoundaryCondition
+from spuq.application.egsz.multi_vector import MultiVector
 
 
 @takes(Expression, FunctionSpace)
@@ -80,3 +81,16 @@ def assemble_rhs(coeff_func, V, bc=DEFAULT_BC):
     L = rhs_linear_form(coeff_func, V)
     b = apply_bc(L, bc)
     return b
+
+
+@takes(MultiVector, MultiVector, optional(str))
+def error_norm(vec1, vec2, normstr="L2"):
+        from math import sqrt
+        assert vec1.keys() == vec2.keys()
+        e = 0.0
+        for mi in vec1.keys():
+            V = vec1[mi]._fefunc.function_space()
+            errfunc = Function(V, vec1[mi]._fefunc.vector() - vec2[mi]._fefunc.vector())
+            e += norm(errfunc, normstr)
+        return sqrt(e)
+

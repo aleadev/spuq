@@ -16,6 +16,7 @@ try:
     from spuq.application.egsz.residual_estimator import ResidualEstimator
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
+    from spuq.fem.fenics.fenics_utils import error_norm
 except:
     print "FEniCS has to be available"
     os.sys.exit(1)
@@ -46,36 +47,28 @@ logging.getLogger("spuq").addHandler(ch)
 path = os.path.dirname(__file__)
 lshape_xml = os.path.join(path, 'lshape.xml')
 
-
 # ------------------------------------------------------------
 
-# some utility functions 
+# utility functions 
 
 # setup initial multivector
-def setup_vec(mesh, with_solve=True):
+def setup_vec(mesh):
     fs = FunctionSpace(mesh, "CG", 1)
     vec = FEniCSVector(Function(fs))
-    if with_solve:
-        eval_poisson(vec)
     return vec
-
-def eval_poisson(vec=None):
-    if vec == None:
-        vec = setup_vec(with_solve=False)
-    fem_A = FEMPoisson.assemble_lhs(diffcoeff, vec.basis)
-    fem_b = FEMPoisson.assemble_rhs(f, vec.basis)
-    solve(fem_A, vec.coeffs, fem_b)
-    return vec
-
 
 # ============================================================
 # PART A: Problem Setup
 # ============================================================
 
+# flag for residual graph plotting
+PLOT_RESIDUAL = True
+
 # flag for final solution plotting
 PLOT_MESHES = True
+
 # flags for residual, projection, new mi refinement 
-REFINEMENT = (True, True, True)
+REFINEMENT = (True, True, False)
 
 # define source term and diffusion coefficient
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
@@ -90,8 +83,7 @@ mesh0 = UnitSquare(5, 5)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":10, "random":(0.4, 0.3)})
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 
-zero_vec = partial(setup_vec, with_solve=False)
-w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), zero_vec)
+w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
 logger.info("active indices of after initialisation: %s", w.active_indices())
 
 # define coefficient field
@@ -122,12 +114,11 @@ theta_delta = 0.8
 pcg_eps = 1e-3
 pcg_maxiter = 100
 error_eps = 1e-2
-max_refinements = 3
+max_refinements = 5
 
+R = list()
 for refinement in range(max_refinements):
-    logger.info("*****************************")
-    logger.info("REFINEMENT LOOP iteration %i", refinement + 1)
-    logger.info("*****************************")
+    logger.info("************* REFINEMENT LOOP iteration %i *************", refinement + 1)
 
     # pcg solve
     # ---------
@@ -139,7 +130,12 @@ for refinement in range(max_refinements):
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
     b2 = A * w
-    logger.info("Residual: %s", inner(b2 - b, b2 - b))
+#    residual = inner(b2 - b, b2 - b)    see errornorm for why this might be unstable numerically
+    L2error = error_norm(b, b2, "L2")
+    H1error = error_norm(b, b2, "H1")
+    dofs = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
+    R.append((L2error, H1error, dofs))
+    logger.info("Residual = %s (L2) %s (H1) with %s dofs", L2error, H1error, dofs)
 
     # error evaluation
     # ----------------
@@ -150,7 +146,8 @@ for refinement in range(max_refinements):
 
     # marking
     # -------
-    mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
+    mesh_markers_R, mesh_markers_P, new_multiindices = \
+                    Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
     if REFINEMENT[0]:
         mesh_markers = mesh_markers_R.copy()
     else:
@@ -163,23 +160,34 @@ for refinement in range(max_refinements):
     if not REFINEMENT[2] or refinement == max_refinements:
         new_multiindices = {}
         logger.debug("SKIP new multiindex refinement")
-    Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(zero_vec, mesh=mesh0))
+    Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
 logger.info("ENDED refinement loop at refinement %i", refinement)
+logger.info("Residuals: %s", R)
 
 
-#b0 = b[Multiindex()]
-#A0 = FEMPoisson.assemble_lhs(a0, b0.basis)
-#w0 = A0 * b0
-#w = 0 * w
-#w[Multiindex()] = w0
+# ============================================================
+# PART C: Plotting and Export of Data
+# ============================================================
 
-
+# plot residuals
+if PLOT_RESIDUAL:
+    try:
+        from matplotlib.pyplot import figure, show, legend
+        x = [r[2] for r in R]
+        L2 = [r[0] for r in R]
+        H1 = [r[1] for r in R]
+        fig = figure()
+        ax = fig.add_subplot(111)
+        ax.plot(x, H1, '-b^', label='H1 residual')
+        ax.plot(x, L2, '-ro', label='L2 residual')
+        legend()
+        show()
+    except:
+        logger.info("skipped plotting since matplotlib is not available...")
 
 # plot final meshes
 if PLOT_MESHES:
     for mu, vec in w.iteritems():
         plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
         vec.plot(title=str(mu), interactive=False)
-#        b[mu].plot(title=str(mu), interactive=False)
-#        break
     interactive()
