@@ -6,6 +6,9 @@ from spuq.linalg.basis import check_basis
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.fem.fem_vector import FEMVector
 
+import logging
+logger = logging.getLogger(__name__)
+
 class FEniCSVector(FEMVector):
     '''Wrapper for FEniCS/dolfin Function.
 
@@ -107,6 +110,7 @@ class FEniCSVector(FEMVector):
         diff = max(values) - min(values)
         magnitude = max(abs(values))
         if diff < magnitude * 1e-8:
+            logger.warning("PLOT: function values differ only by tiny amount -> plotting as constant")
             func = Function(func.function_space())
             func.vector()[:] = values[0]
         plot(func, **kwargs)

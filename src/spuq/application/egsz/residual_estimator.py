@@ -32,7 +32,7 @@ The coefficients :math:`\alpha_j` follow from the recurrence coefficients
 from __future__ import division
 import numpy as np
 
-from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt, refine,
+from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt, refine, norm,
                     Function, FunctionSpace, TestFunction, CellSize, FacetNormal, Constant)
 
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -210,16 +210,16 @@ class ResidualEstimator(object):
         # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
         a0_f, _ = CF[0]
         am_f, _ = CF[m]
-        # create 
+        # create discretisation space
         V = w[mu]._fefunc.function_space()
         ufl = V.ufl_element()
-        mesh = V.mesh()
-        while maxh > 0 and mesh.hmax() > maxh:
-            logger.debug("refining mesh for projection error evaluation")
-            mesh = refine(mesh)
-        V = FunctionSpace(mesh, ufl.family(), ufl.degree())
+        coeff_mesh = V.mesh()
+        while maxh > 0 and coeff_mesh.hmax() > maxh:
+            logger.debug("refining coefficient mesh for projection error evaluation")
+            coeff_mesh = refine(coeff_mesh)
         # interpolate coefficient functions on mesh
-        f = Function(V)
+        coeff_V = FunctionSpace(coeff_mesh, ufl.family(), ufl.degree())
+        f = Function(coeff_V)
         f.interpolate(a0_f)
         amin = min(f.vector().array())
         f.interpolate(am_f)
@@ -229,8 +229,10 @@ class ResidualEstimator(object):
         logger.debug("amin = %f  amax = %f  ainfty = %f", amin, ammax, ainfty)
 
         # prepare FEniCS discretisation variables
+        projection_order_increase = 1
+        mesh = V.mesh()
+        V2 = FunctionSpace(mesh, ufl.family(), ufl.degree() + projection_order_increase)
         if local:
-            mesh = w[mu]._fefunc.function_space().mesh()
             DG = FunctionSpace(mesh, 'DG', 0)
             s = TestFunction(DG)
         else:
@@ -243,14 +245,22 @@ class ResidualEstimator(object):
         # mu+1
         mu1 = mu.inc(m - 1)
         if mu1 in Delta:
-            w_mu1_back = w.get_back_projection(mu1, mu)
+            logger.debug("[LPE-A] local projection error for mu = %s with %s", mu, mu1)
+            w_mu1 = w.get_projection(mu1, mu)
+            w_mu1_V2 = Function(V2)
+            w_mu1_V2.interpolate(w_mu1._fefunc)
+            w_mu1_reference = Function(V2)                          # projection to higher order space as reference
+            w_mu1_reference.interpolate(w[mu1]._fefunc)
             # evaluate H1 semi-norm of projection error
-            error1 = Function(w[mu1]._fefunc.function_space(), w_mu1_back._fefunc.vector() - w[mu1]._fefunc.vector())
+            error1 = Function(V2, w_mu1_V2.vector() - w_mu1_reference.vector())
+            logger.debug("global error norms: L2 = %s and H1 = %s", norm(error1, "L2"), norm(error1, "H1"))
             a1 = a0_f * inner(nabla_grad(error1), nabla_grad(error1)) * s * dx
             pe = assemble(a1)
             if local:
+                logger.debug("summed local errors: %s", sqrt(sum(pe)))
                 zeta1 = beta[1] * np.array([sqrt(e) for e in pe])
             else:
+                logger.debug("global error: %s", pe)
                 zeta1 = beta[1] * sqrt(pe)
         else:
             if local:
@@ -261,14 +271,22 @@ class ResidualEstimator(object):
         # mu -1
         mu2 = mu.dec(m - 1)
         if mu2 in Delta:
-            w_mu2_back = w.get_back_projection(mu2, mu)
+            logger.debug("[LPE-B] local projection error for mu = %s with %s", mu, mu2)
+            w_mu2 = w.get_projection(mu2, mu)
+            w_mu2_V2 = Function(V2)
+            w_mu2_V2.interpolate(w_mu2._fefunc)
+            w_mu2_reference = Function(V2)                          # projection to higher order space as reference
+            w_mu2_reference.interpolate(w[mu2]._fefunc)
             # evaluate H1 semi-norm of projection error
-            error2 = Function(w[mu2]._fefunc.function_space(), w_mu2_back._fefunc.vector() - w[mu2]._fefunc.vector())
+            error2 = Function(V2, w_mu2_V2.vector() - w_mu2_reference.vector())
+            logger.debug("global error norms: L2 = %s and H1 = %s", norm(error2, "L2"), norm(error2, "H1"))
             a2 = a0_f * inner(nabla_grad(error2), nabla_grad(error2)) * s * dx
             pe = assemble(a2)
             if local:
+                logger.debug("summed local errors: %s", sqrt(sum(pe)))
                 zeta2 = beta[-1] * np.array([sqrt(e) for e in pe])
             else:
+                logger.debug("global error: %s", pe)
                 zeta2 = beta[-1] * pe
         else:
             if local:

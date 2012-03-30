@@ -91,6 +91,6 @@ def error_norm(vec1, vec2, normstr="L2"):
         for mi in vec1.keys():
             V = vec1[mi]._fefunc.function_space()
             errfunc = Function(V, vec1[mi]._fefunc.vector() - vec2[mi]._fefunc.vector())
-            e += norm(errfunc, normstr)
+            e += norm(errfunc, normstr) ** 2
         return sqrt(e)
 

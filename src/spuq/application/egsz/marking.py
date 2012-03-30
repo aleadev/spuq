@@ -105,6 +105,9 @@ class Marking(object):
         mesh_markers = defaultdict(set)
         max_zeta = max([max(projind[mu].coeffs) for mu in projind.active_indices()])
         logger.info("max_zeta = %f", max_zeta)
+        if logger.isEnabledFor(logging.DEBUG):
+            for mu, cellproj in projind.iteritems():
+                logger.debug("projind[%s] = %s", mu, cellproj)
         if max_zeta >= min_zeta:
             for mu, vec in projind.iteritems():
                 indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
@@ -127,13 +130,13 @@ class Marking(object):
         a0_f, _ = coeff_field[0]
         Ldelta = {}
         Delta = w.active_indices()
-        deltaN = int(ceil(0.1 * len(Delta)))               # max number new multiindices
+        deltaN = int(ceil(0.1 * len(Delta)))                    # max number new multiindices
         for mu in Delta:
             norm_w = norm(w[mu].coeffs, 'L2')
             for m in count(1):
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
-                    if m > maxm or m >= coeff_field.length:  # or len(Ldelta) >= deltaN
+                    if m > maxm or m >= coeff_field.length:     # or len(Ldelta) >= deltaN
                         break
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)

@@ -1,5 +1,3 @@
-# from weakref import WeakValueDictionary
-
 from spuq.linalg.vector import Scalar, Vector, inner
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
@@ -98,7 +96,6 @@ class MultiVector(Vector):
             s += inner(self[mi], other[mi])
         return s
 
-
     def __repr__(self):
         return "<%s keys=%s>" % (strclass(self.__class__), self.mi2vec.keys())
 
@@ -129,7 +126,6 @@ class MultiVectorWithProjection(MultiVector):
                 self.project == other.project)
 
     def clear_cache(self):
-#        print "************CLEARING CACHE!!!!********************"
         self._back_cache.clear()
         self._proj_cache.clear()
 
@@ -151,7 +147,6 @@ class MultiVectorWithProjection(MultiVector):
 #        print "P dim mu_dest =", self[mu_dest].coeffs.size()
 #        print "P dim vec =", vec.coeffs.size()
         return vec
-
 
     @takes(anything, Multiindex, Multiindex)
     def get_back_projection(self, mu_src, mu_dest):
