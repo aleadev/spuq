@@ -58,8 +58,8 @@ class ResidualEstimator(object):
         """Evaluate EGSZ Error (7.5)."""
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
-        eta = sum([reserror[mu] for mu in reserror.keys()])
-        delta = sum([projerror[mu] for mu in projerror.keys()])
+        eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
+        delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
         xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta) + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
         return (xi, resind, projind)
 
@@ -153,7 +153,7 @@ class ResidualEstimator(object):
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
         eta_indicator = np.array([sqrt(e) for e in eta])
-        global_error = sqrt(sum(e ** 2 for e in eta))
+        global_error = sqrt(sum(e for e in eta))
         return (FlatVector(eta_indicator), global_error)
 
 
@@ -188,7 +188,7 @@ class ResidualEstimator(object):
                                                         for m in range(1, maxm))
             if local:
                 proj_error[mu] = FlatVector(dmu)
-                global_error[mu] = sum([e for e in dmu])
+                global_error[mu] = sqrt(sum([e ** 2 for e in dmu]))
             else:
                 proj_error[mu] = dmu
                 global_error = dmu

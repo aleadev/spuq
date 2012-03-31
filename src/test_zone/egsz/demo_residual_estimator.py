@@ -1,6 +1,6 @@
 from __future__ import division
 from functools import partial
-from collections import defaultdict
+from math import sqrt
 import logging
 import os
 
@@ -66,10 +66,10 @@ def setup_vec(mesh):
 PLOT_RESIDUAL = True
 
 # flag for final solution plotting
-PLOT_MESHES = True
+PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = (True, True, False)
+REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
 UNIFORM_REFINEMENT = False
 
 # define source term and diffusion coefficient
@@ -111,8 +111,8 @@ gamma = 0.9
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.8         # residual marking
-theta_zeta = 0.8        # projection marking
+theta_eta = 0.3         # residual marking
+theta_zeta = 0.6        # projection marking
 min_zeta = 1e-5         # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 maxm = 10               # maximal search length for new new multiindices
@@ -149,9 +149,14 @@ for refinement in range(max_refinements):
     # error evaluation
     # ----------------
     xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, 1 / 10)
-    logger.info("Estimator Error = %s", xi)
-    R[-1]["EST"] = xi
+    reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))          # TODO: sqrt?
+    projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
+    logger.info("Estimator Error = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
     sim_info[refinement] = ([(mu, vec.basis.dim) for mu, vec in w.iteritems()], R[-1])
+    R[-1]["EST"] = xi
+    R[-1]["RES"] = reserr
+    R[-1]["PROJ"] = projerr
+    R[-1]["MI"] = len(sim_info[refinement][0])
     if xi <= error_eps:
         logger.info("error reached requested accuracy, xi=%f", xi)
         break
@@ -164,16 +169,16 @@ for refinement in range(max_refinements):
                             Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
             logger.info("MARKING will be carried out with %s cells", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
                                                 + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]) + len(new_multiindices))
-            if REFINEMENT[0]:
+            if REFINEMENT["RES"]:
                 mesh_markers = mesh_markers_R.copy()
             else:
                 mesh_markers = {}
                 logger.info("SKIP residual refinement")
-            if REFINEMENT[1]:
+            if REFINEMENT["PROJ"]:
                 mesh_markers.update(mesh_markers_P)
             else:
                 logger.info("SKIP projection refinement")
-            if not REFINEMENT[2] or refinement == max_refinements:
+            if not REFINEMENT["MI"] or refinement == max_refinements:
                 new_multiindices = {}
                 logger.info("SKIP new multiindex refinement")
         else:
@@ -200,9 +205,16 @@ if PLOT_RESIDUAL and len(R) > 1:
         L2 = [r["L2"] for r in R]
         H1 = [r["H1"] for r in R]
         errest = [r["EST"] for r in R]
+        reserr = [r["RES"] for r in R]
+        projerr = [r["PROJ"] for r in R]
+        num_mi = [r["MI"] for r in R]
         fig = figure()
         ax = fig.add_subplot(111)
+        if REFINEMENT["MI"]:
+            ax.loglog(x, num_mi, '--y+', label='active mi')
         ax.loglog(x, errest, '-g<', label='error estimator')
+        ax.loglog(x, reserr, '-.cx', label='residual part')
+        ax.loglog(x, projerr, '-.m>', label='projection part')
         ax.loglog(x, H1, '-b^', label='H1 residual')
         ax.loglog(x, L2, '-ro', label='L2 residual')
         legend()

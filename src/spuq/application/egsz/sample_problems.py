@@ -36,7 +36,8 @@ class SampleProblem(object):
             for _ in range(ref):
                 cell_markers = CellFunction("bool", m)
                 if randref == 1.0:
-                    cell_markers.set_all(True)
+#                    cell_markers.set_all(True)
+                    m = refine(m)
                 else:
                     cell_markers.set_all(False)
                     if random.random() <= randref[0]:
@@ -45,8 +46,7 @@ class SampleProblem(object):
                             cids.add(random.randint(0, m.num_cells()))
                         for cid in cids:
                             cell_markers[cid] = True
-#                m = refine(m, cell_markers)
-                m = refine(m)
+                    m = refine(m, cell_markers)
             meshes.append(m)
         return meshes
 
@@ -70,11 +70,14 @@ class SampleProblem(object):
 #            rvs = (NormalRV(mu=0.5) for _ in count())
             rvs = (UniformRV().scale(0.5) for _ in count())
             coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
-#        elif cftype[0] == "monomials":
+            
+#        elif cftype == "monomials":
 #            f = lambda a, b: Expression("*".join(["x[0]" for _ in range(a)]) + "+"
 #                                       + "*".join(["x[1]" for _ in range(b)]))
 #            Df = lambda a, b: Expression((str(a) + "*" + "*".join(["x[0]" for _ in range(a - 1)]),
 #                                         str(b) + "+" + "*".join(["x[1]" for _ in range(b - 1)])))
+#        elif cftype == "constant" or "zero":
+            
         else:
             raise TypeError('unsupported function type')
         return coeff_field
