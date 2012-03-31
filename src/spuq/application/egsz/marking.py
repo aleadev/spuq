@@ -11,8 +11,8 @@ from math import ceil
 from operator import itemgetter
 from collections import defaultdict
 from itertools import count
-
-from dolfin import Expression, Function, norm
+from math import sqrt
+from dolfin import Function, FunctionSpace, inner, nabla_grad, dx, assemble, refine
 
 from spuq.application.egsz.residual_estimator import ResidualEstimator
 from spuq.application.egsz.multi_vector import MultiVector
@@ -40,7 +40,7 @@ class Marking(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float))
-    def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10):
+    def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10):
         """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
         # testing -->
         if logger.isEnabledFor(logging.DEBUG):
@@ -54,16 +54,20 @@ class Marking(object):
         # evaluate projection errors
         projind, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
         # mark
-        return cls.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
+        return cls.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
 
 
     @classmethod
     @takes(anything, MultiVector, MultiVector, MultiVector, CoefficientField, float, float, float, float, optional(float))
-    def mark(cls, resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10):
+    def mark(cls, resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10):
         """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
         mesh_markers_R = cls.mark_residual(resind, theta_eta)
         mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh)
-        new_mi = cls.mark_inactive_multiindices(w, coeff_field, theta_delta, max_zeta)
+        if max_zeta >= min_zeta:
+            new_mi = cls.mark_inactive_multiindices(w, coeff_field, theta_delta, max_zeta, maxh, maxm)
+        else:
+            new_mi = {}
+            logger.info("SKIPPING search for new multiindices due to very small max_zeta = %s", max_zeta)
         return mesh_markers_R, mesh_markers_P, new_mi
 
 
@@ -126,7 +130,7 @@ class Marking(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, float, float, float, optional(int))
-    def mark_inactive_multiindices(cls, w, coeff_field, theta_delta, max_zeta, maxm=10):
+    def mark_inactive_multiindices(cls, w, coeff_field, theta_delta, max_zeta, maxh=1 / 10, maxm=10):
         """Estimate projection error for inactive indices and determine multiindices to be activated."""
         # new multiindex activation
         # =========================
@@ -136,7 +140,18 @@ class Marking(object):
         Delta = w.active_indices()
         deltaN = int(ceil(0.1 * len(Delta)))                    # max number new multiindices
         for mu in Delta:
-            norm_w = norm(w[mu].coeffs, 'L2')
+            # evaluate energy norm of w[mu]
+            norm_w = assemble(a0_f * inner(nabla_grad(w[mu]._fefunc), nabla_grad(w[mu]._fefunc)) * dx)
+            norm_w = sqrt(norm_w)
+            # determine (sufficiently fine) function space for maximum norm evaluation
+            V = w[mu]._fefunc.function_space()
+            ufl = V.ufl_element()
+            coeff_mesh = V.mesh()
+            while maxh > 0 and coeff_mesh.hmax() > maxh:
+                logger.debug("refining coefficient mesh for new multiindex projection error evaluation")
+                coeff_mesh = refine(coeff_mesh)
+            V = FunctionSpace(coeff_mesh, ufl.family(), ufl.degree())
+            # iterate multiindex extensions
             for m in count(1):
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
@@ -145,7 +160,7 @@ class Marking(object):
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)
                     # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
-                    f = Function(w[mu]._fefunc.function_space())
+                    f = Function(V)
                     f.interpolate(a0_f)
                     min_a0 = min(f.vector().array())
                     f.interpolate(am_f)

@@ -1,5 +1,6 @@
 from __future__ import division
 from functools import partial
+from collections import defaultdict
 import logging
 import os
 
@@ -68,8 +69,8 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = True
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = (True, False, False)
-UNIFORM_REFINEMENT = True
+REFINEMENT = (True, True, False)
+UNIFORM_REFINEMENT = False
 
 # define source term and diffusion coefficient
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
@@ -110,18 +111,22 @@ gamma = 0.9
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.8
-theta_zeta = 0.8
-min_zeta = 1e-5
-maxh = 1 / 10
-theta_delta = 0.1
-# solver
+theta_eta = 0.8         # residual marking
+theta_zeta = 0.8        # projection marking
+min_zeta = 1e-5         # minimal projection error considered
+maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
+maxm = 10               # maximal search length for new new multiindices
+theta_delta = 0.1       # number new multiindex activation bound
+# pcg solver
 pcg_eps = 1e-3
 pcg_maxiter = 100
 error_eps = 1e-2
+# refinements
 max_refinements = 5
-
-R = list()
+# data collection
+sim_info = {}
+R = list()              # residual, estimator and dof progress
+# refinement loop
 for refinement in range(max_refinements):
     logger.info("************* REFINEMENT LOOP iteration %i *************", refinement + 1)
 
@@ -138,47 +143,50 @@ for refinement in range(max_refinements):
     L2error = error_norm(b, b2, "L2")
     H1error = error_norm(b, b2, "H1")
     dofs = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
-    R.append(list((L2error, H1error, dofs)))
+    R.append({"L2":L2error, "H1":H1error, "DOFS":dofs})
     logger.info("Residual = %s (L2) %s (H1) with %s dofs", L2error, H1error, dofs)
 
     # error evaluation
     # ----------------
     xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, 1 / 10)
     logger.info("Estimator Error = %s", xi)
-    R[-1].append(xi)
+    R[-1]["EST"] = xi
+    sim_info[refinement] = ([(mu, vec.basis.dim) for mu, vec in w.iteritems()], R[-1])
     if xi <= error_eps:
         logger.info("error reached requested accuracy, xi=%f", xi)
         break
-
+    
     # marking
     # -------
-    if not UNIFORM_REFINEMENT:
-        mesh_markers_R, mesh_markers_P, new_multiindices = \
-                        Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
-        logger.info("MARKING will be carried out with %s cells", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
-                                            + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]) + len(new_multiindices))
-        if REFINEMENT[0]:
-            mesh_markers = mesh_markers_R.copy()
+    if refinement < max_refinements - 1:
+        if not UNIFORM_REFINEMENT:
+            mesh_markers_R, mesh_markers_P, new_multiindices = \
+                            Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
+            logger.info("MARKING will be carried out with %s cells", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
+                                                + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]) + len(new_multiindices))
+            if REFINEMENT[0]:
+                mesh_markers = mesh_markers_R.copy()
+            else:
+                mesh_markers = {}
+                logger.info("SKIP residual refinement")
+            if REFINEMENT[1]:
+                mesh_markers.update(mesh_markers_P)
+            else:
+                logger.info("SKIP projection refinement")
+            if not REFINEMENT[2] or refinement == max_refinements:
+                new_multiindices = {}
+                logger.info("SKIP new multiindex refinement")
         else:
+            logger.info("UNIFORM REFINEMENT active")
             mesh_markers = {}
-            logger.info("SKIP residual refinement")
-        if REFINEMENT[1]:
-            mesh_markers.update(mesh_markers_P)
-        else:
-            logger.info("SKIP projection refinement")
-        if not REFINEMENT[2] or refinement == max_refinements:
+            for mu, vec in w.iteritems():
+                mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
             new_multiindices = {}
-            logger.info("SKIP new multiindex refinement")
-    else:
-        logger.info("UNIFORM REFINEMENT active")
-        mesh_markers = {}
-        for mu, vec in w.iteritems():
-            mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
-        new_multiindices = {}
-    Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
-logger.info("ENDED refinement loop at refinement %i with %i dofs", refinement, R[-1][2])
+        Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
+logger.info("ENDED refinement loop at refinement %i with %i dofs and %i active multiindices",
+                                refinement, sim_info[refinement][1]["DOFS"], len(sim_info[refinement][0]))
 logger.info("Residuals: %s", R)
-
+logger.info("Simulation run data: %s", sim_info)
 
 # ============================================================
 # PART C: Plotting and Export of Data
@@ -188,10 +196,10 @@ logger.info("Residuals: %s", R)
 if PLOT_RESIDUAL and len(R) > 1:
     try:
         from matplotlib.pyplot import figure, show, legend
-        x = [r[2] for r in R]
-        L2 = [r[0] for r in R]
-        H1 = [r[1] for r in R]
-        errest = [r[3] for r in R]
+        x = [r["DOFS"] for r in R]
+        L2 = [r["L2"] for r in R]
+        H1 = [r["H1"] for r in R]
+        errest = [r["EST"] for r in R]
         fig = figure()
         ax = fig.add_subplot(111)
         ax.loglog(x, errest, '-g<', label='error estimator')
