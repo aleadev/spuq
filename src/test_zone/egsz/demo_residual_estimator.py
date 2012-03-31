@@ -10,8 +10,8 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.linalg.vector import inner
 try:
-    from dolfin import (Function, FunctionSpace, Constant, Mesh,
-                        UnitSquare, refine, plot, interactive, solve, interpolate)
+    from dolfin import (Function, FunctionSpace, Constant, Mesh, cells,
+                        UnitSquare, refine, plot, interactive, interpolate)
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
     from spuq.application.egsz.fem_discretisation import FEMPoisson
@@ -68,7 +68,8 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = True
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = (True, True, False)
+REFINEMENT = (True, False, False)
+UNIFORM_REFINEMENT = True
 
 # define source term and diffusion coefficient
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
@@ -118,7 +119,7 @@ theta_delta = 0.1
 pcg_eps = 1e-3
 pcg_maxiter = 100
 error_eps = 1e-2
-max_refinements = 10
+max_refinements = 5
 
 R = list()
 for refinement in range(max_refinements):
@@ -151,22 +152,29 @@ for refinement in range(max_refinements):
 
     # marking
     # -------
-    mesh_markers_R, mesh_markers_P, new_multiindices = \
-                    Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
-    logger.info("MARKING will be carried out with %s cells", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
-                                        + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]) + len(new_multiindices))
-    if REFINEMENT[0]:
-        mesh_markers = mesh_markers_R.copy()
+    if not UNIFORM_REFINEMENT:
+        mesh_markers_R, mesh_markers_P, new_multiindices = \
+                        Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
+        logger.info("MARKING will be carried out with %s cells", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
+                                            + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]) + len(new_multiindices))
+        if REFINEMENT[0]:
+            mesh_markers = mesh_markers_R.copy()
+        else:
+            mesh_markers = {}
+            logger.info("SKIP residual refinement")
+        if REFINEMENT[1]:
+            mesh_markers.update(mesh_markers_P)
+        else:
+            logger.info("SKIP projection refinement")
+        if not REFINEMENT[2] or refinement == max_refinements:
+            new_multiindices = {}
+            logger.info("SKIP new multiindex refinement")
     else:
+        logger.info("UNIFORM REFINEMENT active")
         mesh_markers = {}
-        logger.info("SKIP residual refinement")
-    if REFINEMENT[1]:
-        mesh_markers.update(mesh_markers_P)
-    else:
-        logger.info("SKIP projection refinement")
-    if not REFINEMENT[2] or refinement == max_refinements:
+        for mu, vec in w.iteritems():
+            mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
         new_multiindices = {}
-        logger.info("SKIP new multiindex refinement")
     Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
 logger.info("ENDED refinement loop at refinement %i with %i dofs", refinement, R[-1][2])
 logger.info("Residuals: %s", R)

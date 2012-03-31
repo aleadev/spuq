@@ -73,9 +73,11 @@ class Marking(object):
         """Evaluate residual estimator and carry out Doerfler marking (bulk criterion) for elements with parameter theta."""
         # residual marking
         # ================
-        if logger.isEnabledFor(logging.DEBUG):
-            for mu, cellres in resind.iteritems():
-                logger.debug("resind[%s] = %s", mu, cellres)
+        
+#        if logger.isEnabledFor(logging.DEBUG):
+#            for mu, cellres in resind.iteritems():
+#                logger.debug("resind[%s] = %s", mu, cellres)
+
         allresind = list()
         for mu, resmu in resind.iteritems():
             allresind = allresind + [(resmu.coeffs[i], i, mu) for i in range(len(resmu.coeffs))]
@@ -105,9 +107,11 @@ class Marking(object):
         mesh_markers = defaultdict(set)
         max_zeta = max([max(projind[mu].coeffs) for mu in projind.active_indices()])
         logger.info("max_zeta = %f", max_zeta)
-        if logger.isEnabledFor(logging.DEBUG):
-            for mu, cellproj in projind.iteritems():
-                logger.debug("projind[%s] = %s", mu, cellproj)
+        
+#        if logger.isEnabledFor(logging.DEBUG):
+#            for mu, cellproj in projind.iteritems():
+#                logger.debug("projind[%s] = %s", mu, cellproj)
+
         if max_zeta >= min_zeta:
             for mu, vec in projind.iteritems():
                 indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
