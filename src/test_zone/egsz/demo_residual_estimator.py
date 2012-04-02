@@ -69,15 +69,19 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
-UNIFORM_REFINEMENT = False
+REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
+UNIFORM_REFINEMENT = True
 
 # define source term and diffusion coefficient
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
 f = Constant("1.0")
 
 # define initial multiindices
-mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
+mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
+
+# debug---
+#mis = (Multiindex(),)
+# ---debug
 
 # setup meshes 
 #mesh0 = refine(Mesh(lshape_xml))
@@ -85,15 +89,16 @@ mesh0 = UnitSquare(5, 5)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":10, "random":(0.4, 0.3)})
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 
-## debug---
+# debug---
 #meshes[0] = refine(meshes[0])
-## ---debug
+# ---debug
 
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
-logger.info("active indices of after initialisation: %s", w.active_indices())
+logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 # define coefficient field
 coeff_field = SampleProblem.setupCF("EF-square")
+#coeff_field = SampleProblem.setupCF("linear")
 a0, _ = coeff_field[0]
 
 # define multioperator
@@ -111,8 +116,8 @@ gamma = 0.9
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.3         # residual marking
-theta_zeta = 0.6        # projection marking
+theta_eta = 0.6         # residual marking
+theta_zeta = 0.8        # projection marking
 min_zeta = 1e-5         # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 maxm = 10               # maximal search length for new new multiindices
@@ -139,7 +144,6 @@ for refinement in range(max_refinements):
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
     b2 = A * w
-#    residual = inner(b2 - b, b2 - b)    see errornorm for why this might be unstable numerically
     L2error = error_norm(b, b2, "L2")
     H1error = error_norm(b, b2, "H1")
     dofs = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
@@ -167,15 +171,17 @@ for refinement in range(max_refinements):
         if not UNIFORM_REFINEMENT:
             mesh_markers_R, mesh_markers_P, new_multiindices = \
                             Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
-            logger.info("MARKING will be carried out with %s cells", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
-                                                + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]) + len(new_multiindices))
+            logger.info("MARKING will be carried out with %s cells and %s new multiindices", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
+                                                + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
             if REFINEMENT["RES"]:
                 mesh_markers = mesh_markers_R.copy()
             else:
                 mesh_markers = {}
                 logger.info("SKIP residual refinement")
             if REFINEMENT["PROJ"]:
-                mesh_markers.update(mesh_markers_P)
+                for mu, cells in mesh_markers_P.iteritems():
+                    if len(cells) > 0:
+                        mesh_markers[mu] = mesh_markers[mu].union(cells)
             else:
                 logger.info("SKIP projection refinement")
             if not REFINEMENT["MI"] or refinement == max_refinements:
@@ -183,9 +189,13 @@ for refinement in range(max_refinements):
                 logger.info("SKIP new multiindex refinement")
         else:
             logger.info("UNIFORM REFINEMENT active")
-            mesh_markers = {}
+            mesh_markers = {}            
             for mu, vec in w.iteritems():
                 mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
+#            # debug---
+#            mu = Multiindex()
+#            mesh_markers[mu] = list([c.index() for c in cells(w[mu]._fefunc.function_space().mesh())])
+#            # ---debug
             new_multiindices = {}
         Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
 logger.info("ENDED refinement loop at refinement %i with %i dofs and %i active multiindices",
@@ -214,10 +224,10 @@ if PLOT_RESIDUAL and len(R) > 1:
             ax.loglog(x, num_mi, '--y+', label='active mi')
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
-        ax.loglog(x, projerr, '-.m>', label='projection part')
+        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
         ax.loglog(x, H1, '-b^', label='H1 residual')
         ax.loglog(x, L2, '-ro', label='L2 residual')
-        legend()
+        legend(loc='lower right')
         show()
     except:
         logger.info("skipped plotting since matplotlib is not available...")

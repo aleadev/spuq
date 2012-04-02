@@ -86,7 +86,7 @@ def assemble_rhs(coeff_func, V, bc=DEFAULT_BC):
 @takes(MultiVector, MultiVector, optional(str))
 def error_norm(vec1, vec2, normstr="L2"):
         from math import sqrt
-        assert vec1.keys() == vec2.keys()
+        assert vec1.active_indices() == vec2.active_indices()
         e = 0.0
         for mi in vec1.keys():
             V = vec1[mi]._fefunc.function_space()

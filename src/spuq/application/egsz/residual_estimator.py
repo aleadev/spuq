@@ -144,8 +144,8 @@ class ResidualEstimator(object):
         h = CellSize(mesh)
         
         # scaling of residual terms and definition of residual form
-        R_T = 1 / a0_f * R_T ** 2
-        R_E = 1 / a0_f * R_E ** 2
+        R_T = (1 / a0_f) * R_T ** 2
+        R_E = (1 / a0_f) * R_E ** 2
         res_form = (h ** 2 * R_T * s * dx
                     + avg(h) * avg(R_E) * 2 * avg(s) * dS)
 #                    + h * R_E * s * ds)    NOTE: this term is incorrect for Dirichlet BC, Neumann data is not supported yet!
@@ -174,24 +174,32 @@ class ResidualEstimator(object):
         """
 
         global_error = {}
-        Delta = w.active_indices()
         if local:
             proj_error = MultiVector()
         else:
             proj_error = {}
-        for mu in Delta:
-            maxm = max(len(mu) for mu in Delta) + 1
-            if CF.length < maxm:
-                logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", CF.length, maxm)
-                maxm = CF.length  
-            dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, maxh, local)
-                                                        for m in range(1, maxm))
+        Delta = w.active_indices()
+        if len(Delta) > 1:
+            for mu in Delta:
+                maxm = max(len(mu) for mu in Delta) + 1
+                if CF.length < maxm:
+                    logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", CF.length, maxm)
+                    maxm = CF.length  
+                dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, maxh, local)
+                                                            for m in range(1, maxm))
+                if local:
+                    proj_error[mu] = FlatVector(dmu)
+                    global_error[mu] = sqrt(sum([e ** 2 for e in dmu]))
+                else:
+                    proj_error[mu] = dmu
+                    global_error = dmu
+        else:
+            mu = Delta[0]
             if local:
-                proj_error[mu] = FlatVector(dmu)
-                global_error[mu] = sqrt(sum([e ** 2 for e in dmu]))
+                proj_error[mu] = FlatVector(np.zeros(w[mu].coeffs.size()))
             else:
-                proj_error[mu] = dmu
-                global_error = dmu
+                proj_error[mu] = 0
+            global_error = {mu:0}
         return proj_error, global_error
 
 
@@ -215,7 +223,7 @@ class ResidualEstimator(object):
         ufl = V.ufl_element()
         coeff_mesh = V.mesh()
         while maxh > 0 and coeff_mesh.hmax() > maxh:
-            logger.debug("refining coefficient mesh for projection error evaluation")
+#            logger.debug("refining coefficient mesh for projection error evaluation")
             coeff_mesh = refine(coeff_mesh)
         # interpolate coefficient functions on mesh
         coeff_V = FunctionSpace(coeff_mesh, ufl.family(), ufl.degree())

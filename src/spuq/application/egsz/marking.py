@@ -148,9 +148,13 @@ class Marking(object):
             ufl = V.ufl_element()
             coeff_mesh = V.mesh()
             while maxh > 0 and coeff_mesh.hmax() > maxh:
-                logger.debug("refining coefficient mesh for new multiindex projection error evaluation")
+#                logger.debug("refining coefficient mesh for new multiindex projection error evaluation")
                 coeff_mesh = refine(coeff_mesh)
             V = FunctionSpace(coeff_mesh, ufl.family(), ufl.degree())
+            # determine ||\overline{a}||_{L\infty(D)} (approximately)
+            f = Function(V)
+            f.interpolate(a0_f)
+            min_a0 = min(f.vector().array())
             # iterate multiindex extensions
             for m in count(1):
                 mu1 = mu.inc(m)
@@ -160,9 +164,6 @@ class Marking(object):
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)
                     # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
-                    f = Function(V)
-                    f.interpolate(a0_f)
-                    min_a0 = min(f.vector().array())
                     f.interpolate(am_f)
                     max_am = max(f.vector().array())
                     ainfty = max_am / min_a0
