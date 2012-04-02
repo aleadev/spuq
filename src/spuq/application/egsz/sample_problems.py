@@ -61,30 +61,34 @@ class SampleProblem(object):
     @classmethod
     @takes(anything, str, optional(dict))
     def setupCF(cls, cftype, params=None):
+        try:    # decay exponent
+            k = params["exp"]
+        except:
+            k = 2
         # mean value
         a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
         # random variables
 #        rvs = (NormalRV(mu=0.5) for _ in count())
         rvs = (UniformRV().scale(0.5) for _ in count())
-        
+
         if cftype == "EF-square":
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
-            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (int(i) + 2) ** 2, m=int(mu[0]) + 1, n=int(mu[1]) + 1, degree=2,
+            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (int(i) + 2) ** k, m=int(mu[0]) + 1, n=int(mu[1]) + 1, degree=2,
 #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
                             element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
         elif cftype == "monomials":
             # monomials
             mis = MultiindexSet.createCompleteOrderSet(2)
             p_str = lambda A, m, n: str(A) * "*" + "*".join(["x[0]" for _ in range(m)]) + "+" + "*".join(["x[1]" for _ in range(n)])
-            pex = lambda i, mn: Expression(p_str(1 / (int(i) + 2) ** 2, mn[0], mn[1]), degree=2, element=FiniteElement('Lagrange', ufl.triangle, 1))
+            pex = lambda i, mn: Expression(p_str(1 / (int(i) + 2) ** k, mn[0], mn[1]), degree=2, element=FiniteElement('Lagrange', ufl.triangle, 1))
             a = (pex(i, mn) for i, mn in enumerate(mis))
         elif cftype == "linear":
             # linear functions
-            a = (Expression("A*(x[0]+x[1])", A=1 / (int(i) + 2) ** 2, element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
+            a = (Expression("A*(x[0]+x[1])", A=1 / (int(i) + 2) ** k, element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "constant":
             # constant functions
-            a = (Expression(str(1 / (int(i) + 2) ** 2), element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
+            a = (Expression(str(1 / (int(i) + 2) ** k), element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "zero":
             # zero functions
             a = (Expression("0.0", element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())

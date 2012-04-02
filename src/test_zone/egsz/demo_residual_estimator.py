@@ -26,7 +26,7 @@ except:
 
 # setup logging
 # log level
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
                     format=log_format)
@@ -69,8 +69,8 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
-UNIFORM_REFINEMENT = True
+REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
+UNIFORM_REFINEMENT = False
 
 # define source term and diffusion coefficient
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
@@ -97,8 +97,8 @@ w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)])
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square")
-#coeff_field = SampleProblem.setupCF("linear")
+coeff_field = SampleProblem.setupCF("EF-square", {"exp":4})
+#coeff_field = SampleProblem.setupCF("linear", {"exp":4})
 a0, _ = coeff_field[0]
 
 # define multioperator
@@ -116,18 +116,18 @@ gamma = 0.9
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.6         # residual marking
-theta_zeta = 0.8        # projection marking
-min_zeta = 1e-5         # minimal projection error considered
+theta_eta = 0.6         # residual marking bulk parameter
+theta_zeta = 0.5        # projection marking threshold factor
+min_zeta = 1e-15        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 maxm = 10               # maximal search length for new new multiindices
 theta_delta = 0.1       # number new multiindex activation bound
 # pcg solver
-pcg_eps = 1e-3
+pcg_eps = 1e-6
 pcg_maxiter = 100
 error_eps = 1e-2
 # refinements
-max_refinements = 5
+max_refinements = 7
 # data collection
 sim_info = {}
 R = list()              # residual, estimator and dof progress
@@ -145,15 +145,16 @@ for refinement in range(max_refinements):
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
     b2 = A * w
     L2error = error_norm(b, b2, "L2")
-    H1error = error_norm(b, b2, "H1")
+    H1error = error_norm(b, b2, "H1")    
     dofs = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
-    R.append({"L2":L2error, "H1":H1error, "DOFS":dofs})
-    logger.info("Residual = %s (L2) %s (H1) with %s dofs", L2error, H1error, dofs)
+    elems = sum([b[mu]._fefunc.function_space().mesh().num_cells() for mu in b.keys()])
+    R.append({"L2":L2error, "H1":H1error, "DOFS":dofs, "CELLS":elems})
+    logger.info("Residual = [%s (L2)] [%s (H1)] with [%s dofs] and [%s cells]", L2error, H1error, dofs, elems)
 
     # error evaluation
     # ----------------
     xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, 1 / 10)
-    reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))          # TODO: sqrt?
+    reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
     projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
     logger.info("Estimator Error = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
     sim_info[refinement] = ([(mu, vec.basis.dim) for mu, vec in w.iteritems()], R[-1])
@@ -165,6 +166,13 @@ for refinement in range(max_refinements):
         logger.info("error reached requested accuracy, xi=%f", xi)
         break
     
+#    # debug---
+#    projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
+#    for mu, val in projglobal.iteritems():
+#        logger.info("GLOBAL Projection Error for %s = %f", mu, val)
+#    logger.info("GLOBAL Projection Error = %f", sqrt(sum([v ** 2 for v in projglobal.itervalues()])))
+#    # ---debug
+    
     # marking
     # -------
     if refinement < max_refinements - 1:
@@ -175,6 +183,12 @@ for refinement in range(max_refinements):
                                                 + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
             if REFINEMENT["RES"]:
                 mesh_markers = mesh_markers_R.copy()
+                
+#                # debug---
+#                # fully refine deterministic mesh
+#                mm = w[Multiindex()]._fefunc.function_space().mesh()
+#                mesh_markers[Multiindex()] = list(range(mm.num_cells()))
+#                # ---debug
             else:
                 mesh_markers = {}
                 logger.info("SKIP residual refinement")
@@ -218,16 +232,30 @@ if PLOT_RESIDUAL and len(R) > 1:
         reserr = [r["RES"] for r in R]
         projerr = [r["PROJ"] for r in R]
         num_mi = [r["MI"] for r in R]
+        # figure 1
+        # --------
         fig = figure()
         ax = fig.add_subplot(111)
+#        if REFINEMENT["MI"]:
+#            ax.loglog(x, num_mi, '--y+', label='active mi')
+#        ax.loglog(x, errest, '-g<', label='error estimator')
+#        ax.loglog(x, reserr, '-.cx', label='residual part')
+#        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+        ax.loglog(x, H1, '-b^', label='H1 residual')
+        ax.loglog(x, L2, '-ro', label='L2 residual')
+        legend(loc='upper right')
+        # figure 2
+        # --------
+        fig2 = figure()
+        ax = fig2.add_subplot(111)
         if REFINEMENT["MI"]:
             ax.loglog(x, num_mi, '--y+', label='active mi')
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
-        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+        ax.loglog(x, projerr, '-.m>', label='projection part')
         ax.loglog(x, H1, '-b^', label='H1 residual')
         ax.loglog(x, L2, '-ro', label='L2 residual')
-        legend(loc='lower right')
+        legend(loc='upper right')
         show()
     except:
         logger.info("skipped plotting since matplotlib is not available...")

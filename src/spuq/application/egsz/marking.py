@@ -42,12 +42,12 @@ class Marking(object):
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float))
     def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10):
         """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
-        # testing -->
-        if logger.isEnabledFor(logging.DEBUG):
-            projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
-            for mu, val in projglobal.iteritems():
-                logger.debug("GLOBAL Projection Error for %s = %f", mu, val)
-        # <-- testing
+#        # testing -->
+#        if logger.isEnabledFor(logging.DEBUG):
+#            projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
+#            for mu, val in projglobal.iteritems():
+#                logger.debug("GLOBAL Projection Error for %s = %f", mu, val)
+#        # <-- testing
 
         # evaluate residual estimator
         resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)

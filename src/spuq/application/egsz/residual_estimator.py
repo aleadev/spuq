@@ -254,6 +254,23 @@ class ResidualEstimator(object):
         mu1 = mu.inc(m - 1)
         if mu1 in Delta:
             logger.debug("[LPE-A] local projection error for mu = %s with %s", mu, mu1)
+
+#            # debug---
+#            V1 = w[mu]._fefunc.function_space();
+#            ufl = V1.ufl_element();
+#            V2 = FunctionSpace(V1.mesh(), ufl.family(), ufl.degree() + 1)
+#            f1 = Function(V1)
+#            f1.interpolate(w[mu1]._fefunc) 
+#            f12 = Function(V2)
+#            f12.interpolate(f1) 
+#            f2 = Function(V2)
+#            f2.interpolate(w[mu1]._fefunc)
+#            err2 = Function(V2, f2.vector() - f12.vector())
+#            aerr = a0_f * inner(nabla_grad(err2), nabla_grad(err2)) * dx
+#            perr = sqrt(assemble(aerr))
+#            logger.info("DEBUG A --- global projection error %s - %s: %s", mu1, mu, perr)
+#            # ---debug
+            
             w_mu1 = w.get_projection(mu1, mu)
             w_mu1_V2 = Function(V2)
             w_mu1_V2.interpolate(w_mu1._fefunc)
@@ -268,7 +285,7 @@ class ResidualEstimator(object):
                 logger.debug("summed local errors: %s", sqrt(sum(pe)))
                 zeta1 = beta[1] * np.array([sqrt(e) for e in pe])
             else:
-                logger.debug("global error: %s", pe)
+                logger.debug("global error: %s", sqrt(pe))
                 zeta1 = beta[1] * sqrt(pe)
         else:
             if local:
@@ -280,6 +297,23 @@ class ResidualEstimator(object):
         mu2 = mu.dec(m - 1)
         if mu2 in Delta:
             logger.debug("[LPE-B] local projection error for mu = %s with %s", mu, mu2)
+
+#            # debug---
+#            V1 = w[mu]._fefunc.function_space();
+#            ufl = V1.ufl_element();
+#            V2 = FunctionSpace(V1.mesh(), ufl.family(), ufl.degree() + 1)
+#            f1 = Function(V1)
+#            f1.interpolate(w[mu2]._fefunc) 
+#            f12 = Function(V2)
+#            f12.interpolate(f1) 
+#            f2 = Function(V2)
+#            f2.interpolate(w[mu2]._fefunc)
+#            err2 = Function(V2, f2.vector() - f12.vector())
+#            aerr = a0_f * inner(nabla_grad(err2), nabla_grad(err2)) * dx
+#            perr = sqrt(assemble(aerr))
+#            logger.info("DEBUG B --- global projection error %s - %s: %s", mu2, mu, perr)
+#            # ---debug
+
             w_mu2 = w.get_projection(mu2, mu)
             w_mu2_V2 = Function(V2)
             w_mu2_V2.interpolate(w_mu2._fefunc)
@@ -294,13 +328,14 @@ class ResidualEstimator(object):
                 logger.debug("summed local errors: %s", sqrt(sum(pe)))
                 zeta2 = beta[-1] * np.array([sqrt(e) for e in pe])
             else:
-                logger.debug("global error: %s", pe)
-                zeta2 = beta[-1] * pe
+                logger.debug("global error: %s", sqrt(pe))
+                zeta2 = beta[-1] * sqrt(pe)
         else:
             if local:
                 zeta2 = np.zeros(mesh.num_cells())
             else:
                 zeta2 = 0
 
+        logger.debug("beta[-1] = %s  beta[1] = %s  ainfty = %s", beta[-1], beta[1], ainfty)
         zeta = ainfty * (zeta1 + zeta2)
         return zeta
