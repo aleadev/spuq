@@ -119,11 +119,6 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 print w
 
 
-from dolfin import refine
-mesh = refine(mesh0)
-mesh = refine(mesh)
-mesh = refine(mesh)
-fs = FunctionSpace(mesh, "CG", 2)
 
 
 Delta = w.active_indices()
@@ -148,16 +143,27 @@ for mu in Delta:
 print RV_samples
 print sample_map
 
+from dolfin import refine
+mesh = refine(mesh0)
+for i in range(5):
+    mesh = refine(mesh)
+fs = FunctionSpace(mesh, "CG", 1)
 
 sample_sol = None
 vec = FEniCSVector(Function(fs))
 for mu in Delta:
-    sol = w[mu].project()
-    w[mu]
+    sol = w.project(w[mu], vec) * sample_map[mu]
     if sample_sol is None:
         sample_sol = sol
     else:
         sample_sol += sol
 
+sample_sol.plot(interactive=True)
 
 
+
+a0 = coeff_field
+a = a0
+for m in range(1, maxm):
+    a_m = RV_samples[m] * coeff_field[m][0]
+    a += a_m
