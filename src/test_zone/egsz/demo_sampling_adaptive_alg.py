@@ -10,7 +10,7 @@ try:
     from dolfin import (Function, FunctionSpace, Constant, UnitSquare, refine,
                             solve, plot, interactive, errornorm)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
-    from spuq.application.egsz.adaptive_solver import adaptive_solver
+    from spuq.application.egsz.adaptive_solver import AdaptiveSolver
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except Exception, e:
     import traceback
@@ -96,11 +96,10 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 # PART B: Adaptive Algorithm
 # ============================================================
 
-(w, info) = adaptive_solver(A, coeff_field, f, mis, w0, mesh0,
-    do_refinement=refinement,
-    do_uniform_refinement=uniform_refinement,
-    max_refinements=1
-)
+(w, info) = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
+                           do_refinement=refinement,
+                           do_uniform_refinement=uniform_refinement,
+                           max_refinements=1)
 
 
 # ============================================================
@@ -112,22 +111,9 @@ print "w:", w
 
 Delta = w.active_indices()
 maxm = max(len(mu) for mu in Delta) + 1
-RV_samples = [0, ]
-for m in range(1, maxm):
-    RV_samples.append(float(coeff_field[m][1].sample(1)))
 
-sample_map = {}
-def prod(l):
-    p = 1
-    for f in l:
-        if p is None:
-            p = f
-        else:
-            p *= f
-    return p
-
-for mu in Delta:
-    sample_map[mu] = prod(coeff_field[m + 1][1].orth_polys[mu[m]](RV_samples[m + 1]) for m in range(len(mu)))
+# get realization of coefficient field
+sample_map, RV_samples = coeff_field.sample_realization(Delta)
 
 # dbg
 print "RV_samples:", RV_samples
