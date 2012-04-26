@@ -12,77 +12,70 @@ def test_init():
     snf = SimpleFunction(np.sin)
     csf = SimpleFunction(np.cos)
     uni = UniformRV()
-    a1 = [cnf, snf, csf]
-    a2 = [cnf, snf]
+    mean = cnf
+    a1 = [cnf, snf]
+    a2 = [cnf, snf, csf]
     rvs = [uni, NormalRV()]
 
-    cf = ListCoefficientField(a1, rvs)
-    assert_equal(cf._funcs[0], cnf)
-    assert_equal(len(cf._rvs), 3)
-    assert_equal(cf._rvs[1], uni)
-    assert_equal(len(rvs), 2)
+    cf = ListCoefficientField(cnf, a1, rvs)
 
-    assert_raises(AssertionError, ListCoefficientField, a2, rvs)
-    # acceptable now, as the type of the "functions" has to be only compatible
-    # now with the assemble routine 
-    #assert_raises(TypeError, CoefficientField, [1, 2, 3], rvs)
-    assert_raises(TypeError, ListCoefficientField, a1[1], rvs)
-    assert_raises(TypeError, ListCoefficientField, a2, [1, 2])
-    assert_raises(TypeError, ListCoefficientField, a2, rvs[0])
+    assert_raises(AssertionError, ListCoefficientField, mean, a2, rvs)
+    assert_raises(TypeError, ListCoefficientField, mean, cnf, rvs)
+    assert_raises(TypeError, ListCoefficientField, mean, a1, [1, 2])
+    assert_raises(TypeError, ListCoefficientField, mean, a1, rvs[0])
 
 
 def test_create_iid():
     cnf = ConstFunction(1)
     snf = SimpleFunction(np.sin)
     csf = SimpleFunction(np.cos)
+    mean = cnf
     rv = ArcsineRV()
-    a1 = [cnf, snf, csf]
+    a1 = [snf, csf]
 
-    cf = ListCoefficientField.create_with_iid_rvs(a1, rv)
-    assert_equal(len(cf._funcs), 3)
-    assert_equal(cf._funcs[0], cnf)
-    assert_equal(cf._funcs[2], csf)
-    a1[1] = csf
-    assert_equal(cf._funcs[1], snf)
-    assert_equal(len(cf._rvs), 3)
-    assert_not_equal(cf._rvs[0], rv)
-    assert_equal(cf._rvs[1], rv)
-    assert_equal(cf._rvs[2], rv)
+    cf = ListCoefficientField.create_with_iid_rvs(mean, a1, rv)
+    assert_equal(len(cf), 2)
+    assert_equal(mean, cnf)
+    assert_equal(len(cf.funcs), 2)
+    assert_equal(cf.rvs[0], rv)
+    assert_equal(cf.rvs[1], rv)
 
 
 def test_len_getitem_repr():
-    a1 = [ConstFunction(1), SimpleFunction(np.sin), SimpleFunction(np.cos)]
+    mean = ConstFunction(1)
+    a1 = [SimpleFunction(np.sin), SimpleFunction(np.cos)]
     rvs = [UniformRV(), NormalRV()]
-    cf = ListCoefficientField(a1, rvs)
-    assert_equal(len(cf), 3)
-    assert_equal(cf[1], (a1[1], rvs[0]))
-    assert_true(str(cf).startswith("<CoefficientField funcs="))
+    cf = ListCoefficientField(mean, a1, rvs)
+    assert_equal(len(cf), 2)
+    assert_equal(cf[0], (a1[0], rvs[0]))
+    assert_equal(cf[1], (a1[1], rvs[1]))
+    assert_true(str(cf).startswith("<ListCoefficientField mean="))
     assert_true(str(cf).endswith(">"))
 
 
 def test_parametric():
-    def test_gen(*v):
-        for i in count():
-            yield v[i % len(v)]
+    cnf = ConstFunction(1)
+    snf = SimpleFunction(np.sin)
+    csf = SimpleFunction(np.cos)
 
-    cf = ConstFunction(1)
-    sf = SimpleFunction(np.sin)
-    cf = SimpleFunction(np.cos)
+    def func_func(i):
+        return [cnf, snf, csf][i % 3]
+
+    mean = cnf
+
     urv = UniformRV()
     nrv = NormalRV()
-    cf = GeneratorCoefficientField(test_gen(cf, sf, cf), test_gen(urv, nrv))
-    assert_true(cf.length == np.infty)
-    f, rv = cf[0]
-    assert_true(f(0) == 1.0)
-    assert_equal(type(rv), NormalRV)
-    f, rv = cf[1]
-    assert_true(f(0) == 0.0)
-    assert_equal(type(rv), UniformRV)
-    f, rv = cf[9]
-    assert_true(f(0) == 1.0)
-    assert_equal(type(rv), UniformRV)
-    assert_true(len(cf._rvs) == 10)
-    assert_true(len(cf._funcs) == 10)
+
+    def rv_func(i):
+        return [urv, nrv][i % 2]
+
+
+    cf = ParametricCoefficientField(mean, func_func, rv_func)
+    assert_true(len(cf) > 100000) # infty doesn't work
+    assert_equal(cf.mean_func, cnf)
+    assert_equal(cf[0], (cnf, urv))
+    assert_equal(cf[1], (snf, nrv))
+    assert_equal(cf[17], (csf, nrv))
 
 
 test_main()
