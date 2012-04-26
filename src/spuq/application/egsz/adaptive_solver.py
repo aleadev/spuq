@@ -5,14 +5,10 @@ import logging
 import os
 
 from spuq.application.egsz.pcg import pcg
-from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator
-from spuq.application.egsz.sample_problems import SampleProblem
+from spuq.application.egsz.multi_operator import PreconditioningOperator
 from spuq.math_utils.multiindex import Multiindex
-from spuq.math_utils.multiindex_set import MultiindexSet
-from spuq.linalg.vector import inner
 try:
-    from dolfin import (Function, FunctionSpace, Constant, Mesh, cells,
-                        UnitSquare, refine, plot, interactive, interpolate)
+    from dolfin import (Function, FunctionSpace, cells, plot, interactive, interpolate)
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
     from spuq.application.egsz.fem_discretisation import FEMPoisson
@@ -24,25 +20,8 @@ except:
 
 # ------------------------------------------------------------
 
-# setup logging
-# log level
-LOG_LEVEL = logging.INFO
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
-    format=log_format)
-fenics_logger = logging.getLogger("FFC")
-fenics_logger.setLevel(logging.WARNING)
-fenics_logger = logging.getLogger("UFL")
-fenics_logger.setLevel(logging.WARNING)
+# retrieve logger
 logger = logging.getLogger(__name__)
-logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
-#logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
-# add console logging output
-ch = logging.StreamHandler()
-ch.setLevel(LOG_LEVEL)
-ch.setFormatter(logging.Formatter(log_format))
-logger.addHandler(ch)
-logging.getLogger("spuq").addHandler(ch)
 
 
 # setup initial multivector
@@ -60,26 +39,26 @@ def setup_vec(mesh):
 # error constants
 def adaptive_solver(A, coeff_field, f,
                     mis, w0, mesh0,
-                    gamma = 0.9,
-                    cQ = 1.0,
-                    ceta = 1.0,
+                    gamma=0.9,
+                    cQ=1.0,
+                    ceta=1.0,
                     # marking parameters
-                    theta_eta = 0.6,         # residual marking bulk parameter
-                    theta_zeta = 0.5,        # projection marking threshold factor
-                    min_zeta = 1e-15,        # minimal projection error considered
-                    maxh = 1 / 10,           # maximal mesh width for projection maximum norm evaluation
-                    maxm = 10,               # maximal search length for new new multiindices
-                    theta_delta = 0.1,       # number new multiindex activation bound
+                    theta_eta=0.6, # residual marking bulk parameter
+                    theta_zeta=0.5, # projection marking threshold factor
+                    min_zeta=1e-15, # minimal projection error considered
+                    maxh=1 / 10, # maximal mesh width for projection maximum norm evaluation
+                    maxm=10, # maximal search length for new new multiindices
+                    theta_delta=0.1, # number new multiindex activation bound
                     # pcg solver
-                    pcg_eps = 1e-6,
-                    pcg_maxiter = 100,
-                    error_eps = 1e-2,
+                    pcg_eps=1e-6,
+                    pcg_maxiter=100,
+                    error_eps=1e-2,
                     # refinements
-                    max_refinements = 7,
+                    max_refinements=7,
                     do_refinement={"RES":True, "PROJ":True, "MI":False},
                     do_uniform_refinement=False):
     a0, _ = coeff_field[0]
-    w=w0
+    w = w0
     # data collection
     sim_info = {}
     R = list()              # residual, estimator and dof progress
@@ -129,7 +108,7 @@ def adaptive_solver(A, coeff_field, f,
         # -------
         if refinement < max_refinements - 1:
             if not do_uniform_refinement:
-                mesh_markers_R, mesh_markers_P, new_multiindices =\
+                mesh_markers_R, mesh_markers_P, new_multiindices = \
                 Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
                 logger.info("MARKING will be carried out with %s cells and %s new multiindices", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
                 + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
@@ -168,5 +147,5 @@ def adaptive_solver(A, coeff_field, f,
         refinement, sim_info[refinement][1]["DOFS"], len(sim_info[refinement][0]))
     logger.info("Residuals: %s", R)
     logger.info("Simulation run data: %s", sim_info)
-    return (w,{'res': R})
+    return (w, {'res': R})
 

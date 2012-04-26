@@ -9,9 +9,8 @@ from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningO
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
-from spuq.linalg.vector import inner
 try:
-    from dolfin import (Function, FunctionSpace, Constant, Mesh, cells,
+    from dolfin import (Function, FunctionSpace, Constant, cells,
                         UnitSquare, refine, plot, interactive, interpolate)
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
@@ -19,6 +18,8 @@ try:
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_utils import error_norm
 except:
+    import traceback
+    print traceback.format_exc()
     print "FEniCS has to be available"
     os.sys.exit(1)
 
