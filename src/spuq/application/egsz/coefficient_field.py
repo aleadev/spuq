@@ -10,32 +10,77 @@ from spuq.linalg.function import GenericFunction
 from spuq.stochastics.random_variable import RandomVariable, DeterministicPseudoRV
 from spuq.utils import strclass
 from spuq.utils.parametric_array import ParametricArray
+from abc import ABCMeta, abstractmethod, abstractproperty
+
 
 class CoefficientField(object):
+    """Expansion of a coefficient field according to EGSZ (1.2)."""
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def mean_func(self):
+        pass
+
+    @abstractproperty
+    def funcs(self):
+        pass
+
+    @abstractproperty
+    def rvs(self):
+        pass
+
+    @abstractmethod
+    def __len__(self):
+        pass
+
+    @abstractmethod
+    def __getitem__(self, i):
+        pass
+
+    @abstractmethod
+    def sample_rvs(self):
+        pass
+
+
+class ListCoefficientField(CoefficientField):
     """Expansion of a coefficient field according to EGSZ (1.2)."""
 
     #    @takes(anything, sequence_of(GenericFunction), sequence_of(RandomVariable))
     @takes(anything, sequence_of(anything), sequence_of(RandomVariable))
-    def __init__(self, funcs, rvs):
+    def __init__(self, mean_func, funcs, rvs):
         """Initialise with list of functions and list of random variables.
         
         The first function is the mean field for which no random
         variable is required, i.e. len(funcs)=len(rvs)+1.
         DeterministicPseudoRV is associated with the mean field implicitly."""
-        assert len(funcs) == len(rvs) + 1, (
-            "Need one more function than random variable (for the deterministic case)")
+        assert len(funcs) == len(rvs)
+        self._mean_func = mean_func
         self._funcs = list(funcs)
-        # first function is deterministic mean field
         self._rvs = list(rvs)
-        self._rvs.insert(0, DeterministicPseudoRV)
 
     @classmethod
     @takes(anything, sequence_of(GenericFunction), RandomVariable)
-    def createWithIidRVs(cls, funcs, rv):
+    def create_with_iid_rvs(cls, mean_func, funcs, rv):
         """Create coefficient field where all expansion terms have the identical random variable."""
         # random variables are stateless, so we can just use the same n times 
-        rvs = [rv] * (len(funcs) - 1)
+        rvs = [rv] * len(funcs)
         return cls(funcs, rvs)
+
+    @property
+    def mean_func(self):
+        return self._mean_func
+
+    @property
+    def funcs(self):
+        return self._funcs
+
+    @property
+    def rvs(self):
+        return self._rvs
+
+    def __len__(self):
+        """Length of coefficient field expansion."""
+        return len(self._funcs)
 
     def __getitem__(self, i):
         assert i < len(self._funcs), "invalid index"
@@ -45,87 +90,48 @@ class CoefficientField(object):
         return "<%s funcs=%s, rvs=%s>" %\
                (strclass(self.__class__), self._funcs[1:], self._rvs)
 
-    def __len__(self):
-        """Length of coefficient field expansion."""
-        return len(self._funcs)
+    def sample_rvs(self):
+        return (float(self._rvs[i].sample(1)) for i in len(self._rvs))
 
 
-class GeneratorCoefficientField(CoefficientField):
+class ParametricCoefficientField(ListCoefficientField):
     """Expansion of a coefficient field according to EGSZ (1.2)."""
 
     @takes(anything, GeneratorType, GeneratorType)
-    def __init__(self, func_gen, rv_gen, a0=None):
-        """Initialise with function and random variable generators.
-        
-        The first function is the mean field with which a
-        DeterministicPseudoRV is associated implicitly."""
-        self._func_gen = func_gen
-        self._rvs_gen = rv_gen
-        self._funcs = list()
-        self._rvs = list()
-        # first function is deterministic mean field
-        if a0 is None:
-            self._funcs.append(self._func_gen.next())
-        else:
-            self._funcs.append(a0)
-        self._rvs.append(DeterministicPseudoRV)
-
-    @classmethod
-    @takes(anything, GeneratorType, RandomVariable)
-    def createWithIidRVs(cls, func_gen, rv):
-        """Create coefficient field where all expansion terms have the identical random variable."""
-        # random variables are stateless, so we can just use the same n times 
-        return cls(func_gen, (rv for _ in count()))
-
-    def __getitem__(self, i):
-        while i >= len(self._funcs):
-            self._funcs.append(self._func_gen.next())
-            self._rvs.append(self._rvs_gen.next())
-        return self._funcs[i], self._rvs[i]
-
-    def __len__(self):
-        """Length of coefficient field expansion."""
-        return infty
-
-
-class ParametricCoefficientField(CoefficientField):
-    """Expansion of a coefficient field according to EGSZ (1.2)."""
-
-    @takes(anything, GeneratorType, GeneratorType)
-    def __init__(self, func_func, rv_func, a0=None):
+    def __init__(self, mean_func, func_func, rv_func):
         """Initialise with function and random variable generators.
 
         The first function is the mean field with which a
         DeterministicPseudoRV is associated implicitly."""
-        self._func_func = func_func
-        self._rvs_func = rv_func
+        self._mean_func = mean_func
         self._funcs = ParametricArray(func_func)
-        self._rvs = list()
-        # first function is deterministic mean field
-        if a0 is None:
-            self._funcs.append(self._func_gen.next())
-        else:
-            self._funcs.append(a0)
-        self._rvs.append(DeterministicPseudoRV)
+        self._rvs = ParametricArray(rv_func)
 
     @classmethod
     @takes(anything, GeneratorType, RandomVariable)
-    def createWithIidRVs(cls, func_gen, rv):
+    def create_with_iid_rvs(cls, mean_func, func_func, rv):
         """Create coefficient field where all expansion terms have the identical random variable."""
         # random variables are stateless, so we can just use the same n times
-        return cls(func_gen, (rv for _ in count()))
+        return cls(mean_func, func_func, lambda i: rv)
 
-    def coefficients(self):
-        """Return expansion iterator for (Function,RV) pairs."""
-        for i in count():
-            yield self[i]
+    @property
+    def mean_func(self):
+        return self._mean_func
 
-    def __getitem__(self, i):
-        while i >= len(self._funcs):
-            self._funcs.append(self._func_gen.next())
-            self._rvs.append(self._rvs_gen.next())
-        return self._funcs[i], self._rvs[i]
+    @property
+    def funcs(self):
+        return self._funcs
+
+    @property
+    def rvs(self):
+        return self._rvs
 
     def __len__(self):
         """Length of coefficient field expansion."""
         return infty
+
+    def __getitem__(self, i):
+        return self._funcs[i], self._rvs[i]
+
+    def sample_rvs(self):
+        return ParametricArray(lambda i: float(self._rvs[i].sample(1)))

@@ -1,6 +1,6 @@
 from __future__ import division
 
-from spuq.application.egsz.coefficient_field import ParametricCoefficientField
+from spuq.application.egsz.coefficient_field import GeneratorCoefficientField
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.math_utils.multiindex_set import MultiindexSet
@@ -29,14 +29,14 @@ class SampleProblem(object):
             assert 0 < randref[1] <= 1.0
         except (KeyError, NameError):
             randref = (1.0, 1.0)
-        # create set of (refined) meshes
+            # create set of (refined) meshes
         meshes = list();
         for _ in range(N):
             m = Mesh(mesh)
             for _ in range(ref):
                 cell_markers = CellFunction("bool", m)
                 if randref == 1.0:
-#                    cell_markers.set_all(True)
+                #                    cell_markers.set_all(True)
                     m = refine(m)
                 else:
                     cell_markers.set_all(False)
@@ -65,34 +65,39 @@ class SampleProblem(object):
             k = params["exp"]
         except:
             k = 2
-        # mean value
+            # mean value
         a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
         # random variables
-#        rvs = (NormalRV(mu=0.5) for _ in count())
+        #        rvs = (NormalRV(mu=0.5) for _ in count())
         rvs = (UniformRV().scale(0.5) for _ in count())
 
         if cftype == "EF-square":
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
-            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (int(i) + 2) ** k, m=int(mu[0]) + 1, n=int(mu[1]) + 1, degree=2,
-#            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
-                            element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
+            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (int(i) + 2) ** k, m=int(mu[0]) + 1,
+                n=int(mu[1]) + 1, degree=2,
+                #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
+                element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
         elif cftype == "monomials":
             # monomials
             mis = MultiindexSet.createCompleteOrderSet(2)
-            p_str = lambda A, m, n: str(A) * "*" + "*".join(["x[0]" for _ in range(m)]) + "+" + "*".join(["x[1]" for _ in range(n)])
-            pex = lambda i, mn: Expression(p_str(1 / (int(i) + 2) ** k, mn[0], mn[1]), degree=2, element=FiniteElement('Lagrange', ufl.triangle, 1))
+            p_str = lambda A, m, n: str(A) * "*" + "*".join(["x[0]" for _ in range(m)]) + "+" + "*".join(
+                ["x[1]" for _ in range(n)])
+            pex = lambda i, mn: Expression(p_str(1 / (int(i) + 2) ** k, mn[0], mn[1]), degree=2,
+                element=FiniteElement('Lagrange', ufl.triangle, 1))
             a = (pex(i, mn) for i, mn in enumerate(mis))
         elif cftype == "linear":
             # linear functions
-            a = (Expression("A*(x[0]+x[1])", A=1 / (int(i) + 2) ** k, element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
+            a = (Expression("A*(x[0]+x[1])", A=1 / (int(i) + 2) ** k,
+                element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "constant":
             # constant functions
-            a = (Expression(str(1 / (int(i) + 2) ** k), element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
+            a = (Expression(str(1 / (int(i) + 2) ** k),
+                element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "zero":
             # zero functions
             a = (Expression("0.0", element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         else:
             raise TypeError('unsupported function type')
-        
-        return ParametricCoefficientField(a, rvs, a0=a0)
+
+        return GeneratorCoefficientField(a, rvs, a0=a0)

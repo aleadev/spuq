@@ -4,7 +4,7 @@ import numpy as np
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator
-from spuq.application.egsz.coefficient_field import ParametricCoefficientField
+from spuq.application.egsz.coefficient_field import GeneratorCoefficientField
 from spuq.application.egsz.pcg import pcg
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.math_utils.multiindex import Multiindex
@@ -23,7 +23,7 @@ from spuq.fem.fenics.fenics_vector import FEniCSVector
 a0 = Constant("1.0")
 a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2) for i in count(1))
 rvs = (UniformRV() for _ in count())
-coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
+coeff_field = GeneratorCoefficientField(a, rvs, a0=a0)
 
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 mis = [Multiindex([0]),
@@ -32,7 +32,7 @@ mis = [Multiindex([0]),
        Multiindex([0, 2])]
 mesh = UnitSquare(4, 4)
 fs = FunctionSpace(mesh, "CG", 1)
-F = [interpolate(Expression("*".join(["x[0]"] * i)) , fs) for i in range(1, 5)]
+F = [interpolate(Expression("*".join(["x[0]"] * i)), fs) for i in range(1, 5)]
 vecs = [FEniCSVector(f) for f in F]
 
 w = MultiVectorWithProjection()

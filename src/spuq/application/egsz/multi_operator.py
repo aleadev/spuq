@@ -19,6 +19,7 @@ from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 class MultiOperator(Operator):
@@ -40,10 +41,11 @@ class MultiOperator(Operator):
         v = 0 * w
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
-        if self._CF.length < maxm:
-            logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i", self._CF.length, maxm)
-            maxm = self._CF.length
-#        assert self._CF.length >= maxm        # ensure CF expansion is sufficiently long
+        if len(self._CF) < maxm:
+            logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i", len(self._CF),
+                maxm)
+            maxm = len(self._CF)
+        #        assert self._CF.length >= maxm        # ensure CF expansion is sufficiently long
         for mu in Delta:
             logger.debug("apply on mu = %s", str(mu))
             # deterministic part

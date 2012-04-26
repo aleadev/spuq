@@ -4,7 +4,7 @@ from itertools import count
 from spuq.utils.testing import *
 from spuq.linalg.function import ConstFunction, SimpleFunction
 from spuq.stochastics.random_variable import NormalRV, UniformRV, ArcsineRV
-from spuq.application.egsz.coefficient_field import CoefficientField, ParametricCoefficientField
+from spuq.application.egsz.coefficient_field import ListCoefficientField, ParametricCoefficientField
 
 
 def test_init():
@@ -16,19 +16,19 @@ def test_init():
     a2 = [cnf, snf]
     rvs = [uni, NormalRV()]
 
-    cf = CoefficientField(a1, rvs)
+    cf = ListCoefficientField(a1, rvs)
     assert_equal(cf._funcs[0], cnf)
     assert_equal(len(cf._rvs), 3)
     assert_equal(cf._rvs[1], uni)
     assert_equal(len(rvs), 2)
 
-    assert_raises(AssertionError, CoefficientField, a2, rvs)
+    assert_raises(AssertionError, ListCoefficientField, a2, rvs)
     # acceptable now, as the type of the "functions" has to be only compatible
     # now with the assemble routine 
     #assert_raises(TypeError, CoefficientField, [1, 2, 3], rvs)
-    assert_raises(TypeError, CoefficientField, a1[1], rvs)
-    assert_raises(TypeError, CoefficientField, a2, [1, 2])
-    assert_raises(TypeError, CoefficientField, a2, rvs[0])
+    assert_raises(TypeError, ListCoefficientField, a1[1], rvs)
+    assert_raises(TypeError, ListCoefficientField, a2, [1, 2])
+    assert_raises(TypeError, ListCoefficientField, a2, rvs[0])
 
 
 def test_create_iid():
@@ -38,7 +38,7 @@ def test_create_iid():
     rv = ArcsineRV()
     a1 = [cnf, snf, csf]
 
-    cf = CoefficientField.createWithIidRVs(a1, rv)
+    cf = ListCoefficientField.create_with_iid_rvs(a1, rv)
     assert_equal(len(cf._funcs), 3)
     assert_equal(cf._funcs[0], cnf)
     assert_equal(cf._funcs[2], csf)
@@ -50,21 +50,10 @@ def test_create_iid():
     assert_equal(cf._rvs[2], rv)
 
 
-def test_coefficients():
-    a1 = [ConstFunction(1), SimpleFunction(np.sin), SimpleFunction(np.cos)]
-    rvs = [UniformRV(), NormalRV()]
-
-    cf = CoefficientField(a1, rvs)
-    a2 = [a for (a, _) in cf.coefficients()]
-    assert_equal(a2, a1)
-    rvs2 = [rv for (_, rv) in cf.coefficients()]
-    assert_equal(rvs2[1:], rvs)
-
-
 def test_len_getitem_repr():
     a1 = [ConstFunction(1), SimpleFunction(np.sin), SimpleFunction(np.cos)]
     rvs = [UniformRV(), NormalRV()]
-    cf = CoefficientField(a1, rvs)
+    cf = ListCoefficientField(a1, rvs)
     assert_equal(len(cf), 3)
     assert_equal(cf[1], (a1[1], rvs[0]))
     assert_true(str(cf).startswith("<CoefficientField funcs="))
@@ -75,12 +64,13 @@ def test_parametric():
     def test_gen(*v):
         for i in count():
             yield v[i % len(v)]
+
     cf = ConstFunction(1)
     sf = SimpleFunction(np.sin)
     cf = SimpleFunction(np.cos)
     urv = UniformRV()
     nrv = NormalRV()
-    cf = ParametricCoefficientField(test_gen(cf, sf, cf), test_gen(urv, nrv))
+    cf = GeneratorCoefficientField(test_gen(cf, sf, cf), test_gen(urv, nrv))
     assert_true(cf.length == np.infty)
     f, rv = cf[0]
     assert_true(f(0) == 1.0)
@@ -93,7 +83,7 @@ def test_parametric():
     assert_equal(type(rv), UniformRV)
     assert_true(len(cf._rvs) == 10)
     assert_true(len(cf._funcs) == 10)
-    
-    
+
+
 test_main()
 

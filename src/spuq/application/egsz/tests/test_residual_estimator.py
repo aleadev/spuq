@@ -7,27 +7,28 @@ import logging
 import os
 
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-from spuq.application.egsz.coefficient_field import CoefficientField, ParametricCoefficientField
+from spuq.application.egsz.coefficient_field import CoefficientField, ListCoefficientField, ParametricCoefficientField
 from spuq.math_utils.multiindex import Multiindex
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.utils.testing import assert_equal, assert_almost_equal, skip_if, test_main, assert_raises
 
 try:
     from dolfin import (Expression, Function, FunctionSpace, UnitSquare, interpolate, Constant, MeshFunction,
-                            Mesh, FiniteElement, cells, refine, plot, interactive, norm, solve)
+                        Mesh, FiniteElement, cells, refine, plot, interactive, norm, solve)
     import ufl
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_basis import FEniCSBasis
     from spuq.fem.fenics.fenics_vector import FEniCSVector
+
     HAVE_FENICS = True
 except:
     HAVE_FENICS = False
 
 # setup logging
 logging.basicConfig(filename=__file__[:-2] + 'log', level=logging.INFO,
-                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 fenics_logger = logging.getLogger("FFC")
 fenics_logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -46,20 +47,20 @@ def test_estimator():
            Multiindex([0, 2])]
     mesh = UnitSquare(4, 4)
     fs = FunctionSpace(mesh, "CG", 1)
-    F = [interpolate(Expression("*".join(["x[0]"] * i)) , fs) for i in range(1, 5)]
+    F = [interpolate(Expression("*".join(["x[0]"] * i)), fs) for i in range(1, 5)]
     vecs = [FEniCSVector(f) for f in F]
 
     w = MultiVectorWithProjection()
     for mi, vec in zip(mis, vecs):
         w[mi] = vec
-#    v = A * w
+        #    v = A * w
 
     # define coefficient field
     aN = 4
     a = [Expression('2.+sin(20.*pi*I*x[0]*x[1])', I=i, degree=3, element=fs.ufl_element())
-                                                                for i in range(1, aN)]
+         for i in range(1, aN)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
-    coeff_field = CoefficientField(a, rvs)
+    coeff_field = ListCoefficientField(a, rvs)
 
     # define source term
     f = Constant("1.0")
@@ -83,7 +84,7 @@ def test_estimator():
 def test_estimator_refinement():
     # define source term
     f = Constant("1.0")
-#    f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
+    #    f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
 
     # set default vector for new indices
     mesh0 = refine(Mesh(lshape_xml))
@@ -103,7 +104,7 @@ def test_estimator_refinement():
            Multiindex([0, 2])]
     N = len(mis)
 
-#    meshes = [UnitSquare(i + 3, 3 + N - i) for i in range(N)]
+    #    meshes = [UnitSquare(i + 3, 3 + N - i) for i in range(N)]
     meshes = [refine(Mesh(lshape_xml)) for _ in range(N)]
     fss = [FunctionSpace(mesh, "CG", 1) for mesh in meshes]
 
@@ -116,15 +117,15 @@ def test_estimator_refinement():
         fem_b = FEMPoisson.assemble_rhs(f, B)
         solve(fem_A, u.vector(), fem_b)
         w[mi] = FEniCSVector(u)
-#        plot(w[mi]._fefunc)
+        #        plot(w[mi]._fefunc)
 
     # define coefficient field
     a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
-#    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
+    #    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
     a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
-                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
+        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
     rvs = (NormalRV(mu=0.5) for _ in count())
-    coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
+    coeff_field = GeneratorCoefficientField(a, rvs, a0=a0)
 
     # refinement loop
     # ===============
@@ -145,7 +146,7 @@ def test_estimator_refinement():
         projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
         for mu, val in projglobal.iteritems():
             print "GLOBAL Projection Error for", mu, "=", val
-        # <-- testing
+            # <-- testing
 
         # ==============
         # MARK algorithm
@@ -215,11 +216,11 @@ def test_estimator_refinement():
                     ainfty = max_am / min_a0
                     assert isinstance(ainfty, float)
 
-#                    print "A***", beta[1], ainfty, norm_w
-#                    print "B***", beta[1] * ainfty * norm_w
-#                    print "C***", theta_delta, max_zeta
-#                    print "D***", theta_delta * max_zeta
-#                    print "E***", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta)
+                    #                    print "A***", beta[1], ainfty, norm_w
+                    #                    print "B***", beta[1] * ainfty * norm_w
+                    #                    print "C***", theta_delta, max_zeta
+                    #                    print "D***", theta_delta * max_zeta
+                    #                    print "E***", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta)
 
                     if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
                         val1 = beta[1] * ainfty * norm_w
@@ -245,8 +246,9 @@ def test_estimator_refinement():
             solve(fem_A, vec.coeffs, fem_b)
             w[mu] = vec
 
-    # show refined meshes
-#    plot_meshes = True    
+            # show refined meshes
+
+#    plot_meshes = True
 #    if plot_meshes:
 #        for mu, vec in w.iteritems():
 #            plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
@@ -256,9 +258,9 @@ def test_estimator_refinement():
 
 @skip_if(not HAVE_FENICS, "FEniCS not installed.")
 def test_marking():
-    # PDE data
-    # ========
-    # define source term and diffusion coefficient
+# PDE data
+# ========
+# define source term and diffusion coefficient
 #    f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
     f = Constant("1.0")
     diffcoeff = Constant("1.0")
@@ -283,7 +285,7 @@ def test_marking():
            Multiindex([1]),
            Multiindex([0, 1]),
            Multiindex([0, 2])]
-    
+
     # setup initial multivector
     w = MultiVectorWithProjection()
     Marking.refine(w, {}, mis, eval_poisson)
@@ -293,11 +295,11 @@ def test_marking():
     # ========================
     # define coefficient field
     a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
-#    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
+    #    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
     a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
-                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
+        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
     rvs = (NormalRV(mu=0.5) for _ in count())
-    coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
+    coeff_field = GeneratorCoefficientField(a, rvs, a0=a0)
 
     # refinement loop
     # ===============
@@ -315,7 +317,8 @@ def test_marking():
 
         # evaluate residual and projection error estimates
         # ================================================
-        mesh_markers_R, mesh_markers_P, new_multiindices = Marking.estimate_mark(w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh)
+        mesh_markers_R, mesh_markers_P, new_multiindices = Marking.estimate_mark(w, coeff_field, f, theta_eta,
+            theta_zeta, theta_delta, min_zeta, maxh)
         mesh_markers = mesh_markers_R.copy()
         mesh_markers.update(mesh_markers_P)
         Marking.refine(w, mesh_markers, new_multiindices.keys(), eval_poisson)

@@ -37,11 +37,12 @@ from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt, ref
 
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
-from spuq.linalg.vector import FlatVector 
+from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 class ResidualEstimator(object):
@@ -60,7 +61,8 @@ class ResidualEstimator(object):
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
         eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
-        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta) + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
+        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta) + cQ * sqrt(
+            zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
         return (xi, resind, projind)
 
 
@@ -101,14 +103,14 @@ class ResidualEstimator(object):
         if not mu:
             R_T = R_T + f
         R_E = a0_f * dot(nabla_grad(w[mu]._fefunc), nu)
-        
+
         # iterate m
         Delta = w.active_indices()
         maxm = max(len(mu) for mu in Delta) + 1
-        if CF.length < maxm:
-            logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", CF.length, maxm)
-            maxm = CF.length  
-#        assert CF.length >= maxm        # ensure CF expansion is sufficiently long
+        if len(CF) < maxm:
+            logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", len(CF), maxm)
+            maxm = len(CF)
+        #        assert CF.length >= maxm        # ensure CF expansion is sufficiently long
         for m in range(1, maxm):
             am_f, am_rv = CF[m]
 
@@ -142,13 +144,13 @@ class ResidualEstimator(object):
         DG = FunctionSpace(mesh, "DG", 0)
         s = TestFunction(DG)
         h = CellSize(mesh)
-        
+
         # scaling of residual terms and definition of residual form
         R_T = (1 / a0_f) * R_T ** 2
         R_E = (1 / a0_f) * R_E ** 2
         res_form = (h ** 2 * R_T * s * dx
                     + avg(h) * avg(R_E) * 2 * avg(s) * dS)
-#                    + h * R_E * s * ds)    NOTE: this term is incorrect for Dirichlet BC, Neumann data is not supported yet!
+        #                    + h * R_E * s * ds)    NOTE: this term is incorrect for Dirichlet BC, Neumann data is not supported yet!
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
@@ -182,11 +184,11 @@ class ResidualEstimator(object):
         if len(Delta) > 1:
             for mu in Delta:
                 maxm = max(len(mu) for mu in Delta) + 1
-                if CF.length < maxm:
-                    logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", CF.length, maxm)
-                    maxm = CF.length  
+                if len(CF) < maxm:
+                    logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", len(CF), maxm)
+                    maxm = len(CF)
                 dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, maxh, local)
-                                                            for m in range(1, maxm))
+                    for m in range(1, maxm))
                 if local:
                     proj_error[mu] = FlatVector(dmu)
                     global_error[mu] = sqrt(sum([e ** 2 for e in dmu]))
@@ -199,12 +201,13 @@ class ResidualEstimator(object):
                 proj_error[mu] = FlatVector(np.zeros(w[mu].coeffs.size()))
             else:
                 proj_error[mu] = 0
-            global_error = {mu:0}
+            global_error = {mu: 0}
         return proj_error, global_error
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float), optional(bool))
+    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
+        optional(bool))
     def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta, maxh=0.0, local=True):
         """Evaluate the local projection error according to EGSZ (6.4).
 
@@ -223,9 +226,9 @@ class ResidualEstimator(object):
         ufl = V.ufl_element()
         coeff_mesh = V.mesh()
         while maxh > 0 and coeff_mesh.hmax() > maxh:
-#            logger.debug("refining coefficient mesh for projection error evaluation")
+        #            logger.debug("refining coefficient mesh for projection error evaluation")
             coeff_mesh = refine(coeff_mesh)
-        # interpolate coefficient functions on mesh
+            # interpolate coefficient functions on mesh
         coeff_V = FunctionSpace(coeff_mesh, ufl.family(), ufl.degree())
         f = Function(coeff_V)
         f.interpolate(a0_f)
@@ -255,22 +258,22 @@ class ResidualEstimator(object):
         if mu1 in Delta:
             logger.debug("[LPE-A] local projection error for mu = %s with %s", mu, mu1)
 
-#            # debug---
-#            V1 = w[mu]._fefunc.function_space();
-#            ufl = V1.ufl_element();
-#            V2 = FunctionSpace(V1.mesh(), ufl.family(), ufl.degree() + 1)
-#            f1 = Function(V1)
-#            f1.interpolate(w[mu1]._fefunc) 
-#            f12 = Function(V2)
-#            f12.interpolate(f1) 
-#            f2 = Function(V2)
-#            f2.interpolate(w[mu1]._fefunc)
-#            err2 = Function(V2, f2.vector() - f12.vector())
-#            aerr = a0_f * inner(nabla_grad(err2), nabla_grad(err2)) * dx
-#            perr = sqrt(assemble(aerr))
-#            logger.info("DEBUG A --- global projection error %s - %s: %s", mu1, mu, perr)
-#            # ---debug
-            
+            #            # debug---
+            #            V1 = w[mu]._fefunc.function_space();
+            #            ufl = V1.ufl_element();
+            #            V2 = FunctionSpace(V1.mesh(), ufl.family(), ufl.degree() + 1)
+            #            f1 = Function(V1)
+            #            f1.interpolate(w[mu1]._fefunc)
+            #            f12 = Function(V2)
+            #            f12.interpolate(f1)
+            #            f2 = Function(V2)
+            #            f2.interpolate(w[mu1]._fefunc)
+            #            err2 = Function(V2, f2.vector() - f12.vector())
+            #            aerr = a0_f * inner(nabla_grad(err2), nabla_grad(err2)) * dx
+            #            perr = sqrt(assemble(aerr))
+            #            logger.info("DEBUG A --- global projection error %s - %s: %s", mu1, mu, perr)
+            #            # ---debug
+
             w_mu1 = w.get_projection(mu1, mu)
             w_mu1_V2 = Function(V2)
             w_mu1_V2.interpolate(w_mu1._fefunc)
@@ -298,21 +301,21 @@ class ResidualEstimator(object):
         if mu2 in Delta:
             logger.debug("[LPE-B] local projection error for mu = %s with %s", mu, mu2)
 
-#            # debug---
-#            V1 = w[mu]._fefunc.function_space();
-#            ufl = V1.ufl_element();
-#            V2 = FunctionSpace(V1.mesh(), ufl.family(), ufl.degree() + 1)
-#            f1 = Function(V1)
-#            f1.interpolate(w[mu2]._fefunc) 
-#            f12 = Function(V2)
-#            f12.interpolate(f1) 
-#            f2 = Function(V2)
-#            f2.interpolate(w[mu2]._fefunc)
-#            err2 = Function(V2, f2.vector() - f12.vector())
-#            aerr = a0_f * inner(nabla_grad(err2), nabla_grad(err2)) * dx
-#            perr = sqrt(assemble(aerr))
-#            logger.info("DEBUG B --- global projection error %s - %s: %s", mu2, mu, perr)
-#            # ---debug
+            #            # debug---
+            #            V1 = w[mu]._fefunc.function_space();
+            #            ufl = V1.ufl_element();
+            #            V2 = FunctionSpace(V1.mesh(), ufl.family(), ufl.degree() + 1)
+            #            f1 = Function(V1)
+            #            f1.interpolate(w[mu2]._fefunc)
+            #            f12 = Function(V2)
+            #            f12.interpolate(f1)
+            #            f2 = Function(V2)
+            #            f2.interpolate(w[mu2]._fefunc)
+            #            err2 = Function(V2, f2.vector() - f12.vector())
+            #            aerr = a0_f * inner(nabla_grad(err2), nabla_grad(err2)) * dx
+            #            perr = sqrt(assemble(aerr))
+            #            logger.info("DEBUG B --- global projection error %s - %s: %s", mu2, mu, perr)
+            #            # ---debug
 
             w_mu2 = w.get_projection(mu2, mu)
             w_mu2_V2 = Function(V2)
