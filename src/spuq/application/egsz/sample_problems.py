@@ -1,6 +1,6 @@
 from __future__ import division
 
-from spuq.application.egsz.coefficient_field import GeneratorCoefficientField
+from spuq.application.egsz.coefficient_field import ParametricCoefficientField
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.math_utils.multiindex_set import MultiindexSet
@@ -100,4 +100,4 @@ class SampleProblem(object):
         else:
             raise TypeError('unsupported function type')
 
-        return GeneratorCoefficientField(a, rvs, a0=a0)
+        return ParametricCoefficientField(a, rvs, a0=a0)

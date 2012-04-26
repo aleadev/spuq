@@ -8,7 +8,7 @@ from spuq.application.egsz.pcg import pcg
 from spuq.application.egsz.multi_operator import PreconditioningOperator
 from spuq.math_utils.multiindex import Multiindex
 try:
-    from dolfin import (Function, FunctionSpace, cells, plot, interactive, interpolate)
+    from dolfin import (Function, FunctionSpace, cells)
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
     from spuq.application.egsz.fem_discretisation import FEMPoisson
@@ -37,7 +37,7 @@ def setup_vec(mesh):
 # refinement loop
 # ===============
 # error constants
-def adaptive_solver(A, coeff_field, f,
+def AdaptiveSolver(A, coeff_field, f,
                     mis, w0, mesh0,
                     gamma=0.9,
                     cQ=1.0,
@@ -147,5 +147,4 @@ def adaptive_solver(A, coeff_field, f,
         refinement, sim_info[refinement][1]["DOFS"], len(sim_info[refinement][0]))
     logger.info("Residuals: %s", R)
     logger.info("Simulation run data: %s", sim_info)
-    return (w, {'res': R})
-
+    return (w, {'res': R, 'sim_info':sim_info})
