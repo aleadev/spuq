@@ -41,12 +41,28 @@ class CoefficientField(object):
     def sample_rvs(self):
         pass
 
+    def sample_realization(self, Delta):
+        def prod(l):
+            p = 1
+            for f in l:
+                if p is None:
+                    p = f
+                else:
+                    p *= f
+            return p
+        RV_samples = self.sample_rvs()
+        sample_map = {}
+        for mu in Delta:
+            sample_map[mu] = prod(self[m + 1][1].orth_polys[mu[m]](RV_samples[m + 1]) for m in range(len(mu)))
+        return sample_map, RV_samples
+
+
 
 class ListCoefficientField(CoefficientField):
     """Expansion of a coefficient field according to EGSZ (1.2)."""
 
     #    @takes(anything, sequence_of(GenericFunction), sequence_of(RandomVariable))
-    @takes(anything, sequence_of(anything), sequence_of(RandomVariable))
+    @takes(anything, anything, sequence_of(anything), sequence_of(RandomVariable))
     def __init__(self, mean_func, funcs, rvs):
         """Initialise with list of functions and list of random variables.
         
@@ -59,12 +75,12 @@ class ListCoefficientField(CoefficientField):
         self._rvs = list(rvs)
 
     @classmethod
-    @takes(anything, sequence_of(GenericFunction), RandomVariable)
+    @takes(anything, anything, sequence_of(anything), RandomVariable)
     def create_with_iid_rvs(cls, mean_func, funcs, rv):
         """Create coefficient field where all expansion terms have the identical random variable."""
         # random variables are stateless, so we can just use the same n times 
         rvs = [rv] * len(funcs)
-        return cls(funcs, rvs)
+        return cls(mean_func, funcs, rvs)
 
     @property
     def mean_func(self):
@@ -87,17 +103,17 @@ class ListCoefficientField(CoefficientField):
         return self._funcs[i], self._rvs[i]
 
     def __repr__(self):
-        return "<%s funcs=%s, rvs=%s>" %\
-               (strclass(self.__class__), self._funcs[1:], self._rvs)
+        return "<%s mean=%s funcs=%s, rvs=%s>" %\
+               (strclass(self.__class__), self.mean_func, self._funcs, self._rvs)
 
     def sample_rvs(self):
         return (float(self._rvs[i].sample(1)) for i in len(self._rvs))
 
 
-class ParametricCoefficientField(ListCoefficientField):
+class ParametricCoefficientField(CoefficientField):
     """Expansion of a coefficient field according to EGSZ (1.2)."""
 
-    @takes(anything, GeneratorType, GeneratorType)
+    @takes(anything, anything, callable, callable)
     def __init__(self, mean_func, func_func, rv_func):
         """Initialise with function and random variable generators.
 
@@ -108,7 +124,7 @@ class ParametricCoefficientField(ListCoefficientField):
         self._rvs = ParametricArray(rv_func)
 
     @classmethod
-    @takes(anything, GeneratorType, RandomVariable)
+    @takes(anything, anything, callable, RandomVariable)
     def create_with_iid_rvs(cls, mean_func, func_func, rv):
         """Create coefficient field where all expansion terms have the identical random variable."""
         # random variables are stateless, so we can just use the same n times
@@ -128,7 +144,9 @@ class ParametricCoefficientField(ListCoefficientField):
 
     def __len__(self):
         """Length of coefficient field expansion."""
-        return infty
+        return sys.maxint
+        # Note: infty doesn't work here because it cannot be converted to
+        # integer (that's what len() does to the value returned from here)
 
     def __getitem__(self, i):
         return self._funcs[i], self._rvs[i]
