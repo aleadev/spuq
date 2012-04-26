@@ -1,30 +1,22 @@
 from __future__ import division
-from functools import partial
-from math import sqrt
 import logging
 import os
-from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 
-from spuq.application.egsz.pcg import pcg
-from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator
+from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
-from spuq.linalg.vector import inner
 try:
-    from dolfin import (Function, FunctionSpace, Constant, Mesh, cells,
-                        UnitSquare, refine, plot, interactive, interpolate)
-    from spuq.application.egsz.marking import Marking
-    from spuq.application.egsz.residual_estimator import ResidualEstimator
+    from dolfin import (Function, FunctionSpace, Constant, UnitSquare, refine,
+                            solve, plot, interactive, errornorm)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import adaptive_solver
     from spuq.fem.fenics.fenics_vector import FEniCSVector
-    from spuq.fem.fenics.fenics_utils import error_norm
-except:
+except Exception, e:
+    import traceback
+    print traceback.format_exc()
     print "FEniCS has to be available"
     os.sys.exit(1)
-
-from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 
 # ------------------------------------------------------------
 
@@ -62,6 +54,7 @@ def setup_vec(mesh):
     vec = FEniCSVector(Function(fs))
     return vec
 
+
 # ============================================================
 # PART A: Problem Setup
 # ============================================================
@@ -88,9 +81,7 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
 mesh0 = UnitSquare(5, 5)
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 
-
 w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
-
 
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
@@ -105,7 +96,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 # PART B: Adaptive Algorithm
 # ============================================================
 
-(w,info) = adaptive_solver(A, coeff_field, f, mis, w0, mesh0,
+(w, info) = adaptive_solver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
     max_refinements=1
@@ -113,42 +104,45 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 
 
 # ============================================================
-# PART C: Plotting and Export of Data
+# PART C: Evaluation of Deterministic Solution and Comparison
 # ============================================================
 
-print w
-
-
-
+# dbg
+print "w:", w
 
 Delta = w.active_indices()
 maxm = max(len(mu) for mu in Delta) + 1
-RV_samples = [0,]
+RV_samples = [0, ]
 for m in range(1, maxm):
-    RV_samples.append( coeff_field[m][1].sample(1))
+    RV_samples.append(float(coeff_field[m][1].sample(1)))
 
 sample_map = {}
 def prod(l):
-    p=1
+    p = 1
     for f in l:
         if p is None:
-            p=f
+            p = f
         else:
-            p*=f
+            p *= f
     return p
 
 for mu in Delta:
-    sample_map[mu] = prod(coeff_field[m+1][1].orth_polys[mu[m]](RV_samples[m+1]) for m in range(len(mu)))
+    sample_map[mu] = prod(coeff_field[m + 1][1].orth_polys[mu[m]](RV_samples[m + 1]) for m in range(len(mu)))
 
-print RV_samples
-print sample_map
+# dbg
+print "RV_samples:", RV_samples
+print "sample_map:", sample_map
 
-from dolfin import refine
+# create reference mesh and function space
+cf_mesh_refinements = 2
 mesh = refine(mesh0)
-for i in range(5):
+for i in range(cf_mesh_refinements):
     mesh = refine(mesh)
 fs = FunctionSpace(mesh, "CG", 1)
 
+# ============== STOCHASTIC SOLUTION ==============
+
+# sum up (stochastic) solution vector on reference function space wrt samples
 sample_sol = None
 vec = FEniCSVector(Function(fs))
 for mu in Delta:
@@ -158,12 +152,41 @@ for mu in Delta:
     else:
         sample_sol += sol
 
-sample_sol.plot(interactive=True)
+# dbg
+#C0 = sample_sol.coeffs
+#fs0 = sample_sol.basis._fefs
+#FS0 = FunctionSpace(fs0.mesh(), "CG", 1)
+#F0 = Function(FS0, C0)
+#F1 = Function(fs0, C0)
+#plot(sample_sol.basis._fefs.mesh())
+#plot(FS0.mesh())
+#plot(F0)
+#plot(F1)
+#interactive()
 
+# ============== DETERMINISTIC SOLUTION ==============
 
-
-a0 = coeff_field
+# sum up coefficient field sample
+a0 = coeff_field[0][0]
 a = a0
 for m in range(1, maxm):
     a_m = RV_samples[m] * coeff_field[m][0]
     a += a_m
+
+A = FEMPoisson.assemble_lhs(a, vec.basis)
+b = FEMPoisson.assemble_rhs(Constant("1.0"), vec.basis)
+X = 0 * b
+solve(A, X, b)
+sample_sol_det = FEniCSVector(Function(vec.basis._fefs, X))
+
+# evaluate errors
+print "ERRORS: L2 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "L2"), \
+            "  H1 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "H1") 
+sample_sol_err = sample_sol - sample_sol_det
+sample_sol_err.coeffs = sample_sol_err.coeffs
+sample_sol_err.coeffs.abs()
+
+# plotting
+sample_sol.plot(interactive=False, title="stochastic solution")
+sample_sol_det.plot(interactive=False, title="deterministic solution")
+sample_sol_err.plot(interactive=True, title="error")

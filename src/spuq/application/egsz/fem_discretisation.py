@@ -31,16 +31,17 @@ class FEMPoisson(FEMDiscretisation):
         return FEniCSSolveOperator(matrix, basis)
 
     @classmethod
-    def assemble_lhs(cls, coeff, basis):
+    def assemble_lhs(cls, coeff, basis, uD=None):
         """Assemble the discrete problem (i.e. the stiffness matrix)."""
         # get FEniCS function space
         V = basis._fefs
 
         # define boundary conditions
-        def u0_boundary(x, on_boundary):
+        def uD_boundary(x, on_boundary):
             return on_boundary
-        u0 = Constant(0.0)
-        bc = DirichletBC(V, u0, u0_boundary)
+        if uD is None:
+            uD = Constant(0.0)
+        bc = DirichletBC(V, uD, uD_boundary)
 
         # setup problem, assemble and apply boundary conditions
         u = TrialFunction(V)
@@ -51,17 +52,18 @@ class FEMPoisson(FEMDiscretisation):
         return A
 
     @classmethod
-    def assemble_rhs(cls, f, basis):
+    def assemble_rhs(cls, f, basis, uD=None):
         """Assemble the discrete right-hand side."""
 
         # get FEniCS function space
         V = basis._fefs
 
         # define boundary conditions
-        def u0_boundary(x, on_boundary):
+        def uD_boundary(x, on_boundary):
             return on_boundary
-        u0 = Constant(0.0)
-        bc = DirichletBC(V, u0, u0_boundary)
+        if uD is None:
+            uD = Constant(0.0)
+        bc = DirichletBC(V, uD, uD_boundary)
 
         # assemble and apply boundary conditions
         v = TestFunction(V)
