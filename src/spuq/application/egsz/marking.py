@@ -139,7 +139,7 @@ class Marking(object):
         # new multiindex activation
         # =========================
         # determine possible new indices
-        a0_f, _ = coeff_field[0]
+        a0_f = coeff_field.mean_func
         Ldelta = {}
         Delta = w.active_indices()
         deltaN = int(ceil(0.1 * len(Delta)))                    # max number new multiindices
@@ -160,10 +160,10 @@ class Marking(object):
             f.interpolate(a0_f)
             min_a0 = min(f.vector().array())
             # iterate multiindex extensions
-            for m in count(1):
+            for m in count():
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
-                    if m > maxm or m >= len(coeff_field):     # or len(Ldelta) >= deltaN
+                    if m >= maxm or m >= len(coeff_field):     # or len(Ldelta) >= deltaN
                         break
                     am_f, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(1)

@@ -26,11 +26,11 @@ class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials."""
 
     @takes(anything, CoefficientField, callable, optional(Basis), optional(Basis))
-    def __init__(self, CF, assemble, domain=None, codomain=None):
+    def __init__(self, coeff_field, assemble, domain=None, codomain=None):
         """Initialise discrete operator with FEM discretisation and
         coefficient field of the diffusion coefficient"""
         self._assemble = assemble
-        self._CF = CF
+        self._coeff_field = coeff_field
         self._domain = domain
         self._codomain = codomain
 
@@ -40,37 +40,38 @@ class MultiOperator(Operator):
 
         v = 0 * w
         Delta = w.active_indices()
-        maxm = max(len(mu) for mu in Delta) + 1
-        if len(self._CF) < maxm:
-            logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i", len(self._CF),
+        maxm = w.max_order
+        if len(self._coeff_field) < maxm:
+            logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i",
+                len(self._coeff_field),
                 maxm)
-            maxm = len(self._CF)
-        #        assert self._CF.length >= maxm        # ensure CF expansion is sufficiently long
+            maxm = len(self._coeff_field)
+            #        assert self._coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
         for mu in Delta:
             logger.debug("apply on mu = %s", str(mu))
             # deterministic part
-            a0_f, _ = self._CF[0]
+            a0_f = self._coeff_field.mean_func
             A0 = self._assemble(a0_f, w[mu].basis)
             v[mu] = A0 * w[mu]
-            for m in range(1, maxm):
+            for m in range(maxm):
                 logger.debug("with m = %i", m)
                 # assemble A for \mu and a_m
-                am_f, am_rv = self._CF[m]
+                am_f, am_rv = self._coeff_field[m]
                 Am = self._assemble(am_f, w[mu].basis)
 
                 # prepare polynom coefficients
-                beta = am_rv.orth_polys.get_beta(mu[m - 1])
+                beta = am_rv.orth_polys.get_beta(mu[m])
 
                 # mu
                 cur_w = -beta[0] * w[mu]
 
                 # mu+1
-                mu1 = mu.inc(m - 1)
+                mu1 = mu.inc(m)
                 if mu1 in Delta:
                     cur_w += beta[1] * w.get_projection(mu1, mu)
 
                 # mu-1
-                mu2 = mu.dec(m - 1)
+                mu2 = mu.dec(m)
                 if mu2 in Delta:
                     cur_w += beta[-1] * w.get_projection(mu2, mu)
 

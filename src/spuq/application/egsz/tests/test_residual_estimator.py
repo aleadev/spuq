@@ -60,7 +60,7 @@ def test_estimator():
     a = [Expression('2.+sin(20.*pi*I*x[0]*x[1])', I=i, degree=3, element=fs.ufl_element())
          for i in range(1, aN)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
-    coeff_field = ListCoefficientField(a, rvs)
+    coeff_field = ListCoefficientField(a[0], a[1:], rvs)
 
     # define source term
     f = Constant("1.0")

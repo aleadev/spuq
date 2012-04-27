@@ -38,9 +38,10 @@ def diag_assemble(func, basis):
 
 
 def test_init():
-    a = [ConstFunction(1.0), SimpleFunction(np.sin), SimpleFunction(np.cos)]
+    mean_func = ConstFunction(1.0)
+    a = [SimpleFunction(np.sin), SimpleFunction(np.cos)]
     rvs = [UniformRV(), NormalRV()]
-    coeff_field = ListCoefficientField(a, rvs)
+    coeff_field = ListCoefficientField(mean_func, a, rvs)
 
     MultiOperator(coeff_field, diag_assemble)
     assert_raises(TypeError, MultiOperator, 3, diag_assemble)
@@ -56,9 +57,10 @@ def test_init():
 def test_apply():
     N = 4
     #a = [ConstFunction(1.0), SimpleFunction(np.sin), SimpleFunction(np.cos)]
-    a = [ConstFunction(2.0), ConstFunction(3.0), ConstFunction(4.0)]
+    mean_func = ConstFunction(2.0)
+    a = [ConstFunction(3.0), ConstFunction(4.0)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
-    coeff_field = ListCoefficientField(a, rvs)
+    coeff_field = ListCoefficientField(mean_func, a, rvs)
 
     A = MultiOperator(coeff_field, diag_assemble)
     mis = [Multiindex([0]),
@@ -93,9 +95,10 @@ def test_fenics_vector():
     def mult_assemble(a, basis):
         return MultiplicationOperator(a(0), basis)
 
-    a = [ConstFunction(2), ConstFunction(3), ConstFunction(4)]
+    mean_func = ConstFunction(2)
+    a = [ConstFunction(3), ConstFunction(4)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
-    coeff_field = ListCoefficientField(a, rvs)
+    coeff_field = ListCoefficientField(mean_func, a, rvs)
 
     A = MultiOperator(coeff_field, mult_assemble)
     mis = [Multiindex([0]),
@@ -154,7 +157,7 @@ def test_fenics_vector():
 def test_fenics_with_assembly():
     a = [Expression('A*sin(pi*I*x[0]*x[1])', A=1, I=i, degree=2) for i in range(1, 4)]
     rvs = [UniformRV(), NormalRV(mu=0.5)]
-    coeff_field = ListCoefficientField(a, rvs)
+    coeff_field = ListCoefficientField(a[0], a[1:], rvs)
 
     A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
     mis = [Multiindex([0]),

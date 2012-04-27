@@ -68,19 +68,19 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVectorWithProjection, CoefficientField, anything)
-    def evaluateResidualEstimator(cls, w, CF, f):
+    def evaluateResidualEstimator(cls, w, coeff_field, f):
         """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
         # evaluate residual estimator for all multi indices
         eta = MultiVector()
         global_error = {}
         for mu in w.active_indices():
-            eta[mu], global_error[mu] = cls._evaluateResidualEstimator(mu, w, CF, f)
+            eta[mu], global_error[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, f)
         return (eta, global_error)
 
 
     @classmethod
     @takes(anything, Multiindex, MultiVectorWithProjection, CoefficientField, anything)
-    def _evaluateResidualEstimator(cls, mu, w, CF, f):
+    def _evaluateResidualEstimator(cls, mu, w, coeff_field, f):
         """Evaluate the residual error according to EGSZ (5.7) which consists of volume terms (5.3) and jump terms (5.5).
 
             .. math:: \eta_{\mu,T}(w_N) &:= h_T || \overline{a}^{-1/2} (f\delta_{\mu,0} + \nabla\overline{a}\cdot\nabla w_{N,\mu}
@@ -91,7 +91,7 @@ class ResidualEstimator(object):
                                   + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m})\cdot\nu] ||_{L^2(S)}\\
         """
         # get mean field of coefficient
-        a0_f, _ = CF[0]
+        a0_f = coeff_field.mean_func
 
         # prepare some FEM variables
         V = w[mu]._fefunc.function_space()
@@ -106,28 +106,28 @@ class ResidualEstimator(object):
 
         # iterate m
         Delta = w.active_indices()
-        maxm = max(len(mu) for mu in Delta) + 1
-        if len(CF) < maxm:
-            logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", len(CF), maxm)
-            maxm = len(CF)
-        #        assert CF.length >= maxm        # ensure CF expansion is sufficiently long
-        for m in range(1, maxm):
-            am_f, am_rv = CF[m]
+        maxm = w.max_order()
+        if len(coeff_field) < maxm:
+            logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", len(coeff_field), maxm)
+            maxm = len(coeff_field)
+            #        assert coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
+        for m in range(maxm):
+            am_f, am_rv = coeff_field[m]
 
             # prepare polynom coefficients
-            beta = am_rv.orth_polys.get_beta(mu[m - 1])
+            beta = am_rv.orth_polys.get_beta(mu[m])
 
             # mu
             res = -beta[0] * w[mu]
 
             # mu+1
-            mu1 = mu.inc(m - 1)
+            mu1 = mu.inc(m)
             if mu1 in Delta:
                 w_mu1 = w.get_projection(mu1, mu)
                 res += beta[1] * w_mu1
 
             # mu-1
-            mu2 = mu.dec(m - 1)
+            mu2 = mu.dec(m)
             if mu2 in Delta:
                 w_mu2 = w.get_projection(mu2, mu)
                 res += beta[-1] * w_mu2
@@ -161,7 +161,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool))
-    def evaluateProjectionError(cls, w, CF, maxh=0.0, local=True):
+    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -184,10 +184,11 @@ class ResidualEstimator(object):
         if len(Delta) > 1:
             for mu in Delta:
                 maxm = max(len(mu) for mu in Delta) + 1
-                if len(CF) < maxm:
-                    logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", len(CF), maxm)
-                    maxm = len(CF)
-                dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, CF, Delta, maxh, local)
+                if len(coeff_field) < maxm:
+                    logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)",
+                        len(coeff_field), maxm)
+                    maxm = len(coeff_field)
+                dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Delta, maxh, local)
                     for m in range(1, maxm))
                 if local:
                     proj_error[mu] = FlatVector(dmu)
@@ -208,7 +209,7 @@ class ResidualEstimator(object):
     @classmethod
     @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
         optional(bool))
-    def evaluateLocalProjectionError(cls, w, mu, m, CF, Delta, maxh=0.0, local=True):
+    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Delta, maxh=0.0, local=True):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -219,8 +220,8 @@ class ResidualEstimator(object):
         """
 
         # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
-        a0_f, _ = CF[0]
-        am_f, _ = CF[m]
+        a0_f = coeff_field.mean_func
+        am_f, _ = coeff_field[m]
         # create discretisation space
         V = w[mu]._fefunc.function_space()
         ufl = V.ufl_element()
@@ -250,11 +251,11 @@ class ResidualEstimator(object):
             s = Constant('1.0')
 
         # prepare polynom coefficients
-        _, am_rv = CF[m]
-        beta = am_rv.orth_polys.get_beta(mu[m - 1])
+        _, am_rv = coeff_field[m]
+        beta = am_rv.orth_polys.get_beta(mu[m])
 
         # mu+1
-        mu1 = mu.inc(m - 1)
+        mu1 = mu.inc(m)
         if mu1 in Delta:
             logger.debug("[LPE-A] local projection error for mu = %s with %s", mu, mu1)
 
@@ -297,7 +298,7 @@ class ResidualEstimator(object):
                 zeta1 = 0
 
         # mu -1
-        mu2 = mu.dec(m - 1)
+        mu2 = mu.dec(m)
         if mu2 in Delta:
             logger.debug("[LPE-B] local projection error for mu = %s with %s", mu, mu2)
 

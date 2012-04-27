@@ -6,14 +6,16 @@ from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
+
 try:
     from dolfin import (Function, FunctionSpace, Constant, UnitSquare, refine,
-                            solve, plot, interactive, errornorm)
+                        solve, plot, interactive, errornorm)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except Exception, e:
     import traceback
+
     print traceback.format_exc()
     print "FEniCS has to be available"
     os.sys.exit(1)
@@ -25,7 +27,7 @@ except Exception, e:
 LOG_LEVEL = logging.INFO
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
-                    format=log_format)
+    format=log_format)
 fenics_logger = logging.getLogger("FFC")
 fenics_logger.setLevel(logging.WARNING)
 fenics_logger = logging.getLogger("UFL")
@@ -66,7 +68,7 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
-refinement = {"RES":True, "PROJ":True, "MI":False}
+refinement = {"RES": True, "PROJ": True, "MI": False}
 uniform_refinement = False
 
 # define source term and diffusion coefficient
@@ -79,14 +81,14 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
 # setup meshes
 #mesh0 = refine(Mesh(lshape_xml))
 mesh0 = UnitSquare(5, 5)
-meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
+meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine": 0})
 
 w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
 
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square", {"exp":4})
+coeff_field = SampleProblem.setupCF("EF-square", {"exp": 4})
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -97,9 +99,9 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 # ============================================================
 
 (w, info) = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
-                           do_refinement=refinement,
-                           do_uniform_refinement=uniform_refinement,
-                           max_refinements=1)
+    do_refinement=refinement,
+    do_uniform_refinement=uniform_refinement,
+    max_refinements=1)
 
 
 # ============================================================
@@ -110,7 +112,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 print "w:", w
 
 Delta = w.active_indices()
-maxm = max(len(mu) for mu in Delta) + 1
+maxm = w.max_order()
 
 # get realization of coefficient field
 sample_map, RV_samples = coeff_field.sample_realization(Delta)
@@ -153,9 +155,9 @@ for mu in Delta:
 # ============== DETERMINISTIC SOLUTION ==============
 
 # sum up coefficient field sample
-a0 = coeff_field[0][0]
+a0 = coeff_field.mean_func
 a = a0
-for m in range(1, maxm):
+for m in range(maxm):
     a_m = RV_samples[m] * coeff_field[m][0]
     a += a_m
 
@@ -166,8 +168,8 @@ solve(A, X, b)
 sample_sol_det = FEniCSVector(Function(vec.basis._fefs, X))
 
 # evaluate errors
-print "ERRORS: L2 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "L2"), \
-            "  H1 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "H1") 
+print "ERRORS: L2 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "L2"),\
+"  H1 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "H1")
 sample_sol_err = sample_sol - sample_sol_det
 sample_sol_err.coeffs = sample_sol_err.coeffs
 sample_sol_err.coeffs.abs()
