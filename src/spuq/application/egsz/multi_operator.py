@@ -43,8 +43,7 @@ class MultiOperator(Operator):
         maxm = w.max_order
         if len(self._coeff_field) < maxm:
             logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i",
-                len(self._coeff_field),
-                maxm)
+                len(self._coeff_field), maxm)
             maxm = len(self._coeff_field)
             #        assert self._coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
         for mu in Delta:

@@ -2,12 +2,9 @@
 
 import sys
 from types import GeneratorType
-from itertools import count
-from numpy import infty
 
 from spuq.utils.type_check import takes, anything, sequence_of
-from spuq.linalg.function import GenericFunction
-from spuq.stochastics.random_variable import RandomVariable, DeterministicPseudoRV
+from spuq.stochastics.random_variable import RandomVariable
 from spuq.utils import strclass
 from spuq.utils.parametric_array import ParametricArray
 from abc import ABCMeta, abstractmethod, abstractproperty
@@ -103,7 +100,7 @@ class ListCoefficientField(CoefficientField):
         return self._funcs[i], self._rvs[i]
 
     def __repr__(self):
-        return "<%s mean=%s funcs=%s, rvs=%s>" %\
+        return "<%s mean=%s funcs=%s, rvs=%s>" % \
                (strclass(self.__class__), self.mean_func, self._funcs, self._rvs)
 
     def sample_rvs(self):
@@ -113,7 +110,7 @@ class ListCoefficientField(CoefficientField):
 class ParametricCoefficientField(CoefficientField):
     """Expansion of a coefficient field according to EGSZ (1.2)."""
 
-    @takes(anything, anything, callable, callable)
+    @takes(anything, anything, (callable, GeneratorType), (callable, GeneratorType))
     def __init__(self, mean_func, func_func, rv_func):
         """Initialise with function and random variable generators.
 

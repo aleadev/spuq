@@ -112,7 +112,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 print "w:", w
 
 Delta = w.active_indices()
-maxm = w.max_order()
+maxm = w.max_order
 
 # get realization of coefficient field
 sample_map, RV_samples = coeff_field.sample_realization(Delta)
@@ -168,7 +168,7 @@ solve(A, X, b)
 sample_sol_det = FEniCSVector(Function(vec.basis._fefs, X))
 
 # evaluate errors
-print "ERRORS: L2 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "L2"),\
+print "ERRORS: L2 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "L2"), \
 "  H1 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "H1")
 sample_sol_err = sample_sol - sample_sol_det
 sample_sol_err.coeffs = sample_sol_err.coeffs

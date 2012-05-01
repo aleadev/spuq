@@ -4,13 +4,14 @@ from spuq.application.egsz.coefficient_field import ParametricCoefficientField
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.math_utils.multiindex_set import MultiindexSet
+from spuq.utils.parametric_array import ParametricArray
 from spuq.utils.type_check import takes, anything, optional
 
-from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement, Constant
+from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement
 import ufl
 from itertools import count
 from exceptions import KeyError, NameError
-from numpy import array, random
+from numpy import random
 from math import ceil
 
 class SampleProblem(object):
@@ -69,7 +70,7 @@ class SampleProblem(object):
         a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
         # random variables
         #        rvs = (NormalRV(mu=0.5) for _ in count())
-        rvs = (UniformRV().scale(0.5) for _ in count())
+        rvs = lambda _: UniformRV().scale(0.5)
 
         if cftype == "EF-square":
             # eigenfunctions on unit square
@@ -100,4 +101,4 @@ class SampleProblem(object):
         else:
             raise TypeError('unsupported function type')
 
-        return ParametricCoefficientField(a, rvs, a0=a0)
+        return ParametricCoefficientField(a0, a, rvs)

@@ -106,7 +106,7 @@ class ResidualEstimator(object):
 
         # iterate m
         Delta = w.active_indices()
-        maxm = w.max_order()
+        maxm = w.max_order
         if len(coeff_field) < maxm:
             logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", len(coeff_field), maxm)
             maxm = len(coeff_field)
