@@ -4,6 +4,8 @@ from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import takes, anything, optional
 from spuq.utils import strclass
 
+from collections import defaultdict
+
 __all__ = ["MultiVector", "MultiVectorWithProjection"]
 
 class MultiVector(Vector):
@@ -112,7 +114,7 @@ class MultiVectorWithProjection(MultiVector):
         if not project:
             project = MultiVectorWithProjection.default_project
         self.project = project
-        self._proj_cache = {}               # NOTE: WeakValueDictionary is not appropriate for this type of cache
+        self._proj_cache = {}
         self._back_cache = {}
 
     @staticmethod

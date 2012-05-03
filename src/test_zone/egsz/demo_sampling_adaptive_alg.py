@@ -81,14 +81,14 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
 # setup meshes
 #mesh0 = refine(Mesh(lshape_xml))
 mesh0 = UnitSquare(5, 5)
-meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine": 0})
+meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine": 3})
 
 w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
 
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square", {"exp": 4})
+coeff_field = SampleProblem.setupCF("EF-square", {"exp": 2, "amp": 1})
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -140,6 +140,10 @@ for mu in Delta:
     else:
         sample_sol += sol
 
+# store stochastic part of solution
+sample_sol_stochastic = sample_sol - w.project(w[Multiindex()], vec) * sample_map[Multiindex()]
+
+
 # dbg
 #C0 = sample_sol.coeffs
 #fs0 = sample_sol.basis._fefs
@@ -176,5 +180,6 @@ sample_sol_err.coeffs.abs()
 
 # plotting
 sample_sol.plot(interactive=False, title="stochastic solution")
+sample_sol_stochastic.plot(interactive=False, title="stochastic part of solution")
 sample_sol_det.plot(interactive=False, title="deterministic solution")
 sample_sol_err.plot(interactive=True, title="error")
