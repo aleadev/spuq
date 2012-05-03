@@ -88,7 +88,7 @@ w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square", {"exp": 2, "amp": 1})
+coeff_field = SampleProblem.setupCF("EF-square", {"exp": 2, "amp": 0.1})
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -102,6 +102,8 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
     max_refinements=1)
+
+coeff_field = SampleProblem.setupCF("EF-square", {"exp": 2, "amp": 10})
 
 
 # ============================================================
@@ -131,17 +133,17 @@ fs = FunctionSpace(mesh, "CG", 1)
 # ============== STOCHASTIC SOLUTION ==============
 
 # sum up (stochastic) solution vector on reference function space wrt samples
-sample_sol = None
+sample_sol_param = None
 vec = FEniCSVector(Function(fs))
 for mu in Delta:
     sol = w.project(w[mu], vec) * sample_map[mu]
-    if sample_sol is None:
-        sample_sol = sol
+    if sample_sol_param is None:
+        sample_sol_param = sol
     else:
-        sample_sol += sol
+        sample_sol_param += sol
 
 # store stochastic part of solution
-sample_sol_stochastic = sample_sol - w.project(w[Multiindex()], vec) * sample_map[Multiindex()]
+sample_sol_stochastic = sample_sol_param - w.project(w[Multiindex()], vec) * sample_map[Multiindex()]
 
 
 # dbg
@@ -169,17 +171,17 @@ A = FEMPoisson.assemble_lhs(a, vec.basis)
 b = FEMPoisson.assemble_rhs(Constant("1.0"), vec.basis)
 X = 0 * b
 solve(A, X, b)
-sample_sol_det = FEniCSVector(Function(vec.basis._fefs, X))
+sample_sol_direct = FEniCSVector(Function(vec.basis._fefs, X))
 
 # evaluate errors
-print "ERRORS: L2 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "L2"), \
-"  H1 =", errornorm(sample_sol._fefunc, sample_sol_det._fefunc, "H1")
-sample_sol_err = sample_sol - sample_sol_det
+print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"),\
+"  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+sample_sol_err = sample_sol_param - sample_sol_direct
 sample_sol_err.coeffs = sample_sol_err.coeffs
 sample_sol_err.coeffs.abs()
 
 # plotting
-sample_sol.plot(interactive=False, title="stochastic solution")
+sample_sol_param.plot(interactive=False, title="parametric solution")
 sample_sol_stochastic.plot(interactive=False, title="stochastic part of solution")
-sample_sol_det.plot(interactive=False, title="deterministic solution")
+sample_sol_direct.plot(interactive=False, title="direct solution")
 sample_sol_err.plot(interactive=True, title="error")
