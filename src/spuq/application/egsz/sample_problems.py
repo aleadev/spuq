@@ -67,21 +67,29 @@ class SampleProblem(object):
         except:
             k = 2
         try:    # amplitude
-            amp_val = params["amp"] 
+            amp_val = params["amp"]
+
             def amp(i):
                 if i > 0:
                     return amp_val
                 else:
-                    return 1 
+                    return 1
         except:
             amp = lambda _: 1
-        # mean value
+            # mean value
         a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
         # random variables
         #        rvs = (NormalRV(mu=0.5) for _ in count())
         rvs = lambda _: UniformRV().scale(0.5)
 
-        if cftype == "EF-square":
+        if cftype == "EF-square-cos":
+            # eigenfunctions on unit square
+            mis = MultiindexSet.createCompleteOrderSet(2)
+            a = (Expression('A*cos(pi*m*x[0])*cos(pi*n*x[1])', A=amp(int(i)) / (int(i) + 2) ** k, m=int(mu[0]),
+                n=int(mu[1]), degree=2,
+                #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
+                element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
+        elif cftype == "EF-square-sin":
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
             a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=amp(int(i)) / (int(i) + 2) ** k, m=int(mu[0]) + 1,

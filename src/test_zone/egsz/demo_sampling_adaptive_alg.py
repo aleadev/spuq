@@ -88,7 +88,7 @@ w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square", {"exp": 2, "amp": 0.1})
+coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 0.10})
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -104,7 +104,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
     max_refinements=1,
     pcg_eps=1e-4)
 
-coeff_field = SampleProblem.setupCF("EF-square", {"exp": 2, "amp": 10})
+coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 10})
 
 
 # ============================================================
@@ -153,6 +153,9 @@ sample_sol_stochastic = sample_sol_param - w.project(w[Multiindex()], vec) * sam
 a0 = coeff_field.mean_func
 a = a0
 for m in range(maxm):
+    if m == 1:
+        continue
+    print m, RV_samples[m], coeff_field[m][0]
     a_m = RV_samples[m] * coeff_field[m][0]
     a += a_m
 
@@ -163,7 +166,7 @@ solve(A, X, b)
 sample_sol_direct = FEniCSVector(Function(vec.basis._fefs, X))
 
 # evaluate errors
-print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
+print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"),\
 "  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
 sample_sol_err = sample_sol_param - sample_sol_direct
 sample_sol_err.coeffs = sample_sol_err.coeffs
