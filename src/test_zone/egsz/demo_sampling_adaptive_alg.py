@@ -9,7 +9,7 @@ from spuq.math_utils.multiindex_set import MultiindexSet
 
 try:
     from dolfin import (Function, FunctionSpace, Constant, UnitSquare, refine,
-                        solve, plot, interactive, errornorm)
+                        solve, plot, interactive, project, errornorm)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver
     from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -76,7 +76,7 @@ uniform_refinement = False
 f = Constant("1.0")
 
 # define initial multiindices
-mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
+mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 4)]
 
 # setup meshes
 #mesh0 = refine(Mesh(lshape_xml))
@@ -101,7 +101,8 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 (w, info) = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
-    max_refinements=1)
+    max_refinements=1,
+    pcg_eps=1e-4)
 
 coeff_field = SampleProblem.setupCF("EF-square", {"exp": 2, "amp": 10})
 
@@ -146,18 +147,6 @@ for mu in Delta:
 sample_sol_stochastic = sample_sol_param - w.project(w[Multiindex()], vec) * sample_map[Multiindex()]
 
 
-# dbg
-#C0 = sample_sol.coeffs
-#fs0 = sample_sol.basis._fefs
-#FS0 = FunctionSpace(fs0.mesh(), "CG", 1)
-#F0 = Function(FS0, C0)
-#F1 = Function(fs0, C0)
-#plot(sample_sol.basis._fefs.mesh())
-#plot(FS0.mesh())
-#plot(F0)
-#plot(F1)
-#interactive()
-
 # ============== DETERMINISTIC SOLUTION ==============
 
 # sum up coefficient field sample
@@ -174,13 +163,16 @@ solve(A, X, b)
 sample_sol_direct = FEniCSVector(Function(vec.basis._fefs, X))
 
 # evaluate errors
-print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"),\
+print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
 "  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
 sample_sol_err = sample_sol_param - sample_sol_direct
 sample_sol_err.coeffs = sample_sol_err.coeffs
 sample_sol_err.coeffs.abs()
 
 # plotting
+a_func = project(a, fs)
+a_vec = FEniCSVector(a_func)
+a_vec.plot(interactive=False, title="coefficient field")
 sample_sol_param.plot(interactive=False, title="parametric solution")
 sample_sol_stochastic.plot(interactive=False, title="stochastic part of solution")
 sample_sol_direct.plot(interactive=False, title="direct solution")

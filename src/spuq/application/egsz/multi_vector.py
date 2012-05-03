@@ -114,7 +114,7 @@ class MultiVectorWithProjection(MultiVector):
         if not project:
             project = MultiVectorWithProjection.default_project
         self.project = project
-        self._proj_cache = {}
+        self._proj_cache = defaultdict(dict)
         self._back_cache = {}
 
     @staticmethod

@@ -67,9 +67,14 @@ class SampleProblem(object):
         except:
             k = 2
         try:    # amplitude
-            amp = params["amp"]
+            amp_val = params["amp"] 
+            def amp(i):
+                if i > 0:
+                    return amp_val
+                else:
+                    return 1 
         except:
-            amp = 1
+            amp = lambda _: 1
         # mean value
         a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
         # random variables
@@ -79,7 +84,7 @@ class SampleProblem(object):
         if cftype == "EF-square":
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
-            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=amp / (int(i) + 2) ** k, m=int(mu[0]) + 1,
+            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=amp(int(i)) / (int(i) + 2) ** k, m=int(mu[0]) + 1,
                 n=int(mu[1]) + 1, degree=2,
                 #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
@@ -88,20 +93,20 @@ class SampleProblem(object):
             mis = MultiindexSet.createCompleteOrderSet(2)
             p_str = lambda A, m, n: str(A) * "*" + "*".join(["x[0]" for _ in range(m)]) + "+" + "*".join(
                 ["x[1]" for _ in range(n)])
-            pex = lambda i, mn: Expression(p_str(amp / (int(i) + 2) ** k, mn[0], mn[1]), degree=2,
+            pex = lambda i, mn: Expression(p_str(amp(int(i)) / (int(i) + 2) ** k, mn[0], mn[1]), degree=2,
                 element=FiniteElement('Lagrange', ufl.triangle, 1))
             a = (pex(i, mn) for i, mn in enumerate(mis))
         elif cftype == "linear":
             # linear functions
-            a = (Expression("A*(x[0]+x[1])", A=amp / (int(i) + 2) ** k,
+            a = (Expression("A*(x[0]+x[1])", A=amp(int(i)) / (int(i) + 2) ** k,
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "constant":
             # constant functions
-            a = (Expression(str(amp / (int(i) + 2) ** k),
+            a = (Expression(str(amp(int(i)) / (int(i) + 2) ** k),
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "zero":
             # zero functions
-            a = (Expression("0.0", element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
+            a = (Expression("0.0", element=FiniteElement('Lagrange', ufl.triangle, 1)) for _ in count())
         else:
             raise TypeError('unsupported function type')
 
