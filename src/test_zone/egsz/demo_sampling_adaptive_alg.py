@@ -88,7 +88,7 @@ w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 0.10})
+coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 0.40})
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -104,7 +104,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
     max_refinements=1,
     pcg_eps=1e-4)
 
-coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 10})
+#coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 10})
 
 
 # ============================================================
@@ -153,9 +153,9 @@ sample_sol_stochastic = sample_sol_param - w.project(w[Multiindex()], vec) * sam
 a0 = coeff_field.mean_func
 a = a0
 for m in range(maxm):
-    if m == 1:
+    if m == 10:
         continue
-    print m, RV_samples[m], coeff_field[m][0]
+    print m, RV_samples[m], coeff_field[m][0].cppcode, coeff_field[m][0].A, coeff_field[m][0].m, coeff_field[m][0].n
     a_m = RV_samples[m] * coeff_field[m][0]
     a += a_m
 
