@@ -183,13 +183,13 @@ class ResidualEstimator(object):
         Delta = w.active_indices()
         if len(Delta) > 1:
             for mu in Delta:
-                maxm = max(len(mu) for mu in Delta) + 1
+                maxm = w.max_order
                 if len(coeff_field) < maxm:
                     logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)",
                         len(coeff_field), maxm)
                     maxm = len(coeff_field)
                 dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Delta, maxh, local)
-                    for m in range(1, maxm))
+                    for m in range(maxm))
                 if local:
                     proj_error[mu] = FlatVector(dmu)
                     global_error[mu] = sqrt(sum([e ** 2 for e in dmu]))

@@ -123,7 +123,7 @@ def test_estimator_refinement():
     a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
     #    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
     a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
-        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
+        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
     rvs = (NormalRV(mu=0.5) for _ in count())
     coeff_field = GeneratorCoefficientField(a, rvs, a0=a0)
 
@@ -194,13 +194,13 @@ def test_estimator_refinement():
         # determine possible new indices
         theta_delta = 0.9
         maxm = 10
-        a0_f, _ = coeff_field[0]
+        a0_f = coeff_field.mean_func
         Ldelta = {}
         Delta = w.active_indices()
         deltaN = int(ceil(0.1 * len(Delta)))               # max number new multiindices
         for mu in Delta:
             norm_w = norm(w[mu].coeffs, 'L2')
-            for m in count(1):
+            for m in count():
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
                     if m > maxm or m >= coeff_field.length:  # or len(Ldelta) >= deltaN
@@ -297,7 +297,7 @@ def test_marking():
     a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
     #    a = [Expression('2.+sin(2.*pi*I*x[0]+x[1]) + 10.*exp(-pow(I*(x[0] - 0.6)*(x[1] - 0.3), 2) / 0.02)', I=i, degree=3,
     a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
-        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count(1))
+        element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
     rvs = (NormalRV(mu=0.5) for _ in count())
     coeff_field = GeneratorCoefficientField(a, rvs, a0=a0)
 

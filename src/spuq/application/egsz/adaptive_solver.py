@@ -57,7 +57,7 @@ def AdaptiveSolver(A, coeff_field, f,
                     max_refinements=7,
                     do_refinement={"RES":True, "PROJ":True, "MI":False},
                     do_uniform_refinement=False):
-    a0, _ = coeff_field[0]
+    a0 = coeff_field.mean_func
     w = w0
     # data collection
     sim_info = {}
