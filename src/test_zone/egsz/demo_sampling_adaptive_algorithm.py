@@ -76,7 +76,7 @@ uniform_refinement = False
 f = Constant("1.0")
 
 # define initial multiindices
-mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 4)]
+mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
 
 # setup meshes
 #mesh0 = refine(Mesh(lshape_xml))
@@ -101,7 +101,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 (w, info) = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
-    max_refinements=1,
+    max_refinements=0,
     pcg_eps=1e-4)
 
 #coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 10})
@@ -166,7 +166,7 @@ solve(A, X, b)
 sample_sol_direct = FEniCSVector(Function(vec.basis._fefs, X))
 
 # evaluate errors
-print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"),\
+print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
 "  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
 sample_sol_err = sample_sol_param - sample_sol_direct
 sample_sol_err.coeffs = sample_sol_err.coeffs
