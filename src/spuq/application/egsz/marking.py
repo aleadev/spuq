@@ -11,13 +11,13 @@ from math import ceil
 from operator import itemgetter
 from collections import defaultdict
 from itertools import count
-from math import sqrt
-from dolfin import Function, FunctionSpace, inner, nabla_grad, dx, assemble, refine
 
 from spuq.application.egsz.residual_estimator import ResidualEstimator
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.utils.type_check import takes, anything, optional, sequence_of
+from spuq.fem.fenics.fenics_utils import weighted_H1_norm
+from spuq.fem.fenics.fenics_vector import FEniCSVector
+from spuq.utils.type_check import takes, anything, optional
 
 import logging
 
@@ -41,7 +41,7 @@ class Marking(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float))
-    def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10):
+    def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10, projection_degree_increase):
         """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
         #        # testing -->
         #        if logger.isEnabledFor(logging.DEBUG):
@@ -53,7 +53,7 @@ class Marking(object):
         # evaluate residual estimator
         resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         # evaluate projection errors
-        projind, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
+        projind, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, projection_degree_increase)
         # mark
         return cls.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
 
@@ -145,20 +145,13 @@ class Marking(object):
         deltaN = int(ceil(0.1 * len(Delta)))                    # max number new multiindices
         for mu in Delta:
             # evaluate energy norm of w[mu]
-            norm_w = assemble(a0_f * inner(nabla_grad(w[mu]._fefunc), nabla_grad(w[mu]._fefunc)) * dx)
-            norm_w = sqrt(norm_w)
-            # determine (sufficiently fine) function space for maximum norm evaluation
-            V = w[mu]._fefunc.function_space()
-            ufl = V.ufl_element()
-            coeff_mesh = V.mesh()
-            while maxh > 0 and coeff_mesh.hmax() > maxh:
-            #                logger.debug("refining coefficient mesh for new multiindex projection error evaluation")
-                coeff_mesh = refine(coeff_mesh)
-            V = FunctionSpace(coeff_mesh, ufl.family(), ufl.degree())
+            norm_w = weighted_H1_norm(a0_f, w[mu])
+            # retrieve (sufficiently fine) function space for maximum norm evaluation
+            V = w[mu].basis.refine_maxh(maxh) 
             # determine ||\overline{a}||_{L\infty(D)} (approximately)
-            f = Function(V)
+            f = FEniCSVector.from_basis(V)
             f.interpolate(a0_f)
-            min_a0 = min(f.vector().array())
+            min_a0 = f.min_val
             # iterate multiindex extensions
             for m in count():
                 mu1 = mu.inc(m)
@@ -169,7 +162,7 @@ class Marking(object):
                     beta = am_rv.orth_polys.get_beta(1)
                     # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
                     f.interpolate(am_f)
-                    max_am = max(f.vector().array())
+                    max_am = f.max_val
                     ainfty = max_am / min_a0
                     assert isinstance(ainfty, float)
 

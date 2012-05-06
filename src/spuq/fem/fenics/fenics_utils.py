@@ -1,11 +1,15 @@
 from types import NoneType
 from spuq.utils.type_check import takes, anything, optional
-from dolfin import (UnitSquare, FunctionSpace, Expression, interpolate, dx,
-                    inner, nabla_grad, TrialFunction, TestFunction,
-                    assemble, Constant, DirichletBC, Mesh, PETScMatrix,
-                    SLEPcEigenSolver, Function, solve, norm)
+from dolfin import (FunctionSpace, Expression, dx, inner,
+                    nabla_grad, TrialFunction, TestFunction,
+                    assemble, Constant, DirichletBC,
+                    Function, norm)
 from dolfin.cpp import BoundaryCondition
 from spuq.application.egsz.multi_vector import MultiVector
+from spuq.fem.fenics.fenics_vector import FEniCSVector
+
+from math import sqrt
+import numpy as np
 
 
 @takes(Expression, FunctionSpace)
@@ -85,7 +89,6 @@ def assemble_rhs(coeff_func, V, bc=DEFAULT_BC):
 
 @takes(MultiVector, MultiVector, optional(str))
 def error_norm(vec1, vec2, normstr="L2"):
-        from math import sqrt
         assert vec1.active_indices() == vec2.active_indices()
         e = 0.0
         for mi in vec1.keys():
@@ -94,3 +97,12 @@ def error_norm(vec1, vec2, normstr="L2"):
             e += norm(errfunc, normstr) ** 2
         return sqrt(e)
 
+
+@takes(anything, FEniCSVector)
+def weighted_H1_norm(w, vec, piecewise=False):
+    ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * dx)
+    if piecewise:
+        norm_vec = np.array([sqrt(e) for e in ae])
+    else:
+        norm_vec = sqrt(ae)
+    return norm_vec

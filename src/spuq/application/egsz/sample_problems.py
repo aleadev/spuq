@@ -4,7 +4,6 @@ from spuq.application.egsz.coefficient_field import ParametricCoefficientField
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.math_utils.multiindex_set import MultiindexSet
-from spuq.utils.parametric_array import ParametricArray
 from spuq.utils.type_check import takes, anything, optional
 
 from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement
@@ -61,57 +60,49 @@ class SampleProblem(object):
 
     @classmethod
     @takes(anything, str, optional(dict))
-    def setupCF(cls, cftype, params=None):
-        try:    # decay exponent
-            k = params["exp"]
-        except:
-            k = 2
-        try:    # amplitude
-            amp_val = params["amp"]
-
-            def amp(i):
-                if i > -10:
-                    return amp_val
-                else:
-                    return 1
-        except:
-            amp = lambda _: 1
-            # mean value
+    def setupCF(cls, cftype, decayexp=2, amp=1, rvtype='uniform'):
+        """create parametric coefficient field of cftype (EF-square-cos,EF-square-sin,monomials,linear,constant,zero) with
+            decay exponent, amplification and random variable type (uniform,normal)"""
+        # mean value
         a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
         # random variables
-        #        rvs = (NormalRV(mu=0.5) for _ in count())
-        rvs = lambda _: UniformRV().scale(0.5)
+        if rvtype == "uniform":
+            rvs = lambda _: UniformRV().scale(0.5)
+        else:
+            rvs = lambda _: NormalRV(mu=0.5)
 
         if cftype == "EF-square-cos":
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
             mis.next()
-            a = (Expression('A*cos(pi*m*x[0])*cos(pi*n*x[1])', A=amp(int(i)) / (int(i) + 2) ** k, m=int(mu[0]),
-                n=int(mu[1]), degree=2,
+            a = (Expression('A*cos(pi*m*x[0])*cos(pi*n*x[1])', A=amp / (int(i) + 2) ** decayexp, m=int(mu[0]),
+                n=int(mu[1]), degree=3,
                 #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
         elif cftype == "EF-square-sin":
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
-            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=amp(int(i)) / (int(i) + 2) ** k, m=int(mu[0]) + 1,
-                n=int(mu[1]) + 1, degree=2,
+            mis.next()
+            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=amp / (int(i) + 2) ** decayexp, m=int(mu[0]),
+                n=int(mu[1]), degree=3,
                 #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
         elif cftype == "monomials":
             # monomials
             mis = MultiindexSet.createCompleteOrderSet(2)
+            mis.next()
             p_str = lambda A, m, n: str(A) * "*" + "*".join(["x[0]" for _ in range(m)]) + "+" + "*".join(
                 ["x[1]" for _ in range(n)])
-            pex = lambda i, mn: Expression(p_str(amp(int(i)) / (int(i) + 2) ** k, mn[0], mn[1]), degree=2,
+            pex = lambda i, mn: Expression(p_str(amp / (int(i) + 2) ** decayexp, mn[0], mn[1]), degree=3,
                 element=FiniteElement('Lagrange', ufl.triangle, 1))
             a = (pex(i, mn) for i, mn in enumerate(mis))
         elif cftype == "linear":
             # linear functions
-            a = (Expression("A*(x[0]+x[1])", A=amp(int(i)) / (int(i) + 2) ** k,
+            a = (Expression("A*(x[0]+x[1])", A=amp / (int(i) + 2) ** decayexp,
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "constant":
             # constant functions
-            a = (Expression(str(amp(int(i)) / (int(i) + 2) ** k),
+            a = (Expression(str(amp / (int(i) + 2) ** decayexp),
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "zero":
             # zero functions

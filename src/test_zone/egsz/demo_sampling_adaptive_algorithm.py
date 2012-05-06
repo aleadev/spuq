@@ -88,7 +88,7 @@ w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 0.40})
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=0.40, rvtype="uniform")
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -98,13 +98,13 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 # PART B: Adaptive Algorithm
 # ============================================================
 
-(w, info) = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
+w, info = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
     max_refinements=0,
     pcg_eps=1e-4)
 
-#coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp": 0, "amp": 10})
+#coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=0, amp=10, rvtype="uniform")
 
 
 # ============================================================
@@ -167,7 +167,7 @@ sample_sol_direct = FEniCSVector(Function(vec.basis._fefs, X))
 
 # evaluate errors
 print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
-"  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+            "  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
 sample_sol_err = sample_sol_param - sample_sol_direct
 sample_sol_err.coeffs = sample_sol_err.coeffs
 sample_sol_err.coeffs.abs()

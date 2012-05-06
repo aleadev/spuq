@@ -1,13 +1,10 @@
 """FEniCS FEM discretisation implementation for Poisson model problem"""
 
-from dolfin import (nabla_grad, TrialFunction, TestFunction, solve,
-                    inner, assemble, dx, Constant, DirichletBC, Matrix)
-import numpy as np
+from dolfin import (nabla_grad, TrialFunction, TestFunction,
+                    inner, assemble, dx, Constant, DirichletBC)
 
-from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
 from spuq.fem.fem_discretisation import FEMDiscretisation
-from spuq.linalg.operator import Operator, MatrixOperator
 from spuq.utils.type_check import takes, anything
 
 class FEMPoisson(FEMDiscretisation):

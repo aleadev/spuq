@@ -32,11 +32,12 @@ The coefficients :math:`\alpha_j` follow from the recurrence coefficients
 from __future__ import division
 import numpy as np
 
-from dolfin import (assemble, inner, dot, nabla_grad, dx, avg, ds, dS, sqrt, refine, norm,
-                    Function, FunctionSpace, TestFunction, CellSize, FacetNormal, Constant)
+from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm,
+                    FunctionSpace, TestFunction, CellSize, FacetNormal)
 
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
+from spuq.fem.fenics.fenics_utils import weighted_H1_norm
 from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
@@ -55,10 +56,10 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float))
-    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=1 / 10):
+    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=1 / 10, projection_degree_increase=1):
         """Evaluate EGSZ Error (7.5)."""
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
-        projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh)
+        projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, projection_degree_increase)
         eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
         xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta) + cQ * sqrt(
@@ -161,7 +162,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool))
-    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True):
+    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -188,7 +189,7 @@ class ResidualEstimator(object):
                     logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)",
                         len(coeff_field), maxm)
                     maxm = len(coeff_field)
-                dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Delta, maxh, local)
+                dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Delta, maxh, local, projection_degree_increase)
                     for m in range(maxm))
                 if local:
                     proj_error[mu] = FlatVector(dmu)
@@ -209,7 +210,7 @@ class ResidualEstimator(object):
     @classmethod
     @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
         optional(bool))
-    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Delta, maxh=0.0, local=True):
+    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Delta, maxh=0.0, local=True, projection_degree_increase=1):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -223,32 +224,15 @@ class ResidualEstimator(object):
         a0_f = coeff_field.mean_func
         am_f, _ = coeff_field[m]
         # create discretisation space
-        V = w[mu]._fefunc.function_space()
-        ufl = V.ufl_element()
-        coeff_mesh = V.mesh()
-        while maxh > 0 and coeff_mesh.hmax() > maxh:
-        #            logger.debug("refining coefficient mesh for projection error evaluation")
-            coeff_mesh = refine(coeff_mesh)
-            # interpolate coefficient functions on mesh
-        coeff_V = FunctionSpace(coeff_mesh, ufl.family(), ufl.degree())
-        f = Function(coeff_V)
-        f.interpolate(a0_f)
-        amin = min(f.vector().array())
-        f.interpolate(am_f)
-        ammax = max(f.vector().array())
+        V_coeff = w[mu].basis.refine_maxh(maxh)
+        # interpolate coefficient functions on mesh
+        f_coeff = V_coeff.interpolate(a0_f)
+        amin = f_coeff.min_val
+        f_coeff.interpolate(am_f)
+        ammax = f_coeff.max_val
         ainfty = ammax / amin
         assert isinstance(ainfty, float)
         logger.debug("amin = %f  amax = %f  ainfty = %f", amin, ammax, ainfty)
-
-        # prepare FEniCS discretisation variables
-        projection_order_increase = 1
-        mesh = V.mesh()
-        V2 = FunctionSpace(mesh, ufl.family(), ufl.degree() + projection_order_increase)
-        if local:
-            DG = FunctionSpace(mesh, 'DG', 0)
-            s = TestFunction(DG)
-        else:
-            s = Constant('1.0')
 
         # prepare polynom coefficients
         _, am_rv = coeff_field[m]
@@ -275,25 +259,22 @@ class ResidualEstimator(object):
             #            logger.info("DEBUG A --- global projection error %s - %s: %s", mu1, mu, perr)
             #            # ---debug
 
+            w_mu1_reference = w.get_projection(mu1, mu, 1 + projection_degree_increase)     # projection to higher order space as reference
             w_mu1 = w.get_projection(mu1, mu)
-            w_mu1_V2 = Function(V2)
-            w_mu1_V2.interpolate(w_mu1._fefunc)
-            w_mu1_reference = Function(V2)                          # projection to higher order space as reference
-            w_mu1_reference.interpolate(w[mu1]._fefunc)
+            w_mu1_V2 = w_mu1_reference.basis.project_onto(w_mu1)
+            
             # evaluate H1 semi-norm of projection error
-            error1 = Function(V2, w_mu1_V2.vector() - w_mu1_reference.vector())
-            logger.debug("global error norms: L2 = %s and H1 = %s", norm(error1, "L2"), norm(error1, "H1"))
-            a1 = a0_f * inner(nabla_grad(error1), nabla_grad(error1)) * s * dx
-            pe = assemble(a1)
+            error1 = w_mu1_V2 - w_mu1_reference
+            logger.debug("global error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
+            pe = weighted_H1_norm(a0_f, error1, local)
             if local:
-                logger.debug("summed local errors: %s", sqrt(sum(pe)))
-                zeta1 = beta[1] * np.array([sqrt(e) for e in pe])
+                logger.debug("summed local errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:
-                logger.debug("global error: %s", sqrt(pe))
-                zeta1 = beta[1] * sqrt(pe)
+                logger.debug("global error: %s", pe)
+            zeta1 = beta[1] * pe
         else:
             if local:
-                zeta1 = np.zeros(mesh.num_cells())
+                zeta1 = np.zeros(w_mu1.mesh.mesh.num_cells())
             else:
                 zeta1 = 0
 
@@ -318,25 +299,22 @@ class ResidualEstimator(object):
             #            logger.info("DEBUG B --- global projection error %s - %s: %s", mu2, mu, perr)
             #            # ---debug
 
+            w_mu2_reference = w.get_projection(mu2, mu, 1 + projection_degree_increase)     # projection to higher order space as reference
             w_mu2 = w.get_projection(mu2, mu)
-            w_mu2_V2 = Function(V2)
-            w_mu2_V2.interpolate(w_mu2._fefunc)
-            w_mu2_reference = Function(V2)                          # projection to higher order space as reference
-            w_mu2_reference.interpolate(w[mu2]._fefunc)
+            w_mu2_V2 = w_mu2_reference.basis.project_onto(w_mu2)
+            
             # evaluate H1 semi-norm of projection error
-            error2 = Function(V2, w_mu2_V2.vector() - w_mu2_reference.vector())
-            logger.debug("global error norms: L2 = %s and H1 = %s", norm(error2, "L2"), norm(error2, "H1"))
-            a2 = a0_f * inner(nabla_grad(error2), nabla_grad(error2)) * s * dx
-            pe = assemble(a2)
+            error2 = w_mu2_V2 - w_mu2_reference
+            logger.debug("global error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
+            pe = weighted_H1_norm(a0_f, error2, local)
             if local:
-                logger.debug("summed local errors: %s", sqrt(sum(pe)))
-                zeta2 = beta[-1] * np.array([sqrt(e) for e in pe])
+                logger.debug("summed local errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:
                 logger.debug("global error: %s", sqrt(pe))
-                zeta2 = beta[-1] * sqrt(pe)
+            zeta2 = beta[-1] * sqrt(pe)
         else:
             if local:
-                zeta2 = np.zeros(mesh.num_cells())
+                zeta2 = np.zeros(w_mu2.mesh.num_cells())
             else:
                 zeta2 = 0
 

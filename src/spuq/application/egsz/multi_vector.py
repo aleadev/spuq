@@ -108,14 +108,15 @@ class MultiVector(Vector):
 
 
 class MultiVectorWithProjection(MultiVector):
-    @takes(anything, optional(callable))
-    def __init__(self, project=None):
+    @takes(anything, optional(callable), optional(bool))
+    def __init__(self, project=None, cache_active=False):
         MultiVector.__init__(self, self.clear_cache)
         if not project:
             project = MultiVectorWithProjection.default_project
         self.project = project
-        self._proj_cache = {}
+        self._proj_cache = defaultdict(dict)
         self._back_cache = {}
+        self._cache_active = cache_active
 
     @staticmethod
     def default_project(vec_src, vec_dest):
@@ -136,9 +137,12 @@ class MultiVectorWithProjection(MultiVector):
         self._back_cache.clear()
         self._proj_cache.clear()
 
-    @takes(anything, Multiindex, Multiindex)
-    def get_projection(self, mu_src, mu_dest):
+    @takes(anything, Multiindex, Multiindex, anything)
+    def get_projection(self, mu_src, mu_dest, degree=None):
         """Return projection of vector in multivector"""
+        if not self._cache_active:
+            return self.project(self[mu_src], self[mu_dest])
+        
         args = (mu_src, mu_dest, self.project)
         vec = self._proj_cache.get(args)
         #        print "P MultiVector get_projection", mu_src, mu_dest
@@ -158,6 +162,10 @@ class MultiVectorWithProjection(MultiVector):
     @takes(anything, Multiindex, Multiindex)
     def get_back_projection(self, mu_src, mu_dest):
         """Return back projection of vector in multivector"""
+        if not self._cache_active:
+            vec_prj = self.get_projection(mu_src, mu_dest)
+            return self.project(vec_prj, self[mu_src])
+
         args = (mu_src, mu_dest, self.project)
         vec = self._back_cache.get(args)
         #        print "BP MultiVector get_back_projection", mu_src, mu_dest
@@ -174,3 +182,13 @@ class MultiVectorWithProjection(MultiVector):
         #        print "BP dim mu_dest =", self[mu_dest].coeffs.size()
         #        print "BP dim vec =", vec.coeffs.size()
         return vec
+
+    @property
+    def cache_active(self):
+        return self._cache_active
+    
+    @cache_active.setter
+    def cache_active(self, val):
+        self._cache_active = val
+        if not val:
+            self.clear_cache()

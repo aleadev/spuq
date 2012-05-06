@@ -157,4 +157,4 @@ def AdaptiveSolver(A, coeff_field, f,
         sim_info[0] = ([(mu, vec.basis.dim) for mu, vec in w.iteritems()], R[-1])
         logger.info("Residuals: %s", R)
         logger.info("Simulation run data: %s", sim_info)
-    return (w, {'res': R, 'sim_info':sim_info})
+    return w, {'res': R, 'sim_info':sim_info}

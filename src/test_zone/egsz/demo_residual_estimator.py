@@ -92,7 +92,7 @@ w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)])
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", {"exp":4})
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4)
 #coeff_field = SampleProblem.setupCF("linear", {"exp":4})
 a0, _ = coeff_field[0]
 
@@ -125,18 +125,17 @@ error_eps = 1e-2
 max_refinements = 5
 
 w0 = w
-AS = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
+w, info = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta, maxh=maxh, maxm=maxm, theta_delta=theta_delta,
                     # pcg solver
                     pcg_eps=pcg_eps, pcg_maxiter=pcg_maxiter, error_eps=error_eps,
                     # refinements
                     max_refinements=max_refinements, do_refinement=REFINEMENT, do_uniform_refinement=UNIFORM_REFINEMENT)
-w = AS[0]
 
 # data collections
-sim_info = AS[1]['sim_info']
-R = AS[1]['res']
+sim_info = info['sim_info']
+R = info['res']
 
 
 # ============================================================

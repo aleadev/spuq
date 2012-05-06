@@ -19,6 +19,12 @@ class FEniCSVector(FEMVector):
         '''Initialise with coefficient vector and Function.'''
         self._fefunc = fefunc
 
+    @classmethod
+    @takes(anything, FEniCSBasis)
+    def from_basis(cls, basis):
+        f = Function(basis._fefs)
+        return FEniCSVector(f)
+
     def copy(self):
         return self._create_copy(self.coeffs.copy())
 
@@ -57,6 +63,9 @@ class FEniCSVector(FEMVector):
         else:
             return FEniCSVector(Function(new_basis._fefs))
 
+    def interpolate(self, f):
+        self._fefunc.interpolate(f)
+
     def __eq__(self, other):
         """Compare vectors for equality.
 
@@ -68,7 +77,6 @@ class FEniCSVector(FEMVector):
 #        print (type(self) == type(other),
 #                self.basis == other.basis,
 #                self.coeffs.size() == other.coeffs.size())
-
         return (type(self) == type(other) and
                 self.basis == other.basis and
                 self.coeffs.size() == other.coeffs.size() and
@@ -114,3 +122,15 @@ class FEniCSVector(FEMVector):
             func = Function(func.function_space())
             func.vector()[:] = values[0]
         plot(func, **kwargs)
+        
+    @property
+    def min_val(self):
+        return min(self._fefunc.vector().array())
+        
+    @property
+    def max_val(self):
+        return max(self._fefunc.vector().array())
+
+    @property
+    def degree(self):
+        return self.basis.degree

@@ -1,5 +1,5 @@
-from dolfin import FunctionSpace, FunctionSpaceBase, TestFunction, TrialFunction, CellFunction, assemble, dx
-import dolfin as fe
+from dolfin import FunctionSpace, FunctionSpaceBase, TestFunction, TrialFunction, CellFunction, assemble, dx, refine, cells
+import dolfin
 
 from spuq.utils.type_check import takes, anything, optional
 from spuq.utils.enum import Enum
@@ -7,7 +7,7 @@ from spuq.linalg.operator import MatrixOperator
 from spuq.fem.fem_basis import FEMBasis
 
 # Set option to allow extrapolation outside mesh (for interpolation)
-fe.parameters["allow_extrapolation"] = True
+dolfin.parameters["allow_extrapolation"] = True
 
 PROJECTION = Enum('INTERPOLATION', 'L2PROJECTION')
 
@@ -18,12 +18,17 @@ class FEniCSBasis(FEMBasis):
         self._fefs = fefs
         self._ptype = ptype
 
-    def copy(self):
-        return FEniCSBasis(self._fefs, self._ptype)
+    def copy(self, degree=None):
+        """Make a copy of self. The degree may be overriden optionally."""
+        if degree is None or self._fefs.ufl_element().degree() == degree:
+            return FEniCSBasis(self._fefs, self._ptype)
+        else:
+            newfs = FunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
+            return FEniCSBasis(newfs) 
 
     def refine(self, cell_ids=None):
         """Refine mesh of basis uniformly or wrt cells, returns
-        (prolongate,restrict,...)."""
+        (new_basis,prolongate,restrict)."""
         mesh = self._fefs.mesh()
         cell_markers = CellFunction("bool", mesh)
         if cell_ids is None:
@@ -32,20 +37,42 @@ class FEniCSBasis(FEMBasis):
             cell_markers.set_all(False)
             for cid in cell_ids:
                 cell_markers[cid] = True
-        new_mesh = fe.refine(mesh, cell_markers)
+        new_mesh = refine(mesh, cell_markers)
         new_fs = FunctionSpace(new_mesh, self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
         new_basis = FEniCSBasis(new_fs)
         prolongate = new_basis.project_onto
         restrict = self.project_onto
         return (new_basis, prolongate, restrict)
 
-    @takes(anything, "FEniCSVector")
-    def project_onto(self, vec):
+    def refine_maxh(self, maxh, uniform=False):
+        """Refine mesh of FEM basis such that maxh of mesh is smaller than given value."""
+        if maxh == 0 or self.mesh.maxh() < maxh:
+            return self
+        ufl = self._fefs.ufl_element()
+        mesh = self.mesh
+        if uniform:
+            while mesh.hmax() > maxh:
+                mesh = refine(mesh)
+        else:
+            while mesh.hmax() > maxh:
+                cell_markers = CellFunction("bool", mesh)
+                cell_markers.set_all(False)
+                for c in cells(mesh):
+                    if c.diameter() > maxh:
+                        cell_markers[c.index()] = True
+                mesh = refine(mesh, cell_markers) 
+        new_fefs = FunctionSpace(mesh, ufl.family(), ufl.degree())
+        return FEniCSBasis(new_fefs, self._ptype)
+
+    @takes(anything, "FEniCSVector", anything)
+    def project_onto(self, vec, ptype=None):
         import spuq.fem.fenics.fenics_vector as FV          # this circumvents circular inclusions
-        if self._ptype == PROJECTION.INTERPOLATION:
-            new_fefunc = fe.interpolate(vec._fefunc, self._fefs)
-        elif self._ptype == PROJECTION.L2PROJECTION:
-            new_fefunc = fe.project(vec._fefunc, self._fefs)
+        if ptype is None:
+            ptype = self._ptype
+        if ptype == PROJECTION.INTERPOLATION:
+            new_fefunc = dolfin.interpolate(vec._fefunc, self._fefs)
+        elif ptype == PROJECTION.L2PROJECTION:
+            new_fefunc = dolfin.project(vec._fefunc, self._fefs)
         else:
             raise AttributeError
         return FV.FEniCSVector(new_fefunc)
@@ -57,6 +84,14 @@ class FEniCSBasis(FEMBasis):
     @property
     def mesh(self):
         return self._fefs.mesh()
+
+    @property
+    def maxh(self):
+        return self.mesh.maxh()
+
+    @property
+    def degree(self):        
+        return self._fefs.ufl_element().degree()
 
     def eval(self, x):  # pragma: no coverage
         """Evaluate the basis functions at point x where x has length domain_dim."""
