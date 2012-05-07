@@ -1,4 +1,4 @@
-from dolfin import FunctionSpace, FunctionSpaceBase, TestFunction, TrialFunction, CellFunction, assemble, dx, refine, cells
+from dolfin import FunctionSpace, FunctionSpaceBase, Function, TestFunction, TrialFunction, CellFunction, assemble, dx, refine, cells
 import dolfin
 
 from spuq.utils.type_check import takes, anything, optional
@@ -24,7 +24,12 @@ class FEniCSBasis(FEMBasis):
             return FEniCSBasis(self._fefs, self._ptype)
         else:
             newfs = FunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
-            return FEniCSBasis(newfs) 
+            return FEniCSBasis(newfs, self._ptype) 
+
+    def new_vec(self):
+        """Create null vector on this space."""
+        import spuq.fem.fenics.fenics_vector as FV          # this circumvents circular inclusions
+        return FV.FEniCSVector(Function(self._fefs)) 
 
     def refine(self, cell_ids=None):
         """Refine mesh of basis uniformly or wrt cells, returns
@@ -46,7 +51,7 @@ class FEniCSBasis(FEMBasis):
 
     def refine_maxh(self, maxh, uniform=False):
         """Refine mesh of FEM basis such that maxh of mesh is smaller than given value."""
-        if maxh == 0 or self.mesh.maxh() < maxh:
+        if maxh == 0 or self.mesh.hmax() < maxh:
             return self
         ufl = self._fefs.ufl_element()
         mesh = self.mesh

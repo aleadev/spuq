@@ -15,7 +15,6 @@ try:
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except Exception, e:
     import traceback
-
     print traceback.format_exc()
     print "FEniCS has to be available"
     os.sys.exit(1)

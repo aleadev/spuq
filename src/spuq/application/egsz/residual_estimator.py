@@ -55,11 +55,11 @@ class ResidualEstimator(object):
     """
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float))
+    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int))
     def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=1 / 10, projection_degree_increase=1):
         """Evaluate EGSZ Error (7.5)."""
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
-        projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, projection_degree_increase)
+        projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase)
         eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
         xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta) + cQ * sqrt(
@@ -161,7 +161,7 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool))
+    @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool), optional(int))
     def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1):
         """Evaluate the projection error according to EGSZ (4.8).
 
@@ -209,7 +209,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
-        optional(bool))
+        optional(bool), optional(int))
     def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Delta, maxh=0.0, local=True, projection_degree_increase=1):
         """Evaluate the local projection error according to EGSZ (6.4).
 
@@ -226,7 +226,8 @@ class ResidualEstimator(object):
         # create discretisation space
         V_coeff = w[mu].basis.refine_maxh(maxh)
         # interpolate coefficient functions on mesh
-        f_coeff = V_coeff.interpolate(a0_f)
+        f_coeff = V_coeff.new_vec()
+        f_coeff.interpolate(a0_f)
         amin = f_coeff.min_val
         f_coeff.interpolate(am_f)
         ammax = f_coeff.max_val
@@ -274,7 +275,7 @@ class ResidualEstimator(object):
             zeta1 = beta[1] * pe
         else:
             if local:
-                zeta1 = np.zeros(w_mu1.mesh.mesh.num_cells())
+                zeta1 = np.zeros(w[mu].basis.mesh.num_cells())
             else:
                 zeta1 = 0
 
@@ -308,13 +309,13 @@ class ResidualEstimator(object):
             logger.debug("global error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error2, local)
             if local:
-                logger.debug("summed local errors: %s", sqrt(sum([e ** 2 for e in pe])))
+                logger.debug("summed local errors: %s", np.sqrt(sum([e ** 2 for e in pe])))
             else:
-                logger.debug("global error: %s", sqrt(pe))
-            zeta2 = beta[-1] * sqrt(pe)
+                logger.debug("global error: %s", np.sqrt(pe))
+            zeta2 = beta[-1] * np.sqrt(pe)
         else:
             if local:
-                zeta2 = np.zeros(w_mu2.mesh.num_cells())
+                zeta2 = np.zeros(w[mu].basis.mesh.num_cells())
             else:
                 zeta2 = 0
 

@@ -140,16 +140,32 @@ class MultiVectorWithProjection(MultiVector):
     @takes(anything, Multiindex, Multiindex, anything)
     def get_projection(self, mu_src, mu_dest, degree=None):
         """Return projection of vector in multivector"""
+        if degree is None:
+            degree = self[mu_dest].degree
+        # w/o caching
         if not self._cache_active:
-            return self.project(self[mu_src], self[mu_dest])
+            if self[mu_dest].degree == degree:
+                return self.project(self[mu_src], self[mu_dest])
+            else:
+                V = self[mu_dest].basis.copy(degree)
+                return V.project_onto(self[mu_src])
         
+        # with caching
         args = (mu_src, mu_dest, self.project)
-        vec = self._proj_cache.get(args)
+        vec = self._proj_cache[degree].get(args)            # check cache
         #        print "P MultiVector get_projection", mu_src, mu_dest
         if not vec:
         #            print "P ADDING TO CACHE: new projection required..."
-            vec = self.project(self[mu_src], self[mu_dest])
-            self._proj_cache[args] = vec
+            if self[mu_dest].degree == degree:
+                vec = self.project(self[mu_src], self[mu_dest])
+            else:
+                try:
+                    V = self._proj_cache[degree]["V"]       # try to retrieve basis
+                except:
+                    V = self[mu_dest].copy(degree)          # create and store basis if necessary
+                    self._proj_cache[degree]["V"] = V
+                vec = V.basis.project_onto(mu_src)
+            self._proj_cache[degree][args] = vec
             #            print "P proj_cache size", len(self._proj_cache)
         #            print "P with keys", self._proj_cache.keys()
         #        else:
@@ -162,10 +178,12 @@ class MultiVectorWithProjection(MultiVector):
     @takes(anything, Multiindex, Multiindex)
     def get_back_projection(self, mu_src, mu_dest):
         """Return back projection of vector in multivector"""
+        # w/o caching
         if not self._cache_active:
             vec_prj = self.get_projection(mu_src, mu_dest)
             return self.project(vec_prj, self[mu_src])
 
+        # with caching
         args = (mu_src, mu_dest, self.project)
         vec = self._back_cache.get(args)
         #        print "BP MultiVector get_back_projection", mu_src, mu_dest

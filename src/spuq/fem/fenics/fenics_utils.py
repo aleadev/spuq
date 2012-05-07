@@ -100,9 +100,12 @@ def error_norm(vec1, vec2, normstr="L2"):
 
 @takes(anything, FEniCSVector)
 def weighted_H1_norm(w, vec, piecewise=False):
-    ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * dx)
     if piecewise:
+        DG = FunctionSpace(vec.basis.mesh, "DG", 0)
+        s = TestFunction(DG)
+        ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * s * dx)
         norm_vec = np.array([sqrt(e) for e in ae])
     else:
+        ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * dx)
         norm_vec = sqrt(ae)
     return norm_vec
