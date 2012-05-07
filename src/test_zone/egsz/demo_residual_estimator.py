@@ -65,7 +65,7 @@ PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
-UNIFORM_REFINEMENT = False
+UNIFORM_REFINEMENT = True
 
 # define source term and diffusion coefficient
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
@@ -93,7 +93,6 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 # define coefficient field
 coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4)
-#coeff_field = SampleProblem.setupCF("linear", {"exp":4})
 a0, _ = coeff_field[0]
 
 # define multioperator

@@ -145,6 +145,7 @@ def AdaptiveSolver(A, coeff_field, f,
                     logger.info("UNIFORM REFINEMENT active")
                     mesh_markers = {}
                     for mu, vec in w.iteritems():
+                        from dolfin import cells
                         mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
                     #            # debug---
                     #            mu = Multiindex()

@@ -53,7 +53,7 @@ class SampleProblem(object):
     @classmethod
     @takes(anything, dict, callable)
     def setupMultiVector(cls, mi_mesh, setup_vec):
-        w = MultiVectorWithProjection()
+        w = MultiVectorWithProjection(cache_active=True)
         for mu, mesh in mi_mesh.iteritems():
             w[mu] = setup_vec(mesh)
         return w
