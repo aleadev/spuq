@@ -66,7 +66,7 @@ def AdaptiveSolver(A, coeff_field, f,
                     theta_eta=0.6, # residual marking bulk parameter
                     theta_zeta=0.5, # projection marking threshold factor
                     min_zeta=1e-15, # minimal projection error considered
-                    maxh=1 / 10, # maximal mesh width for projection maximum norm evaluation
+                    maxh=0.1, # maximal mesh width for projection maximum norm evaluation
                     maxm=10, # maximal search length for new new multiindices
                     theta_delta=0.1, # number new multiindex activation bound
                     # pcg solver
@@ -80,84 +80,75 @@ def AdaptiveSolver(A, coeff_field, f,
     w = w0
     
     # data collection
-    sim_info = {}
-    R = list()              # residual, estimator and dof progress
-    if max_refinements > 0:
-        # refinement loop
-        for refinement in range(max_refinements):
-            logger.info("************* REFINEMENT LOOP iteration %i *************", refinement + 1)
-    
-            # pcg solve
-            # ---------
-            w, zeta = pcg_solve(A, w, coeff_field, f, R, pcg_eps, pcg_maxiter)
+    sim_info = []
+    R = []              # residual, estimator and dof progress
+    # refinement loop
+    for refinement in range(max_refinements):
+        logger.info("************* REFINEMENT LOOP iteration %i *************", refinement + 1)
 
-            # error evaluation
-            # ----------------
-            xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, 1 / 10)
-            reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
-            projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
-            logger.info("Estimator Error = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
-            sim_info[refinement] = ([(mu, vec.basis.dim) for mu, vec in w.iteritems()], R[-1])
-            R[-1]["EST"] = xi
-            R[-1]["RES"] = reserr
-            R[-1]["PROJ"] = projerr
-            R[-1]["MI"] = len(sim_info[refinement][0])
-            if xi <= error_eps:
-                logger.info("error reached requested accuracy, xi=%f", xi)
-                break
-    
-            #    # debug---
-            #    projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
-            #    for mu, val in projglobal.iteritems():
-            #        logger.info("GLOBAL Projection Error for %s = %f", mu, val)
-            #    logger.info("GLOBAL Projection Error = %f", sqrt(sum([v ** 2 for v in projglobal.itervalues()])))
-            #    # ---debug
-    
-            # marking
-            # -------
-            if refinement < max_refinements - 1:
-                if not do_uniform_refinement:
-                    mesh_markers_R, mesh_markers_P, new_multiindices = \
-                    Marking.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
-                    logger.info("MARKING will be carried out with %s cells and %s new multiindices", sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
-                    + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
-                    if do_refinement["RES"]:
-                        mesh_markers = mesh_markers_R.copy()
-    
-                    #                # debug---
-                    #                # fully refine deterministic mesh
-                    #                mm = w[Multiindex()]._fefunc.function_space().mesh()
-                    #                mesh_markers[Multiindex()] = list(range(mm.num_cells()))
-                    #                # ---debug
-                    else:
-                        mesh_markers = {}
-                        logger.info("SKIP residual refinement")
-                    if do_refinement["PROJ"]:
-                        for mu, cells in mesh_markers_P.iteritems():
-                            if len(cells) > 0:
-                                mesh_markers[mu] = mesh_markers[mu].union(cells)
-                    else:
-                        logger.info("SKIP projection refinement")
-                    if not do_refinement["MI"] or refinement == max_refinements:
-                        new_multiindices = {}
-                        logger.info("SKIP new multiindex refinement")
-                else:
-                    logger.info("UNIFORM REFINEMENT active")
-                    mesh_markers = {}
-                    for mu, vec in w.iteritems():
-                        from dolfin import cells
-                        mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
-                    #            # debug---
-                    #            mu = Multiindex()
-                    #            mesh_markers[mu] = list([c.index() for c in cells(w[mu]._fefunc.function_space().mesh())])
-                    #            # ---debug
-                    new_multiindices = {}
-                Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
-        logger.info("ENDED refinement loop at refinement %i with %i dofs and %i active multiindices",
-                    refinement, sim_info[refinement][1]["DOFS"], len(sim_info[refinement][0]))
-    else:
-        w, _ = pcg_solve(A, w, coeff_field, f, R, pcg_eps, pcg_maxiter)
-        sim_info[0] = ([(mu, vec.basis.dim) for mu, vec in w.iteritems()], R[-1])
-        logger.info("Residuals: %s", R)
-        logger.info("Simulation run data: %s", sim_info)
+        # pcg solve
+        # ---------
+        w, zeta = pcg_solve(A, w, coeff_field, f, R, pcg_eps, pcg_maxiter)
+
+
+        #sim_info[0] = ([(mu, vec.basis.dim) for mu, vec in w.iteritems()], R[-1])
+        #logger.info("Residuals: %s", R)
+        #logger.info("Simulation run data: %s", sim_info)
+
+
+        # error evaluation
+        # ----------------
+        xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, maxh)
+        reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
+        projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
+        logger.info("Estimator Error = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
+
+        sim_info.append( ([(mu, vec.basis.dim) for mu, vec in w.iteritems()], R[-1]))
+        R.append( {"EST": xi, "RES": reserr, "PROJ": projerr, "MI": len(sim_info[refinement][0])})
+
+        # exit, when either error threshold or max_refinements is reached
+        if xi <= error_eps:
+            logger.info("error reached requested accuracy, xi=%f", xi)
+            break
+
+        if refinement >= max_refinements:
+            break
+
+        # marking
+        # -------
+        if not do_uniform_refinement:
+            mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, w, coeff_field,
+                                                                            theta_eta, theta_zeta, theta_delta,
+                                                                            min_zeta, maxh, maxm)
+            logger.info("MARKING will be carried out with %s cells and %s new multiindices",
+                        sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
+                        + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
+            if do_refinement["RES"]:
+                mesh_markers = mesh_markers_R.copy()
+            else:
+                mesh_markers = {}
+                logger.info("SKIP residual refinement")
+
+            if do_refinement["PROJ"]:
+                for mu, cells in mesh_markers_P.iteritems():
+                    if len(cells) > 0:
+                        mesh_markers[mu] = mesh_markers[mu].union(cells)
+            else:
+                logger.info("SKIP projection refinement")
+
+            if not do_refinement["MI"] or refinement == max_refinements:
+                new_multiindices = {}
+                logger.info("SKIP new multiindex refinement")
+        else:
+            logger.info("UNIFORM REFINEMENT active")
+            mesh_markers = {}
+            for mu, vec in w.iteritems():
+                from dolfin import cells
+                mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
+            new_multiindices = {}
+        Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
+
+    logger.info("ENDED refinement loop at refinement %i with %i dofs and %i active multiindices",
+                refinement, sim_info[refinement][1]["DOFS"], len(sim_info[refinement][0]))
+
     return w, {'res': R, 'sim_info':sim_info}

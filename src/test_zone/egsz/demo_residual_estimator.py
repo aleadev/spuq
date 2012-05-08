@@ -117,7 +117,7 @@ maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluat
 maxm = 10               # maximal search length for new new multiindices
 theta_delta = 0.1       # number new multiindex activation bound
 # pcg solver
-pcg_eps = 1e-6
+pcg_eps = 2e-6
 pcg_maxiter = 100
 error_eps = 1e-2
 # refinements

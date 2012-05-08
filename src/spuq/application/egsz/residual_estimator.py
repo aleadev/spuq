@@ -56,7 +56,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int))
-    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=1 / 10, projection_degree_increase=1):
+    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, projection_degree_increase=1):
         """Evaluate EGSZ Error (7.5)."""
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase)
