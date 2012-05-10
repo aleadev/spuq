@@ -103,7 +103,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
-    max_refinements=0,
+    max_refinements=2,
     pcg_eps=1e-4)
 
 #coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=0, amp=10, rvtype="uniform")
