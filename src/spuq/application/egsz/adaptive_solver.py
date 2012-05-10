@@ -33,7 +33,7 @@ def setup_vec(mesh):
     return vec
 
 
-def pcg_solve(A, w, coeff_field, f, R, pcg_eps, pcg_maxiter):
+def pcg_solve(A, w, coeff_field, f, stats, pcg_eps, pcg_maxiter):
     b = 0 * w
     b0 = b[Multiindex()]
     b0.coeffs = FEMPoisson.assemble_rhs(f, b0.basis)
@@ -41,12 +41,11 @@ def pcg_solve(A, w, coeff_field, f, R, pcg_eps, pcg_maxiter):
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
     b2 = A * w
-    L2error = error_norm(b, b2, "L2")
-    H1error = error_norm(b, b2, "H1")
-    dofs = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
-    elems = sum([b[mu]._fefunc.function_space().mesh().num_cells() for mu in b.keys()])
-    R.append({"L2":L2error, "H1":H1error, "DOFS":dofs, "CELLS":elems})
-    logger.info("Residual = [%s (L2)] [%s (H1)] with [%s dofs] and [%s cells]", L2error, H1error, dofs, elems)
+    stats["L2"] = error_norm(b, b2, "L2")
+    stats["H1"] = error_norm(b, b2, "H1")
+    stats["DOFS"] = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
+    stats["CELLS"] = sum([b[mu]._fefunc.function_space().mesh().num_cells() for mu in b.keys()])
+    logger.info("Residual = [%s (L2)] [%s (H1)] with [%s dofs] and [%s cells]", stats["L2"], stats["H1"], stats["DOFS"], stats["CELLS"])
     return w, zeta
 
 
@@ -127,6 +126,7 @@ def AdaptiveSolver(A, coeff_field, f,
             if do_refinement["RES"]:
                 mesh_markers = mesh_markers_R.copy()
             else:
+                logger.info("UNIFORM REFINEMENT active")
                 mesh_markers = {}
                 logger.info("SKIP residual refinement")
 

@@ -64,7 +64,7 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
+REFINEMENT = {"RES":True, "PROJ":False, "MI":False}
 UNIFORM_REFINEMENT = True
 
 # define source term and diffusion coefficient
@@ -92,7 +92,8 @@ w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)])
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4)
+#coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4)
+coeff_field = SampleProblem.setupCF("constant", decayexp=4)
 a0, _ = coeff_field[0]
 
 # define multioperator
@@ -110,8 +111,8 @@ gamma = 0.9
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.6         # residual marking bulk parameter
-theta_zeta = 0.5        # projection marking threshold factor
+theta_eta = 0.4         # residual marking bulk parameter
+theta_zeta = 0.4        # projection marking threshold factor
 min_zeta = 1e-15        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 maxm = 10               # maximal search length for new new multiindices
@@ -124,17 +125,15 @@ error_eps = 1e-2
 max_refinements = 5
 
 w0 = w
-w, info = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
+w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta, maxh=maxh, maxm=maxm, theta_delta=theta_delta,
                     # pcg solver
-                    pcg_eps=pcg_eps, pcg_maxiter=pcg_maxiter, error_eps=error_eps,
+                    pcg_eps=pcg_eps, pcg_maxiter=pcg_maxiter,
+                    # adaptive algorithm threshold
+                    error_eps=error_eps,
                     # refinements
                     max_refinements=max_refinements, do_refinement=REFINEMENT, do_uniform_refinement=UNIFORM_REFINEMENT)
-
-# data collections
-sim_info = info['sim_info']
-R = info['res']
 
 
 # ============================================================
@@ -142,16 +141,16 @@ R = info['res']
 # ============================================================
 
 # plot residuals
-if PLOT_RESIDUAL and len(R) > 1:
+if PLOT_RESIDUAL and len(sim_stats) > 1:
     try:
         from matplotlib.pyplot import figure, show, legend
-        x = [r["DOFS"] for r in R]
-        L2 = [r["L2"] for r in R]
-        H1 = [r["H1"] for r in R]
-        errest = [r["EST"] for r in R]
-        reserr = [r["RES"] for r in R]
-        projerr = [r["PROJ"] for r in R]
-        num_mi = [r["MI"] for r in R]
+        x = [s["DOFS"] for s in sim_stats]
+        L2 = [s["L2"] for s in sim_stats]
+        H1 = [s["H1"] for s in sim_stats]
+        errest = [s["EST"] for s in sim_stats]
+        reserr = [s["RES"] for s in sim_stats]
+        projerr = [s["PROJ"] for s in sim_stats]
+        num_mi = [s["MI"] for s in sim_stats]
         # figure 1
         # --------
         fig = figure()
@@ -178,6 +177,8 @@ if PLOT_RESIDUAL and len(R) > 1:
         legend(loc='upper right')
         show()
     except:
+        import traceback
+        print traceback.format_exc()
         logger.info("skipped plotting since matplotlib is not available...")
 
 # plot final meshes

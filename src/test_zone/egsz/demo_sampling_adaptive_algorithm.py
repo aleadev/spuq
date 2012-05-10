@@ -100,7 +100,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 # PART B: Adaptive Algorithm
 # ============================================================
 
-w, info = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
+w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
     max_refinements=0,

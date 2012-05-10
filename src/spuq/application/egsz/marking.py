@@ -147,35 +147,34 @@ class Marking(object):
             # evaluate energy norm of w[mu]
             norm_w = weighted_H1_norm(a0_f, w[mu])
             # retrieve (sufficiently fine) function space for maximum norm evaluation
-            V = w[mu].basis.refine_maxh(maxh) 
+            V = w[mu].basis.refine_maxh(maxh)
             # determine ||\overline{a}||_{L\infty(D)} (approximately)
             f = FEniCSVector.from_basis(V)
             f.interpolate(a0_f)
             min_a0 = f.min_val
             # iterate multiindex extensions
-            for m in count():
+            for m in range(min(maxm, len(coeff_field))):
                 mu1 = mu.inc(m)
                 if mu1 not in Delta:
-                    if m >= maxm or m >= len(coeff_field):     # or len(Ldelta) >= deltaN
-                        break
-                    am_f, am_rv = coeff_field[m]
-                    beta = am_rv.orth_polys.get_beta(1)
-                    # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
-                    f.interpolate(am_f)
-                    max_am = f.max_val
-                    ainfty = max_am / min_a0
-                    assert isinstance(ainfty, float)
+                    continue
+                am_f, am_rv = coeff_field[m]
+                beta = am_rv.orth_polys.get_beta(mu1[m])
+                # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
+                f.interpolate(am_f)
+                max_am = f.max_val
+                ainfty = max_am / min_a0
+                assert isinstance(ainfty, float)
 
-                    #                    logger.debug("A*** %f -- %f -- %f", beta[1], ainfty, norm_w)
-                    #                    logger.debug("B*** %f", beta[1] * ainfty * norm_w)
-                    #                    logger.debug("C*** %f -- %f", theta_delta, max_zeta)
-                    #                    logger.debug("D*** %f", theta_delta * max_zeta)
-                    #                    logger.debug("E*** %s", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta))
+                #                    logger.debug("A*** %f -- %f -- %f", beta[1], ainfty, norm_w)
+                #                    logger.debug("B*** %f", beta[1] * ainfty * norm_w)
+                #                    logger.debug("C*** %f -- %f", theta_delta, max_zeta)
+                #                    logger.debug("D*** %f", theta_delta * max_zeta)
+                #                    logger.debug("E*** %s", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta))
 
-                    if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
-                        val1 = beta[1] * ainfty * norm_w
-                        if mu1 not in Ldelta.keys() or (mu1 in Ldelta.keys() and Ldelta[mu1] < val1):
-                            Ldelta[mu1] = val1
+                if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
+                    val1 = beta[1] * ainfty * norm_w
+                    if mu1 not in Ldelta.keys() or (mu1 in Ldelta.keys() and Ldelta[mu1] < val1):
+                        Ldelta[mu1] = val1
 
         logger.info("POSSIBLE NEW MULTIINDICES %s", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True))
         Ldelta = sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Ldelta), deltaN)]
