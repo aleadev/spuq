@@ -97,7 +97,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 # PART B: Adaptive Algorithm
 # ============================================================
 
-w, info = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
+w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
     max_refinements=0,
@@ -154,7 +154,7 @@ a = a0
 for m in range(maxm):
     if m == 10:
         continue
-    print m, RV_samples[m], coeff_field[m][0].cppcode, coeff_field[m][0].A, coeff_field[m][0].m, coeff_field[m][0].n
+#    print m, RV_samples[m], coeff_field[m][0].cppcode, coeff_field[m][0].A, coeff_field[m][0].m, coeff_field[m][0].n
     a_m = RV_samples[m] * coeff_field[m][0]
     a += a_m
 
