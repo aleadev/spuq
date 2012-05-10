@@ -96,6 +96,8 @@ class Vector(MathObject):
 
     def __radd__(self, other):  # pragma: no cover
         """This happens only when other is not a vector."""
+        if isinstance(other, Scalar) and other==0:
+            return self
         return NotImplemented
 
     def __sub__(self, other):

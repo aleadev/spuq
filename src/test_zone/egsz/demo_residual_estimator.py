@@ -121,7 +121,7 @@ pcg_eps = 2e-6
 pcg_maxiter = 100
 error_eps = 1e-2
 # refinements
-max_refinements = 10
+max_refinements = 5
 
 w0 = w
 w, info = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
