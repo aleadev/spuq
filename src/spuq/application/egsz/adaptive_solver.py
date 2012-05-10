@@ -62,7 +62,7 @@ def AdaptiveSolver(A, coeff_field, f,
                     cQ=1.0,
                     ceta=1.0,
                     # marking parameters
-                    theta_eta=0.6, # residual marking bulk parameter
+                    theta_eta=0.4, # residual marking bulk parameter
                     theta_zeta=0.5, # projection marking threshold factor
                     min_zeta=1e-15, # minimal projection error considered
                     maxh=0.1, # maximal mesh width for projection maximum norm evaluation
@@ -80,6 +80,7 @@ def AdaptiveSolver(A, coeff_field, f,
     
     # data collection
     sim_stats = []                  # mis, residual, estimator and dof progress
+    
     if max_refinements > 0:
         # refinement loop
         for refinement in range(max_refinements):
@@ -102,6 +103,15 @@ def AdaptiveSolver(A, coeff_field, f,
             stats["PROJ"] = projerr
             sim_stats.append(stats)
     
+            # debug---
+#            from dolfin import plot, interactive
+#            for mu, vec in w.iteritems():
+#                plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
+#                vec.plot(title=str(mu), interactive=False)
+#            interactive()
+            # ---debug
+
+    
             # exit, when either error threshold or max_refinements is reached
             if xi <= error_eps:
                 logger.info("error reached requested accuracy, xi=%f", xi)
@@ -116,9 +126,9 @@ def AdaptiveSolver(A, coeff_field, f,
                 mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, w, coeff_field,
                                                                                 theta_eta, theta_zeta, theta_delta,
                                                                                 min_zeta, maxh, maxm)
-                logger.info("MARKING will be carried out with %s cells and %s new multiindices",
-                            sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
-                            + sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
+                logger.info("MARKING will be carried out with %s (res) + %s (proj) cells and %s new multiindices",
+                            sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()]),
+                            sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
                 if do_refinement["RES"]:
                     mesh_markers = mesh_markers_R.copy()
                 else:

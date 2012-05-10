@@ -147,16 +147,24 @@ class ResidualEstimator(object):
         h = CellSize(mesh)
 
         # scaling of residual terms and definition of residual form
-        R_T = (1 / a0_f) * R_T ** 2
-        R_E = (1 / a0_f) * R_E ** 2
-        res_form = (h ** 2 * R_T * s * dx
-                    + avg(h) * avg(R_E) * 2 * avg(s) * dS)
+        R_T = (1 / a0_f) * R_T
+        R_E = (1 / a0_f) * R_E
+        res_form = (h ** 2 * R_T ** 2 * s * dx
+                    + avg(h) * avg(R_E) ** 2 * 2 * avg(s) * dS)
         #                    + h * R_E * s * ds)    NOTE: this term is incorrect for Dirichlet BC, Neumann data is not supported yet!
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
         eta_indicator = np.array([sqrt(e) for e in eta])
         global_error = sqrt(sum(e for e in eta))
+
+#        # debug ---        
+#        print "==========RESIDUAL ESTIMATOR============"
+#        print "eta", eta
+#        print "eta_indicator", eta_indicator
+#        print "global =", global_error
+#        # ---debug
+        
         return (FlatVector(eta_indicator), global_error)
 
 
@@ -266,12 +274,12 @@ class ResidualEstimator(object):
             
             # evaluate H1 semi-norm of projection error
             error1 = w_mu1_V2 - w_mu1_reference
-            logger.debug("global error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
+            logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error1, local)
             if local:
-                logger.debug("summed local errors: %s", sqrt(sum([e ** 2 for e in pe])))
+                logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:
-                logger.debug("global error: %s", pe)
+                logger.debug("global projection error: %s", pe)
             zeta1 = beta[1] * pe
         else:
             if local:
@@ -306,12 +314,12 @@ class ResidualEstimator(object):
             
             # evaluate H1 semi-norm of projection error
             error2 = w_mu2_V2 - w_mu2_reference
-            logger.debug("global error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
+            logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error2, local)
             if local:
-                logger.debug("summed local errors: %s", np.sqrt(sum([e ** 2 for e in pe])))
+                logger.debug("summed local projection errors: %s", np.sqrt(sum([e ** 2 for e in pe])))
             else:
-                logger.debug("global error: %s", np.sqrt(pe))
+                logger.debug("global projection error: %s", np.sqrt(pe))
             zeta2 = beta[-1] * np.sqrt(pe)
         else:
             if local:

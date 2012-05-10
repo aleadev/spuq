@@ -32,10 +32,12 @@ class Marking(object):
         """ """
         # create new refined (and enlarged) multi vector
         for mu, cell_ids in mesh_markers.iteritems():
+            logger.info("REFINE: refining %s of %s cells for mesh of mu %s", len(cell_ids), w[mu]._fefunc.function_space().mesh().num_cells(), mu)
             w[mu] = w[mu].refine(cell_ids, with_prolongation=True)
 
         # add new multiindices to solution vector
         for mu in new_multiindices:
+            logger.info("REFINE: adding new multiindex %s", mu)
             w[mu] = eval_vec()
 
 

@@ -21,7 +21,7 @@ except:
 
 # setup logging
 # log level
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
                     format=log_format)
@@ -64,8 +64,8 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":False, "MI":False}
-UNIFORM_REFINEMENT = True
+REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
+UNIFORM_REFINEMENT = False
 
 # define source term and diffusion coefficient
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
@@ -80,7 +80,7 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
 
 # setup meshes 
 #mesh0 = refine(Mesh(lshape_xml))
-mesh0 = UnitSquare(5, 5)
+mesh0 = UnitSquare(4, 4)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":10, "random":(0.4, 0.3)})
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 
@@ -92,8 +92,8 @@ w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)])
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 # define coefficient field
-#coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4)
-coeff_field = SampleProblem.setupCF("constant", decayexp=4)
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4)
+#coeff_field = SampleProblem.setupCF("constant", decayexp=4)
 a0, _ = coeff_field[0]
 
 # define multioperator
@@ -111,7 +111,7 @@ gamma = 0.9
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.4         # residual marking bulk parameter
+theta_eta = 0.6         # residual marking bulk parameter
 theta_zeta = 0.4        # projection marking threshold factor
 min_zeta = 1e-15        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
@@ -122,7 +122,7 @@ pcg_eps = 2e-6
 pcg_maxiter = 100
 error_eps = 1e-2
 # refinements
-max_refinements = 2
+max_refinements = 10
 
 w0 = w
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
@@ -150,7 +150,8 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         errest = [s["EST"] for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
-        num_mi = [s["MI"] for s in sim_stats]
+        mi = [s["MI"] for s in sim_stats]
+        num_mi = [len(m) for m in mi]
         # figure 1
         # --------
         fig = figure()
@@ -171,9 +172,9 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
             ax.loglog(x, num_mi, '--y+', label='active mi')
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
-        ax.loglog(x, projerr, '-.m>', label='projection part')
-        ax.loglog(x, H1, '-b^', label='H1 residual')
-        ax.loglog(x, L2, '-ro', label='L2 residual')
+        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+#        ax.loglog(x, H1, '-b^', label='H1 residual')
+#        ax.loglog(x, L2, '-ro', label='L2 residual')
         legend(loc='upper right')
         show()
     except:

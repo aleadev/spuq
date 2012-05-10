@@ -23,14 +23,14 @@ from numpy import array, sqrt
 
 # Error tolerance
 tolerance = 0.1
-max_iterations = 100
+max_iterations = 5
 
 # Refinement fraction
 fraction = 0.5
 
 # Create initial mesh
-#mesh = UnitSquare(4, 4)
-mesh = Mesh("lshape.xml")
+mesh = UnitSquare(4, 4)
+#mesh = Mesh("lshape.xml")
 
 for i in range(max_iterations):
 
