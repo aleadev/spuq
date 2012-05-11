@@ -148,10 +148,10 @@ def run_mc():
     proj_basis = get_proj_basis(mesh0, num_mesh_refinements=2)
 
     # get realization of coefficient field
-    N = 2
+    N = 20
     err_L2, err_H1 = 0, 0
     for i in range(N):
-        print "MC Iteration %i/%i" % (i + 1, N)
+        #logger.info("MC Iteration %i/%i", i + 1, N)
         RV_samples = coeff_field.sample_rvs()
 
         t1 = time.time()
@@ -164,9 +164,17 @@ def run_mc():
         err_L2 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         err_H1 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
         t4 = time.time()
-        print "param: %s, direct %s, error %s" % (t2 - t1, t3 - t2, t4 - t3)
+        #logger.info("TIMING: param: %s, direct %s, error %s", t2 - t1, t3 - t2, t4 - t3)
 
-    print err_L2, err_H1
+    logger.info("MC Error: L2: %s, H1: %s", err_L2, err_H1)
 
 
 run_mc()
+run_mc()
+run_mc()
+run_mc()
+run_mc()
+run_mc()
+run_mc()
+run_mc()
+

@@ -48,12 +48,8 @@ def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis):
 
 
 def compute_direct_sample_solution_old(RV_samples, coeff_field, A, maxm, proj_basis):
-    # sum up coefficient field sample
     a = coeff_field.mean_func
     for m in range(maxm):
-        if m == 10:
-            continue
-        print m, RV_samples[m], coeff_field[m][0].cppcode, coeff_field[m][0].A, coeff_field[m][0].m, coeff_field[m][0].n
         a_m = RV_samples[m] * coeff_field[m][0]
         a += a_m
 
@@ -65,28 +61,22 @@ def compute_direct_sample_solution_old(RV_samples, coeff_field, A, maxm, proj_ba
 
 
 def compute_direct_sample_solution(RV_samples, coeff_field, A, maxm, proj_basis):
-    # sum up coefficient field sample
     try:
         A = coeff_field.A
         A_m = coeff_field.A_m
     except AttributeError:
         a = coeff_field.mean_func
         A = FEMPoisson.assemble_lhs(a, proj_basis)
-        A_m = [None] * 100
+        A_m = [None] * maxm
         coeff_field.A = A
         coeff_field.A_m = A_m
 
     for m in range(maxm):
-        if m == 10:
-            continue
-            #print m, RV_samples[m], coeff_field[m][0].cppcode, coeff_field[m][0].A, coeff_field[m][0].m, coeff_field[m][0].n
-
         if A_m[m] is None:
             a_m = coeff_field[m][0]
             A_m[m] = FEMPoisson.assemble_lhs(a_m, proj_basis)
         A += RV_samples[m] * A_m[m]
 
-    #A = FEMPoisson.assemble_lhs(a, proj_basis)
     b = FEMPoisson.assemble_rhs(Constant("1.0"), proj_basis)
     X = 0 * b
     solve(A, X, b)
