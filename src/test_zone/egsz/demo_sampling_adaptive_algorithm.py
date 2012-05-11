@@ -18,6 +18,7 @@ try:
 
 except Exception, e:
     import traceback
+
     print traceback.format_exc()
     print "FEniCS has to be available"
     os.sys.exit(1)
@@ -98,7 +99,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
-    max_refinements=2,
+    max_refinements=2 * 0,
     pcg_eps=1e-4)
 
 #coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=0, amp=10, rvtype="uniform")
@@ -115,17 +116,17 @@ print "w:", w
 proj_basis = get_proj_basis(mesh0, num_mesh_refinements=2)
 
 # get realization of coefficient field
-RV_samples  = coeff_field.sample_rvs()
+RV_samples = coeff_field.sample_rvs()
 
 # store stochastic part of solution
-sample_sol_param = compute_parametric_sample_solution( RV_samples, coeff_field, w, proj_basis)
+sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
 sample_sol_stochastic = sample_sol_param - get_projected_sol(w, Multiindex(), proj_basis)
 sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
 
 
 # evaluate errors
-print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
-            "  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"),\
+"  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
 sample_sol_err = sample_sol_param - sample_sol_direct
 sample_sol_err.coeffs = sample_sol_err.coeffs
 sample_sol_err.coeffs.abs()
@@ -140,23 +141,32 @@ if False:
     sample_sol_direct.plot(interactive=False, title="direct solution")
     sample_sol_err.plot(interactive=True, title="error")
 
+import time
 
-
-if True:
+def run_mc():
     # create reference mesh and function space
     proj_basis = get_proj_basis(mesh0, num_mesh_refinements=2)
 
     # get realization of coefficient field
-    N = 10
+    N = 2
     err_L2, err_H1 = 0, 0
     for i in range(N):
-        print "MC Iteration %i/%i" % (i+1, N)
-        RV_samples  = coeff_field.sample_rvs()
+        print "MC Iteration %i/%i" % (i + 1, N)
+        RV_samples = coeff_field.sample_rvs()
 
-        sample_sol_param = compute_parametric_sample_solution( RV_samples, coeff_field, w, proj_basis)
+        t1 = time.time()
+
+        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
+        t2 = time.time()
         sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
+        t3 = time.time()
 
         err_L2 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         err_H1 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+        t4 = time.time()
+        print "param: %s, direct %s, error %s" % (t2 - t1, t3 - t2, t4 - t3)
 
     print err_L2, err_H1
+
+
+run_mc()
