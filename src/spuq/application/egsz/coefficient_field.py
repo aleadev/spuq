@@ -1,13 +1,14 @@
 """The expansion of a coefficient field."""
 
 import sys
+from abc import ABCMeta, abstractmethod, abstractproperty
 from types import GeneratorType
+from numpy import prod
 
 from spuq.utils.type_check import takes, anything, sequence_of
 from spuq.stochastics.random_variable import RandomVariable
 from spuq.utils import strclass
 from spuq.utils.parametric_array import ParametricArray
-from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class CoefficientField(object):
@@ -38,19 +39,13 @@ class CoefficientField(object):
     def sample_rvs(self):
         pass
 
-    def sample_realization(self, Delta):
-        def prod(l):
-            p = 1
-            for f in l:
-                if p is None:
-                    p = f
-                else:
-                    p *= f
-            return p
-        RV_samples = self.sample_rvs()
+    def sample_realization(self, Lambda, RV_samples=None):
+        if RV_samples is None:
+            RV_samples = self.sample_rvs()
         sample_map = {}
-        for mu in Delta:
-            sample_map[mu] = prod(self[m + 1][1].orth_polys[mu[m]](RV_samples[m + 1]) for m in range(len(mu)))
+        for mu in Lambda:
+            univariate_vals = list(self[m][1].orth_polys[mu[m]](RV_samples[m]) for m in range(len(mu)))
+            sample_map[mu] = prod(univariate_vals)
         return sample_map, RV_samples
 
 

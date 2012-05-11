@@ -1,4 +1,5 @@
 from spuq.linalg.vector import Scalar, Vector, inner
+from spuq.linalg.basis import Basis
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import takes, anything, optional
@@ -119,10 +120,15 @@ class MultiVectorWithProjection(MultiVector):
         self._cache_active = cache_active
 
     @staticmethod
-    def default_project(vec_src, vec_dest):
+    def default_project(vec_src, dest):
         """Project the source vector onto the basis of the destination vector."""
-        assert hasattr(vec_dest.basis, "project_onto")
-        return vec_dest.basis.project_onto(vec_src)
+        if not isinstance(dest, Basis):
+            basis = dest.basis
+        else:
+            basis = dest
+
+        assert hasattr(basis, "project_onto")
+        return basis.project_onto(vec_src)
 
     def copy(self):
         mv = MultiVector.copy(self)

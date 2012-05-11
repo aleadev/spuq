@@ -13,6 +13,9 @@ try:
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver
     from spuq.fem.fenics.fenics_vector import FEniCSVector
+    from spuq.fem.fenics.fenics_basis import FEniCSBasis
+    from spuq.application.egsz.sampling import get_proj_basis, compute_direct_sample_solution, compute_parametric_sample_solution, get_projected_sol
+
 except Exception, e:
     import traceback
     print traceback.format_exc()
@@ -100,7 +103,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
-    max_refinements=0,
+    max_refinements=2,
     pcg_eps=1e-4)
 
 #coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=0, amp=10, rvtype="uniform")
@@ -113,56 +116,17 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
 # dbg
 print "w:", w
 
-Delta = w.active_indices()
-maxm = w.max_order
+# create reference mesh and function space
+proj_basis = get_proj_basis(mesh0, num_mesh_refinements=2)
 
 # get realization of coefficient field
-sample_map, RV_samples = coeff_field.sample_realization(Delta)
-
-# dbg
-print "RV_samples:", RV_samples
-print "sample_map:", sample_map
-
-# create reference mesh and function space
-cf_mesh_refinements = 2
-mesh = refine(mesh0)
-for i in range(cf_mesh_refinements):
-    mesh = refine(mesh)
-fs = FunctionSpace(mesh, "CG", 1)
-
-# ============== STOCHASTIC SOLUTION ==============
-
-# sum up (stochastic) solution vector on reference function space wrt samples
-sample_sol_param = None
-vec = FEniCSVector(Function(fs))
-for mu in Delta:
-    sol = w.project(w[mu], vec) * sample_map[mu]
-    if sample_sol_param is None:
-        sample_sol_param = sol
-    else:
-        sample_sol_param += sol
+RV_samples  = coeff_field.sample_rvs()
 
 # store stochastic part of solution
-sample_sol_stochastic = sample_sol_param - w.project(w[Multiindex()], vec) * sample_map[Multiindex()]
+sample_sol_param = compute_parametric_sample_solution( RV_samples, coeff_field, w, proj_basis)
+sample_sol_stochastic = sample_sol_param - get_projected_sol(w, Multiindex(), proj_basis)
+sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
 
-
-# ============== DETERMINISTIC SOLUTION ==============
-
-# sum up coefficient field sample
-a0 = coeff_field.mean_func
-a = a0
-for m in range(maxm):
-    if m == 10:
-        continue
-#    print m, RV_samples[m], coeff_field[m][0].cppcode, coeff_field[m][0].A, coeff_field[m][0].m, coeff_field[m][0].n
-    a_m = RV_samples[m] * coeff_field[m][0]
-    a += a_m
-
-A = FEMPoisson.assemble_lhs(a, vec.basis)
-b = FEMPoisson.assemble_rhs(Constant("1.0"), vec.basis)
-X = 0 * b
-solve(A, X, b)
-sample_sol_direct = FEniCSVector(Function(vec.basis._fefs, X))
 
 # evaluate errors
 print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
@@ -172,10 +136,11 @@ sample_sol_err.coeffs = sample_sol_err.coeffs
 sample_sol_err.coeffs.abs()
 
 # plotting
-a_func = project(a, fs)
-a_vec = FEniCSVector(a_func)
-a_vec.plot(interactive=False, title="coefficient field")
-sample_sol_param.plot(interactive=False, title="parametric solution")
-sample_sol_stochastic.plot(interactive=False, title="stochastic part of solution")
-sample_sol_direct.plot(interactive=False, title="direct solution")
-sample_sol_err.plot(interactive=True, title="error")
+if True:
+    a_func = project(a, proj_basis._fefs)
+    a_vec = FEniCSVector(a_func)
+    a_vec.plot(interactive=False, title="coefficient field")
+    sample_sol_param.plot(interactive=False, title="parametric solution")
+    sample_sol_stochastic.plot(interactive=False, title="stochastic part of solution")
+    sample_sol_direct.plot(interactive=False, title="direct solution")
+    sample_sol_err.plot(interactive=True, title="error")
