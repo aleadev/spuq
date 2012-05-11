@@ -63,11 +63,6 @@ def setup_vec(mesh):
 # PART A: Problem Setup
 # ============================================================
 
-# flag for residual graph plotting
-PLOT_RESIDUAL = True
-
-# flag for final solution plotting
-PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
 refinement = {"RES": True, "PROJ": True, "MI": False}
@@ -136,7 +131,7 @@ sample_sol_err.coeffs = sample_sol_err.coeffs
 sample_sol_err.coeffs.abs()
 
 # plotting
-if True:
+if False:
     a_func = project(a, proj_basis._fefs)
     a_vec = FEniCSVector(a_func)
     a_vec.plot(interactive=False, title="coefficient field")
@@ -144,3 +139,24 @@ if True:
     sample_sol_stochastic.plot(interactive=False, title="stochastic part of solution")
     sample_sol_direct.plot(interactive=False, title="direct solution")
     sample_sol_err.plot(interactive=True, title="error")
+
+
+
+if True:
+    # create reference mesh and function space
+    proj_basis = get_proj_basis(mesh0, num_mesh_refinements=2)
+
+    # get realization of coefficient field
+    N = 10
+    err_L2, err_H1 = 0, 0
+    for i in range(N):
+        print "MC Iteration %i/%i" % (i+1, N)
+        RV_samples  = coeff_field.sample_rvs()
+
+        sample_sol_param = compute_parametric_sample_solution( RV_samples, coeff_field, w, proj_basis)
+        sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
+
+        err_L2 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
+        err_H1 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+
+    print err_L2, err_H1
