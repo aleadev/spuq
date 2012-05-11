@@ -9,7 +9,7 @@ from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 try:
-    from dolfin import (Function, FunctionSpace, Constant, UnitSquare, plot, interactive)
+    from dolfin import (Function, FunctionSpace, Constant, UnitSquare, plot, interactive, set_log_level, set_log_active)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
@@ -21,15 +21,22 @@ except:
 # ------------------------------------------------------------
 
 # setup logging
-# log level
+# log level and format configuration
 LOG_LEVEL = logging.DEBUG
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
                     format=log_format)
+
+# FEniCS logging
+from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
+set_log_active(True)
+set_log_level(WARNING)
 fenics_logger = logging.getLogger("FFC")
 fenics_logger.setLevel(logging.WARNING)
 fenics_logger = logging.getLogger("UFL")
 fenics_logger.setLevel(logging.WARNING)
+
+# module logger
 logger = logging.getLogger(__name__)
 logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
 #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
@@ -86,14 +93,15 @@ mesh0 = UnitSquare(4, 4)
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 
 # debug---
-#meshes[0] = refine(meshes[0])
+#from dolfin import refine
+#meshes[1] = refine(meshes[1])
 # ---debug
 
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4)
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2)
 #coeff_field = SampleProblem.setupCF("constant", decayexp=4)
 a0, _ = coeff_field[0]
 
@@ -112,12 +120,13 @@ gamma = 0.9
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.6         # residual marking bulk parameter
-theta_zeta = 0.4        # projection marking threshold factor
+theta_eta = 0.3         # residual marking bulk parameter
+theta_zeta = 0.3        # projection marking threshold factor
 min_zeta = 1e-15        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 maxm = 10               # maximal search length for new new multiindices
 theta_delta = 0.1       # number new multiindex activation bound
+max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices 
 # pcg solver
 pcg_eps = 2e-6
 pcg_maxiter = 100
@@ -129,6 +138,7 @@ w0 = w
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta, maxh=maxh, maxm=maxm, theta_delta=theta_delta,
+                    max_Lambda_frac=max_Lambda_frac,
                     # pcg solver
                     pcg_eps=pcg_eps, pcg_maxiter=pcg_maxiter,
                     # adaptive algorithm threshold

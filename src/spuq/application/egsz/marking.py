@@ -62,12 +62,12 @@ class Marking(object):
     @classmethod
     @takes(anything, MultiVector, MultiVector, MultiVector, CoefficientField, float, float, float, float,
         optional(float))
-    def mark(cls, resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10):
+    def mark(cls, resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10, max_Lambda_frac=1 / 10):
         """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
         mesh_markers_R = cls.mark_residual(resind, theta_eta)
         mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh)
         if max_zeta >= min_zeta:
-            new_mi = cls.mark_inactive_multiindices(w, coeff_field, theta_delta, max_zeta, maxh, maxm)
+            new_mi = cls.mark_inactive_multiindices(w, coeff_field, theta_delta, max_zeta, maxh, maxm, max_Lambda_frac)
         else:
             new_mi = {}
             logger.info("SKIPPING search for new multiindices due to very small max_zeta = %s", max_zeta)
@@ -135,7 +135,7 @@ class Marking(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, float, float, float, optional(int))
-    def mark_inactive_multiindices(cls, w, coeff_field, theta_delta, max_zeta, maxh=1 / 10, maxm=10):
+    def mark_inactive_multiindices(cls, w, coeff_field, theta_delta, max_zeta, maxh=1 / 10, maxm=10, max_Lambda_frac=1 / 10):
         """Estimate projection error for inactive indices and determine multiindices to be activated."""
         # new multiindex activation
         # =========================
@@ -143,7 +143,7 @@ class Marking(object):
         a0_f = coeff_field.mean_func
         Lambda_candidates = {}
         Lambda = w.active_indices()
-        lambdaN = int(ceil(0.1 * len(Lambda)))                    # max number new multiindices
+        lambdaN = int(ceil(max_Lambda_frac * len(Lambda)))                    # max number new multiindices
         for mu in Lambda:
             # evaluate energy norm of w[mu]
             norm_w = weighted_H1_norm(a0_f, w[mu])

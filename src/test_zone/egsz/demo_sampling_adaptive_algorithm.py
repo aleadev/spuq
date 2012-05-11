@@ -8,12 +8,11 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 
 try:
-    from dolfin import (Function, FunctionSpace, Constant, UnitSquare, refine,
+    from dolfin import (Function, FunctionSpace, Constant, UnitSquare,
                         solve, plot, interactive, project, errornorm)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver
     from spuq.fem.fenics.fenics_vector import FEniCSVector
-    from spuq.fem.fenics.fenics_basis import FEniCSBasis
     from spuq.application.egsz.sampling import get_proj_basis, compute_direct_sample_solution, compute_parametric_sample_solution, get_projected_sol
 
 except Exception, e:
@@ -24,16 +23,22 @@ except Exception, e:
 
 # ------------------------------------------------------------
 
-# setup logging
-# log level
-LOG_LEVEL = logging.INFO
+# log level and format configuration
+LOG_LEVEL = logging.DEBUG
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
-    format=log_format)
+                    format=log_format)
+
+# FEniCS logging
+from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
+set_log_active(True)
+set_log_level(WARNING)
 fenics_logger = logging.getLogger("FFC")
 fenics_logger.setLevel(logging.WARNING)
 fenics_logger = logging.getLogger("UFL")
 fenics_logger.setLevel(logging.WARNING)
+
+# module logger
 logger = logging.getLogger(__name__)
 logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
 #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
@@ -115,10 +120,10 @@ print "w:", w
 proj_basis = get_proj_basis(mesh0, num_mesh_refinements=2)
 
 # get realization of coefficient field
-RV_samples  = coeff_field.sample_rvs()
+RV_samples = coeff_field.sample_rvs()
 
 # store stochastic part of solution
-sample_sol_param = compute_parametric_sample_solution( RV_samples, coeff_field, w, proj_basis)
+sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
 sample_sol_stochastic = sample_sol_param - get_projected_sol(w, Multiindex(), proj_basis)
 sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
 
@@ -150,10 +155,10 @@ if True:
     N = 10
     err_L2, err_H1 = 0, 0
     for i in range(N):
-        print "MC Iteration %i/%i" % (i+1, N)
-        RV_samples  = coeff_field.sample_rvs()
+        print "MC Iteration %i/%i" % (i + 1, N)
+        RV_samples = coeff_field.sample_rvs()
 
-        sample_sol_param = compute_parametric_sample_solution( RV_samples, coeff_field, w, proj_basis)
+        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
         sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
 
         err_L2 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")

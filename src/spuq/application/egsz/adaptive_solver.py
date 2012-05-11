@@ -1,5 +1,6 @@
 from __future__ import division
 from functools import partial
+from collections import defaultdict
 from math import sqrt
 import logging
 import os
@@ -68,6 +69,7 @@ def AdaptiveSolver(A, coeff_field, f,
                     maxh=0.1, # maximal mesh width for projection maximum norm evaluation
                     maxm=10, # maximal search length for new new multiindices
                     theta_delta=0.1, # number new multiindex activation bound
+                    max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
                     # pcg solver
                     pcg_eps=1e-6,
                     pcg_maxiter=100,
@@ -82,7 +84,7 @@ def AdaptiveSolver(A, coeff_field, f,
     # data collection
     sim_stats = []                  # mis, residual, estimator and dof progress
     for refinement in range(max_refinements + 1):
-        logger.info("************* REFINEMENT LOOP iteration %i *************", refinement + 1)
+        logger.info("************* REFINEMENT LOOP iteration %i *************", refinement)
 
         # pcg solve
         # ---------
@@ -91,15 +93,13 @@ def AdaptiveSolver(A, coeff_field, f,
 
         # error evaluation
         # ----------------
-        if max_refinements > 0:
-            xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, maxh)
-            reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
-            projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
-            logger.info("Overall Estimator Error xi = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
-            stats["EST"] = xi
-            stats["RES"] = reserr
-            stats["PROJ"] = projerr
-        
+        xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, maxh)
+        reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
+        projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
+        logger.info("Overall Estimator Error xi = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
+        stats["EST"] = xi
+        stats["RES"] = reserr
+        stats["PROJ"] = projerr
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
         sim_stats.append(stats)
 
@@ -110,7 +110,6 @@ def AdaptiveSolver(A, coeff_field, f,
 #                vec.plot(title=str(mu), interactive=False)
 #            interactive()
         # ---debug
-
 
         # exit when either error threshold or max_refinements is reached
         if refinement >= max_refinements:
@@ -124,14 +123,14 @@ def AdaptiveSolver(A, coeff_field, f,
         if not do_uniform_refinement:
             mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, w, coeff_field,
                                                                             theta_eta, theta_zeta, theta_delta,
-                                                                            min_zeta, maxh, maxm)
+                                                                            min_zeta, maxh, maxm, max_Lambda_frac)
             logger.info("MARKING will be carried out with %s (res) + %s (proj) cells and %s new multiindices",
                         sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()]),
                         sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
             if do_refinement["RES"]:
                 mesh_markers = mesh_markers_R.copy()
             else:
-                mesh_markers = {}
+                mesh_markers = defaultdict(set)
                 logger.info("SKIP residual refinement")
 
             if do_refinement["PROJ"]:
