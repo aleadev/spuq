@@ -95,7 +95,7 @@ def AdaptiveSolver(A, coeff_field, f,
             xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, maxh)
             reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
             projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
-            logger.info("Estimator Error = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
+            logger.info("Overall Estimator Error xi = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
             stats["EST"] = xi
             stats["RES"] = reserr
             stats["PROJ"] = projerr
@@ -112,10 +112,9 @@ def AdaptiveSolver(A, coeff_field, f,
         # ---debug
 
 
-        # exit, when either error threshold or max_refinements is reached
+        # exit when either error threshold or max_refinements is reached
         if refinement >= max_refinements:
             break
-
         if xi <= error_eps:
             logger.info("error reached requested accuracy, xi=%f", xi)
             break
@@ -152,6 +151,8 @@ def AdaptiveSolver(A, coeff_field, f,
                 from dolfin import cells
                 mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
             new_multiindices = {}
+        
+        # carry out refinement of meshes
         Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
 
     logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",

@@ -39,14 +39,14 @@ class MultiOperator(Operator):
         """Apply operator to vector which has to live in the same domain."""
 
         v = 0 * w
-        Delta = w.active_indices()
+        Lambda = w.active_indices()
         maxm = w.max_order
         if len(self._coeff_field) < maxm:
             logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i",
                 len(self._coeff_field), maxm)
             maxm = len(self._coeff_field)
             #        assert self._coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
-        for mu in Delta:
+        for mu in Lambda:
             logger.debug("apply on mu = %s", str(mu))
             # deterministic part
             a0_f = self._coeff_field.mean_func
@@ -66,12 +66,12 @@ class MultiOperator(Operator):
 
                 # mu+1
                 mu1 = mu.inc(m)
-                if mu1 in Delta:
+                if mu1 in Lambda:
                     cur_w += beta[1] * w.get_projection(mu1, mu)
 
                 # mu-1
                 mu2 = mu.dec(m)
-                if mu2 in Delta:
+                if mu2 in Lambda:
                     cur_w += beta[-1] * w.get_projection(mu2, mu)
 
                 # apply discrete operator

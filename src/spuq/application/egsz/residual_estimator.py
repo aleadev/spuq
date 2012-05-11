@@ -62,8 +62,8 @@ class ResidualEstimator(object):
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase)
         eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
-        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta) + cQ * sqrt(
-            zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
+        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
+              + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
         return (xi, resind, projind)
 
 
@@ -106,7 +106,7 @@ class ResidualEstimator(object):
         R_E = a0_f * dot(nabla_grad(w[mu]._fefunc), nu)
 
         # iterate m
-        Delta = w.active_indices()
+        Lambda = w.active_indices()
         maxm = w.max_order
         if len(coeff_field) < maxm:
             logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)", len(coeff_field), maxm)
@@ -123,13 +123,13 @@ class ResidualEstimator(object):
 
             # mu+1
             mu1 = mu.inc(m)
-            if mu1 in Delta:
+            if mu1 in Lambda:
                 w_mu1 = w.get_projection(mu1, mu)
                 res += beta[1] * w_mu1
 
             # mu-1
             mu2 = mu.dec(m)
-            if mu2 in Delta:
+            if mu2 in Lambda:
                 w_mu2 = w.get_projection(mu2, mu)
                 res += beta[-1] * w_mu2
 
@@ -183,21 +183,25 @@ class ResidualEstimator(object):
         ..math::
             \zeta_{\mu,T,m}^{\mu\pm e_m} := ||a_m/\overline{a}||_{L^\infty(D)} \alpha_{\mu_m\pm 1}\int_T | \nabla( \Pi_{\mu\pm e_m}^\mu(\Pi_\mu^{\mu\pm e_m} w_{N,mu\pm e_)m})) - w_{N,mu\pm e_)m} |^2\;dx
         """
-
+        
+        if logger.isEnabledFor(logging.DEBUG):
+            for mu in w.active_indices():
+                logger.debug("[projection error] mesh for %s has %s cells", mu, w[mu]._fefunc.function_space().mesh().num_cells())
+    
         global_error = {}
         if local:
             proj_error = MultiVector()
         else:
             proj_error = {}
-        Delta = w.active_indices()
-        if len(Delta) > 1:
-            for mu in Delta:
+        Lambda = w.active_indices()
+        if len(Lambda) > 1:
+            for mu in Lambda:
                 maxm = w.max_order
                 if len(coeff_field) < maxm:
                     logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)",
                         len(coeff_field), maxm)
                     maxm = len(coeff_field)
-                dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Delta, maxh, local, projection_degree_increase)
+                dmu = sum(cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Lambda, maxh, local, projection_degree_increase)
                     for m in range(maxm))
                 if local:
                     proj_error[mu] = FlatVector(dmu)
@@ -206,7 +210,7 @@ class ResidualEstimator(object):
                     proj_error[mu] = dmu
                     global_error = dmu
         else:
-            mu = Delta[0]
+            mu = Lambda[0]
             if local:
                 proj_error[mu] = FlatVector(np.zeros(w[mu].coeffs.size()))
             else:
@@ -218,7 +222,7 @@ class ResidualEstimator(object):
     @classmethod
     @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
         optional(bool), optional(int))
-    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Delta, maxh=0.0, local=True, projection_degree_increase=1):
+    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Lambda, maxh=0.0, local=True, projection_degree_increase=1):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -249,7 +253,7 @@ class ResidualEstimator(object):
 
         # mu+1
         mu1 = mu.inc(m)
-        if mu1 in Delta:
+        if mu1 in Lambda:
             logger.debug("[LPE-A] local projection error for mu = %s with %s", mu, mu1)
 
             #            # debug---
@@ -289,7 +293,7 @@ class ResidualEstimator(object):
 
         # mu -1
         mu2 = mu.dec(m)
-        if mu2 in Delta:
+        if mu2 in Lambda:
             logger.debug("[LPE-B] local projection error for mu = %s with %s", mu, mu2)
 
             #            # debug---

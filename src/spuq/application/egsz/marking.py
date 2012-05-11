@@ -10,7 +10,6 @@ from __future__ import division
 from math import ceil
 from operator import itemgetter
 from collections import defaultdict
-from itertools import count
 
 from spuq.application.egsz.residual_estimator import ResidualEstimator
 from spuq.application.egsz.multi_vector import MultiVector
@@ -142,10 +141,10 @@ class Marking(object):
         # =========================
         # determine possible new indices
         a0_f = coeff_field.mean_func
-        Ldelta = {}
-        Delta = w.active_indices()
-        deltaN = int(ceil(0.1 * len(Delta)))                    # max number new multiindices
-        for mu in Delta:
+        Lambda_candidates = {}
+        Lambda = w.active_indices()
+        lambdaN = int(ceil(0.1 * len(Lambda)))                    # max number new multiindices
+        for mu in Lambda:
             # evaluate energy norm of w[mu]
             norm_w = weighted_H1_norm(a0_f, w[mu])
             # retrieve (sufficiently fine) function space for maximum norm evaluation
@@ -157,7 +156,7 @@ class Marking(object):
             # iterate multiindex extensions
             for m in range(min(maxm, len(coeff_field))):
                 mu1 = mu.inc(m)
-                if mu1 not in Delta:
+                if mu1 in Lambda:
                     continue
                 am_f, am_rv = coeff_field[m]
                 beta = am_rv.orth_polys.get_beta(mu1[m])
@@ -175,10 +174,10 @@ class Marking(object):
 
                 if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
                     val1 = beta[1] * ainfty * norm_w
-                    if mu1 not in Ldelta.keys() or (mu1 in Ldelta.keys() and Ldelta[mu1] < val1):
-                        Ldelta[mu1] = val1
+                    if mu1 not in Lambda_candidates.keys() or (mu1 in Lambda_candidates.keys() and Lambda_candidates[mu1] < val1):
+                        Lambda_candidates[mu1] = val1
 
-        logger.info("POSSIBLE NEW MULTIINDICES %s", sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True))
-        Ldelta = sorted(Ldelta.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Ldelta), deltaN)]
-        logger.info("SELECTED NEW MULTIINDICES %s", Ldelta)
-        return dict(Ldelta)
+        logger.info("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
+        Lambda_candidates = sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Lambda_candidates), lambdaN)]
+        logger.info("SELECTED NEW MULTIINDICES %s", Lambda_candidates)
+        return dict(Lambda_candidates)

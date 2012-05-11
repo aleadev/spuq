@@ -3,10 +3,9 @@ import os
 
 
 try:
-    from dolfin import (Function, FunctionSpace, Constant, UnitSquare, refine,
+    from dolfin import (Function, FunctionSpace, Constant, refine,
                         solve, plot, interactive, project, errornorm)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
-    from spuq.application.egsz.adaptive_solver import AdaptiveSolver
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_basis import FEniCSBasis
 except Exception, e:
@@ -23,11 +22,10 @@ def setup_vec(mesh):
     vec = FEniCSVector(Function(fs))
     return vec
 
-
 # create reference mesh and function space
 def get_proj_basis(mesh0, num_mesh_refinements):
     mesh = refine(mesh0)
-    for i in range(num_mesh_refinements):
+    for _ in range(num_mesh_refinements):
         mesh = refine(mesh)
     V = FunctionSpace(mesh, "CG", 1)
     return FEniCSBasis(V)
@@ -60,4 +58,3 @@ def compute_direct_sample_solution(RV_samples, coeff_field, A, maxm, proj_basis)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), a
-

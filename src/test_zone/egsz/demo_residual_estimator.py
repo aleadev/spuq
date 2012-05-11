@@ -1,6 +1,7 @@
 from __future__ import division
 import logging
 import os
+from math import sqrt
 
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver
 from spuq.application.egsz.multi_operator import MultiOperator
@@ -64,7 +65,7 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
+REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
 UNIFORM_REFINEMENT = False
 
 # define source term and diffusion coefficient
@@ -72,7 +73,7 @@ UNIFORM_REFINEMENT = False
 f = Constant("1.0")
 
 # define initial multiindices
-mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
+mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # debug---
 #mis = (Multiindex(),)
@@ -140,6 +141,9 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ
 # PART C: Plotting and Export of Data
 # ============================================================
 
+for mu in w.active_indices():
+    logger.debug("FINAL MESH for %s has %s cells", mu, w[mu]._fefunc.function_space().mesh().num_cells())
+
 # plot residuals
 if PLOT_RESIDUAL and len(sim_stats) > 1:
     try:
@@ -147,7 +151,7 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         x = [s["DOFS"] for s in sim_stats]
         L2 = [s["L2"] for s in sim_stats]
         H1 = [s["H1"] for s in sim_stats]
-        errest = [s["EST"] for s in sim_stats]
+        errest = [sqrt(s["EST"]) for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
         mi = [s["MI"] for s in sim_stats]
