@@ -10,6 +10,7 @@ try:
     from spuq.fem.fenics.fenics_basis import FEniCSBasis
 except Exception, e:
     import traceback
+
     print traceback.format_exc()
     print "FEniCS has to be available"
     os.sys.exit(1)
@@ -30,8 +31,10 @@ def get_proj_basis(mesh0, num_mesh_refinements):
     V = FunctionSpace(mesh, "CG", 1)
     return FEniCSBasis(V)
 
+
 def get_projected_sol(w, mu, proj_basis):
     return w.project(w[mu], proj_basis)
+
 
 def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis):
     Lambda = w.active_indices()
@@ -43,13 +46,10 @@ def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis):
     sample_sol = sum(get_projected_sol(w, mu, proj_basis) * sample_map[mu] for mu in Lambda)
     return sample_sol
 
-def compute_direct_sample_solution(RV_samples, coeff_field, A, maxm, proj_basis):
-    # sum up coefficient field sample
+
+def compute_direct_sample_solution_old(RV_samples, coeff_field, A, maxm, proj_basis):
     a = coeff_field.mean_func
     for m in range(maxm):
-        if m == 10:
-            continue
-        print m, RV_samples[m], coeff_field[m][0].cppcode, coeff_field[m][0].A, coeff_field[m][0].m, coeff_field[m][0].n
         a_m = RV_samples[m] * coeff_field[m][0]
         a += a_m
 
@@ -58,3 +58,26 @@ def compute_direct_sample_solution(RV_samples, coeff_field, A, maxm, proj_basis)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), a
+
+
+def compute_direct_sample_solution(RV_samples, coeff_field, A, maxm, proj_basis):
+    try:
+        A = coeff_field.A
+        A_m = coeff_field.A_m
+    except AttributeError:
+        a = coeff_field.mean_func
+        A = FEMPoisson.assemble_lhs(a, proj_basis)
+        A_m = [None] * maxm
+        coeff_field.A = A
+        coeff_field.A_m = A_m
+
+    for m in range(maxm):
+        if A_m[m] is None:
+            a_m = coeff_field[m][0]
+            A_m[m] = FEMPoisson.assemble_lhs(a_m, proj_basis)
+        A += RV_samples[m] * A_m[m]
+
+    b = FEMPoisson.assemble_rhs(Constant("1.0"), proj_basis)
+    X = 0 * b
+    solve(A, X, b)
+    return FEniCSVector(Function(proj_basis._fefs, X)), coeff_field.mean_func
