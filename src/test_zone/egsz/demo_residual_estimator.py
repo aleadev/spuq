@@ -8,6 +8,7 @@ from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
+from spuq.utils.plot.plotter import Plotter
 try:
     from dolfin import (Function, FunctionSpace, Constant, UnitSquare, plot, interactive, set_log_level, set_log_active)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
@@ -198,7 +199,28 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
 
 # plot final meshes
 if PLOT_MESHES:
+    USE_MAYAVI = Plotter.hasMayavi() 
     for mu, vec in w.iteritems():
-        plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
-        vec.plot(title=str(mu), interactive=False)
-    interactive()
+        if USE_MAYAVI:
+            # mesh
+#            Plotter.figure(bgcolor=(1, 1, 1))
+#            mesh = vec.basis.mesh
+#            Plotter.plotMesh(mesh.coordinates(), mesh.cells(), representation='mesh')
+#            Plotter.axes()
+#            Plotter.labels()
+#            Plotter.title(str(mu))
+            # function
+            Plotter.figure(bgcolor=(1, 1, 1))
+            mesh = vec.basis.mesh
+            Plotter.plotMesh(mesh.coordinates(), mesh.cells(), vec.coeffs)
+            Plotter.axes()
+            Plotter.labels()
+            Plotter.title(str(mu))
+        else:
+            plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
+            vec.plot(title=str(mu), interactive=False)
+    if USE_MAYAVI:
+        Plotter.show(stop=True)
+        Plotter.close(allfig=True)
+    else:
+        interactive()

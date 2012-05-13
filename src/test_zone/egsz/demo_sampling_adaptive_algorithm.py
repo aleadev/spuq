@@ -14,10 +14,8 @@ try:
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.application.egsz.sampling import get_proj_basis, compute_direct_sample_solution, compute_parametric_sample_solution, get_projected_sol
-
 except Exception, e:
     import traceback
-
     print traceback.format_exc()
     print "FEniCS has to be available"
     os.sys.exit(1)
