@@ -1,4 +1,4 @@
-from dolfin import Function, plot
+from dolfin import Function, plot, File
 
 from spuq.utils.type_check import takes, anything, sequence_of, set_of
 from spuq.linalg.vector import Scalar
@@ -6,6 +6,8 @@ from spuq.linalg.basis import check_basis
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.fem.fem_vector import FEMVector
 
+import pickle
+import os
 import logging
 logger = logging.getLogger(__name__)
 
@@ -134,3 +136,21 @@ class FEniCSVector(FEMVector):
     @property
     def degree(self):
         return self.basis.degree
+
+    def pickle(self, outdir, filename):
+        """construct representation suitable for pickling"""
+        logger.info("pickling data (and mesh) to file %s", os.path.join(outdir, 'DATA_' + filename + '.pkl'))
+        basis = self.basis._fefs
+        ufl = basis.ufl_element()
+        mesh = basis.mesh()
+        meshfile = File(os.path.join(outdir, 'MESH_' + filename + '.xml'))
+        meshfile << mesh
+        data = (self.array(), (ufl.family(), ufl.degree()))
+        with open(os.path.join(outdir, 'DATA_' + filename + '.pkl'), 'wb') as f:
+            pickle.dump(data, f)
+    
+    @classmethod
+    def from_pickle(cls, indir, filename):
+        """unpickle object"""
+        # TODO
+        pass

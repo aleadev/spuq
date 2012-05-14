@@ -72,6 +72,9 @@ PLOT_RESIDUAL = True
 # flag for final solution plotting
 PLOT_MESHES = False
 
+# flag for final solution export
+SAVE_SOLUTION = "results/demo-residual"
+
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
 UNIFORM_REFINEMENT = False
@@ -100,6 +103,15 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
 logger.info("active indices of w after initialisation: %s", w.active_indices())
+
+
+# ---debug
+#if SAVE_SOLUTION != "":
+#    w.pickle(SAVE_SOLUTION)
+#import sys
+#sys.exit()
+# ---debug
+
 
 # define coefficient field
 coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2)
@@ -154,6 +166,10 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ
 
 for mu in w.active_indices():
     logger.debug("FINAL MESH for %s has %s cells", mu, w[mu]._fefunc.function_space().mesh().num_cells())
+
+# save solution
+if SAVE_SOLUTION != "":
+    w.pickle(SAVE_SOLUTION)
 
 # plot residuals
 if PLOT_RESIDUAL and len(sim_stats) > 1:

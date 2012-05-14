@@ -5,6 +5,8 @@ from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import takes, anything, optional
 from spuq.utils import strclass
 
+import os
+import pickle
 from collections import defaultdict
 
 __all__ = ["MultiVector", "MultiVectorWithProjection"]
@@ -107,6 +109,25 @@ class MultiVector(Vector):
     def __repr__(self):
         return "<%s keys=%s>" % (strclass(self.__class__), self.mi2vec.keys())
 
+    def pickle(self, outdir):
+        """pickle object"""
+        fdir = os.path.abspath(os.path.abspath(outdir))
+        if not os.path.exists(fdir):
+            os.makedirs(fdir)
+        Lambda = self.active_indices()
+        # save active multiindex set
+        with open(os.path.join(fdir, 'MI.pkl'), 'wb') as f:
+            pickle.dump(Lambda, f)
+        # iteratively pickle multiindex data/mesh
+        for mu in Lambda:
+            self[mu].pickle(fdir, str(mu))
+    
+    @classmethod
+    def from_pickle(cls, fname):
+        """unpickle object"""
+        # TODO
+        pass
+    
 
 class MultiVectorWithProjection(MultiVector):
     @takes(anything, optional(callable), optional(bool))
