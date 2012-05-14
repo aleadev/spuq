@@ -111,22 +111,27 @@ class MultiVector(Vector):
 
     def pickle(self, outdir):
         """pickle object"""
-        fdir = os.path.abspath(os.path.abspath(outdir))
-        if not os.path.exists(fdir):
-            os.makedirs(fdir)
+#        outdir = os.path.abspath(os.path.abspath(outdir))
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
         Lambda = self.active_indices()
         # save active multiindex set
-        with open(os.path.join(fdir, 'MI.pkl'), 'wb') as f:
+        with open(os.path.join(outdir, 'MI.pkl'), 'wb') as f:
             pickle.dump(Lambda, f)
         # iteratively pickle multiindex data/mesh
         for mu in Lambda:
-            self[mu].pickle(fdir, str(mu))
+            self[mu].pickle(outdir, str(mu))
     
     @classmethod
-    def from_pickle(cls, fname):
+    def from_pickle(cls, indir, veccls):
         """unpickle object"""
-        # TODO
-        pass
+        with open(os.path.join(indir, 'MI.pkl'), "rb") as f:
+            Lambda = pickle.load(f)
+            print "Lambda:", Lambda
+            w = cls()
+            for mu in Lambda:
+                w[mu] = veccls.from_pickle(indir, str(mu))
+            return w
     
 
 class MultiVectorWithProjection(MultiVector):

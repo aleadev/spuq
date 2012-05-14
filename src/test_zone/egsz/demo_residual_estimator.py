@@ -104,14 +104,14 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
-
 # ---debug
+#from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 #if SAVE_SOLUTION != "":
 #    w.pickle(SAVE_SOLUTION)
+#u = MultiVectorWithProjection.from_pickle(SAVE_SOLUTION, FEniCSVector)
 #import sys
 #sys.exit()
 # ---debug
-
 
 # define coefficient field
 coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2)
@@ -169,12 +169,17 @@ for mu in w.active_indices():
 
 # save solution
 if SAVE_SOLUTION != "":
+    # save solution (also creates directory if not existing)
     w.pickle(SAVE_SOLUTION)
+    # save simulation data
+    import pickle
+    with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as f:
+        pickle.dump(sim_stats, f)
 
 # plot residuals
 if PLOT_RESIDUAL and len(sim_stats) > 1:
     try:
-        from matplotlib.pyplot import figure, show, legend
+        from matplotlib.pyplot import figure, show, legend, title, savefig
         x = [s["DOFS"] for s in sim_stats]
         L2 = [s["L2"] for s in sim_stats]
         H1 = [s["H1"] for s in sim_stats]
@@ -186,6 +191,7 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         # figure 1
         # --------
         fig = figure()
+        fig.suptitle("error")
         ax = fig.add_subplot(111)
 #        if REFINEMENT["MI"]:
 #            ax.loglog(x, num_mi, '--y+', label='active mi')
@@ -195,9 +201,12 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         ax.loglog(x, H1, '-b^', label='H1 residual')
         ax.loglog(x, L2, '-ro', label='L2 residual')
         legend(loc='upper right')
+        if SAVE_SOLUTION != "":
+            fig.savefig(os.path.join(SAVE_SOLUTION, 'RES.png'))
         # figure 2
         # --------
         fig2 = figure()
+        fig2.suptitle("residual estimator")
         ax = fig2.add_subplot(111)
         if REFINEMENT["MI"]:
             ax.loglog(x, num_mi, '--y+', label='active mi')
@@ -207,7 +216,9 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
 #        ax.loglog(x, H1, '-b^', label='H1 residual')
 #        ax.loglog(x, L2, '-ro', label='L2 residual')
         legend(loc='upper right')
-        show()
+        if SAVE_SOLUTION != "":
+            fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.png'))
+        show()  # this invalidates the figure instances...
     except:
         import traceback
         print traceback.format_exc()

@@ -1,4 +1,4 @@
-from dolfin import Function, plot, File
+from dolfin import Function, FunctionSpace, plot, File, Mesh
 
 from spuq.utils.type_check import takes, anything, sequence_of, set_of
 from spuq.linalg.vector import Scalar
@@ -152,5 +152,11 @@ class FEniCSVector(FEMVector):
     @classmethod
     def from_pickle(cls, indir, filename):
         """unpickle object"""
-        # TODO
-        pass
+        logger.info("unpickling data (and mesh) from file %s", os.path.join(indir, 'DATA_' + filename + '.pkl'))
+        mesh = Mesh(os.path.join(indir, 'MESH_' + filename + '.xml'))
+        with open(os.path.join(indir, 'DATA_' + filename + '.pkl'), "rb") as f:
+            data = pickle.load(f) 
+        fs = FunctionSpace(mesh, data[1][0], data[1][1])
+        f = Function(fs)
+        f.coeffs = data[0]
+        return cls(f)
