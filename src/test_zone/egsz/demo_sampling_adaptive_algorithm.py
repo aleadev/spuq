@@ -24,8 +24,11 @@ except Exception, e:
 
 # program parameters
 PLOT_SOLUTION = False
-MC_RUNS = 10
-MC_N = 100
+MC_RUNS = 30
+MC_N = 30
+MC_HMAX = 1 / 10
+MC_DEGREE = 1
+
 
 # log level and format configuration
 LOG_LEVEL = logging.INFO
@@ -115,7 +118,7 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
 # ============================================================
 
 # create reference mesh and function space
-proj_basis = get_proj_basis(mesh0, maxh=1 / 10)
+proj_basis = get_proj_basis(mesh0, maxh=1 / 10, degree=MC_DEGREE)
 
 # get realization of coefficient field
 RV_samples = coeff_field.sample_rvs()
@@ -123,7 +126,7 @@ RV_samples = coeff_field.sample_rvs()
 # store stochastic part of solution
 sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
 sample_sol_stochastic = sample_sol_param - get_projected_sol(w, Multiindex(), proj_basis)
-sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
+sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, f, w.max_order, proj_basis)
 
 # evaluate errors
 print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
@@ -143,8 +146,9 @@ if PLOT_SOLUTION:
     sample_sol_err.plot(interactive=True, title="error")
 
 
-def run_mc(err):
-    import time
+def run_mc(w, err):
+#    import time
+    from dolfin import plot
     
     # create reference mesh and function space
     proj_basis = get_proj_basis(mesh0, maxh=1 / 10)
@@ -157,10 +161,19 @@ def run_mc(err):
 #        t1 = time.time()
         sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
 #        t2 = time.time()
-        sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
+        sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, f, w.max_order, proj_basis)
 #        t3 = time.time()
-        err_L2 += 1.0 / MC_N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
-        err_H1 += 1.0 / MC_N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+        cerr_L2 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
+        cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+        err_L2 += 1.0 / MC_N * cerr_L2
+        err_H1 += 1.0 / MC_N * cerr_H1
+        if cerr_H1 > 100:
+            print "cerr_H1 > 100: ", cerr_H1, " with samples ", RV_samples
+#            fa = project(a, proj_basis._fefs)
+#            plot(fa, title='coefficient field')
+#            sample_sol_param.plot(title="parametric")
+#            sample_sol_direct.plot(title="direct", interactive=True)
+            
 #        t4 = time.time()
 #        logger.info("TIMING: param: %s, direct %s, error %s", t2 - t1, t3 - t2, t4 - t3)
 
@@ -170,7 +183,7 @@ def run_mc(err):
 # iterate MC
 err = []
 for _ in range(MC_RUNS):
-    run_mc(err)
+    run_mc(w, err)
 
 #print "evaluated errors (L2,H1):", err
 L2err = sum([e[0] for e in err]) / len(err)

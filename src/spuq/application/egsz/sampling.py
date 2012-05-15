@@ -25,16 +25,16 @@ def setup_vec(mesh):
 
 
 # create reference mesh and function space
-def get_proj_basis(mesh0, mesh_refinements=None, maxh=None):
+def get_proj_basis(mesh0, mesh_refinements=None, maxh=None, degree=1):
     if not(mesh_refinements is None):
         mesh = mesh0
         for _ in range(mesh_refinements):
             mesh = refine(mesh)
-        V = FunctionSpace(mesh, "CG", 1)
+        V = FunctionSpace(mesh, "CG", degree)
         return FEniCSBasis(V)
     else:
         assert not(maxh is None)
-        B = FEniCSBasis(FunctionSpace(mesh0, "CG", 1))
+        B = FEniCSBasis(FunctionSpace(mesh0, "CG", degree))
         return B.refine_maxh(maxh, True)
 
 
@@ -53,20 +53,20 @@ def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis):
     return sample_sol
 
 
-def compute_direct_sample_solution_old(RV_samples, coeff_field, A, maxm, proj_basis):
+def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj_basis):
     a = coeff_field.mean_func
     for m in range(maxm):
         a_m = RV_samples[m] * coeff_field[m][0]
         a += a_m
 
     A = FEMPoisson.assemble_lhs(a, proj_basis)
-    b = FEMPoisson.assemble_rhs(Constant("1.0"), proj_basis)
+    b = FEMPoisson.assemble_rhs(f, proj_basis)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), a
 
 
-def compute_direct_sample_solution(RV_samples, coeff_field, A, maxm, proj_basis):
+def compute_direct_sample_solution(RV_samples, coeff_field, A, f, maxm, proj_basis):
     try:
         A = coeff_field.A
         A_m = coeff_field.A_m
@@ -83,7 +83,7 @@ def compute_direct_sample_solution(RV_samples, coeff_field, A, maxm, proj_basis)
             A_m[m] = FEMPoisson.assemble_lhs(a_m, proj_basis)
         A += RV_samples[m] * A_m[m]
 
-    b = FEMPoisson.assemble_rhs(Constant("1.0"), proj_basis)
+    b = FEMPoisson.assemble_rhs(f, proj_basis)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), coeff_field.mean_func

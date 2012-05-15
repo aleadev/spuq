@@ -33,3 +33,7 @@ class ParametricArray(object):
                 self._vals += [ParametricArray.Empty] * (i - l + 1)
             else:
                 self._vals += [self._func.next() for _ in range(i - l + 1)]
+
+    def __str__(self):
+        return str(self._vals)
+    
