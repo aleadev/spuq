@@ -73,7 +73,7 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flag for final solution export
-SAVE_SOLUTION = "results/demo-residual"
+SAVE_SOLUTION = '' #"results/demo-residual"
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
@@ -114,8 +114,8 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # ---debug
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2)
-#coeff_field = SampleProblem.setupCF("constant", decayexp=4)
+#coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=1)
+coeff_field = SampleProblem.setupCF("constant", decayexp=2)
 a0, _ = coeff_field[0]
 
 # define multioperator
@@ -138,7 +138,7 @@ theta_zeta = 0.3        # projection marking threshold factor
 min_zeta = 1e-15        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 maxm = 10               # maximal search length for new new multiindices
-theta_delta = 0.1       # number new multiindex activation bound
+theta_delta = 0.9       # number new multiindex activation bound
 max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices 
 # pcg solver
 pcg_eps = 2e-6
@@ -164,8 +164,13 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ
 # PART C: Plotting and Export of Data
 # ============================================================
 
-for mu in w.active_indices():
-    logger.debug("FINAL MESH for %s has %s cells", mu, w[mu]._fefunc.function_space().mesh().num_cells())
+from operator import itemgetter
+active_mi = [(mu, w[mu]._fefunc.function_space().mesh().num_cells()) for mu in w.active_indices()]
+active_mi = sorted(active_mi, key=itemgetter(1), reverse=True)
+logger.info("==== FINAL MESHES ====")
+for mu in active_mi:
+    logger.info("--- %s has %s cells", mu[0], mu[1])
+print "ACTIVE MI:", active_mi
 
 # save solution
 if SAVE_SOLUTION != "":
@@ -179,7 +184,7 @@ if SAVE_SOLUTION != "":
 # plot residuals
 if PLOT_RESIDUAL and len(sim_stats) > 1:
     try:
-        from matplotlib.pyplot import figure, show, legend, title, savefig
+        from matplotlib.pyplot import figure, show, legend
         x = [s["DOFS"] for s in sim_stats]
         L2 = [s["L2"] for s in sim_stats]
         H1 = [s["H1"] for s in sim_stats]

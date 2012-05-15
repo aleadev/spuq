@@ -153,6 +153,7 @@ class Marking(object):
             f = FEniCSVector.from_basis(V)
             f.interpolate(a0_f)
             min_a0 = f.min_val
+            logger.debug("NEW MI with mu = %s    norm(w) = %s", mu, norm_w)
             # iterate multiindex extensions
             for m in range(min(maxm, len(coeff_field))):
                 mu1 = mu.inc(m)
@@ -171,7 +172,8 @@ class Marking(object):
                 #                    logger.debug("C*** %f -- %f", theta_delta, max_zeta)
                 #                    logger.debug("D*** %f", theta_delta * max_zeta)
                 #                    logger.debug("E*** %s", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta))
-
+                logger.debug("\t beta[1] * ainfty * norm_w = %s      >=     theta_delta * max_zeta = %s", beta[1] * ainfty * norm_w, theta_delta * max_zeta)
+                
                 if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
                     val1 = beta[1] * ainfty * norm_w
                     if mu1 not in Lambda_candidates.keys() or (mu1 in Lambda_candidates.keys() and Lambda_candidates[mu1] < val1):

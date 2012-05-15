@@ -64,11 +64,11 @@ def AdaptiveSolver(A, coeff_field, f,
                     ceta=1.0,
                     # marking parameters
                     theta_eta=0.4, # residual marking bulk parameter
-                    theta_zeta=0.5, # projection marking threshold factor
+                    theta_zeta=0.3, # projection marking threshold factor
                     min_zeta=1e-15, # minimal projection error considered
                     maxh=0.1, # maximal mesh width for projection maximum norm evaluation
                     maxm=10, # maximal search length for new new multiindices
-                    theta_delta=0.1, # number new multiindex activation bound
+                    theta_delta=0.8, # number new multiindex activation bound
                     max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
                     # pcg solver
                     pcg_eps=1e-6,

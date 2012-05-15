@@ -23,13 +23,19 @@ def setup_vec(mesh):
     vec = FEniCSVector(Function(fs))
     return vec
 
+
 # create reference mesh and function space
-def get_proj_basis(mesh0, num_mesh_refinements):
-    mesh = refine(mesh0)
-    for _ in range(num_mesh_refinements):
-        mesh = refine(mesh)
-    V = FunctionSpace(mesh, "CG", 1)
-    return FEniCSBasis(V)
+def get_proj_basis(mesh0, mesh_refinements=None, maxh=None):
+    if not(mesh_refinements is None):
+        mesh = mesh0
+        for _ in range(mesh_refinements):
+            mesh = refine(mesh)
+        V = FunctionSpace(mesh, "CG", 1)
+        return FEniCSBasis(V)
+    else:
+        assert not(maxh is None)
+        B = FEniCSBasis(FunctionSpace(mesh0, "CG", 1))
+        return B.refine_maxh(maxh, True)
 
 
 def get_projected_sol(w, mu, proj_basis):

@@ -22,8 +22,13 @@ except Exception, e:
 
 # ------------------------------------------------------------
 
+# program parameters
+PLOT_SOLUTION = False
+MC_RUNS = 10
+MC_N = 100
+
 # log level and format configuration
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
                     format=log_format)
@@ -69,11 +74,10 @@ def setup_vec(mesh):
 
 
 # flags for residual, projection, new mi refinement 
-refinement = {"RES": True, "PROJ": True, "MI": False}
+refinement = {"RES": True, "PROJ": True, "MI": True}
 uniform_refinement = False
 
 # define source term and diffusion coefficient
-#f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
 f = Constant("1.0")
 
 # define initial multiindices
@@ -89,7 +93,7 @@ w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=0.40, rvtype="uniform")
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=1, rvtype="uniform")
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -105,18 +109,13 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     max_refinements=2 * 0,
     pcg_eps=1e-4)
 
-#coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=0, amp=10, rvtype="uniform")
-
 
 # ============================================================
 # PART C: Evaluation of Deterministic Solution and Comparison
 # ============================================================
 
-# dbg
-print "w:", w
-
 # create reference mesh and function space
-proj_basis = get_proj_basis(mesh0, num_mesh_refinements=2)
+proj_basis = get_proj_basis(mesh0, maxh=1 / 10)
 
 # get realization of coefficient field
 RV_samples = coeff_field.sample_rvs()
@@ -126,7 +125,6 @@ sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w
 sample_sol_stochastic = sample_sol_param - get_projected_sol(w, Multiindex(), proj_basis)
 sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
 
-
 # evaluate errors
 print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
 "  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
@@ -135,7 +133,7 @@ sample_sol_err.coeffs = sample_sol_err.coeffs
 sample_sol_err.coeffs.abs()
 
 # plotting
-if False:
+if PLOT_SOLUTION:
     a_func = project(a, proj_basis._fefs)
     a_vec = FEniCSVector(a_func)
     a_vec.plot(interactive=False, title="coefficient field")
@@ -144,40 +142,37 @@ if False:
     sample_sol_direct.plot(interactive=False, title="direct solution")
     sample_sol_err.plot(interactive=True, title="error")
 
-import time
 
-def run_mc():
+def run_mc(err):
+    import time
+    
     # create reference mesh and function space
-    proj_basis = get_proj_basis(mesh0, num_mesh_refinements=2)
+    proj_basis = get_proj_basis(mesh0, maxh=1 / 10)
 
     # get realization of coefficient field
-    N = 20
     err_L2, err_H1 = 0, 0
-    for i in range(N):
+    for _ in range(MC_N):
         #logger.info("MC Iteration %i/%i", i + 1, N)
         RV_samples = coeff_field.sample_rvs()
-
-        t1 = time.time()
-
+#        t1 = time.time()
         sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
-        t2 = time.time()
+#        t2 = time.time()
         sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, w.max_order, proj_basis)
-        t3 = time.time()
-
-        err_L2 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
-        err_H1 += 1.0 / N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
-        t4 = time.time()
-        #logger.info("TIMING: param: %s, direct %s, error %s", t2 - t1, t3 - t2, t4 - t3)
+#        t3 = time.time()
+        err_L2 += 1.0 / MC_N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
+        err_H1 += 1.0 / MC_N * errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+#        t4 = time.time()
+#        logger.info("TIMING: param: %s, direct %s, error %s", t2 - t1, t3 - t2, t4 - t3)
 
     logger.info("MC Error: L2: %s, H1: %s", err_L2, err_H1)
+    err.append((err_L2, err_H1))
 
+# iterate MC
+err = []
+for _ in range(MC_RUNS):
+    run_mc(err)
 
-run_mc()
-run_mc()
-run_mc()
-run_mc()
-run_mc()
-run_mc()
-run_mc()
-run_mc()
-
+#print "evaluated errors (L2,H1):", err
+L2err = sum([e[0] for e in err]) / len(err)
+H1err = sum([e[1] for e in err]) / len(err)
+print "average ERRORS: L2 = ", L2err, "   H1 = ", H1err
