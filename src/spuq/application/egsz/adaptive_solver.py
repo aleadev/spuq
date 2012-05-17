@@ -78,8 +78,11 @@ def AdaptiveSolver(A, coeff_field, f,
                     # refinements
                     max_refinements=7,
                     do_refinement={"RES":True, "PROJ":True, "MI":False},
-                    do_uniform_refinement=False):
+                    do_uniform_refinement=False,
+                    w_history=None):
     w = w0
+    if not w_history is None:
+        w_history.append(w)
 
     # data collection
     sim_stats = []                  # mis, residual, estimator and dof progress
@@ -90,6 +93,8 @@ def AdaptiveSolver(A, coeff_field, f,
         # ---------
         stats = {}
         w, zeta = pcg_solve(A, w, coeff_field, f, stats, pcg_eps, pcg_maxiter)
+        if not w_history is None:
+            w_history.append(w)
 
         # error evaluation
         # ----------------
@@ -103,16 +108,9 @@ def AdaptiveSolver(A, coeff_field, f,
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
         sim_stats.append(stats)
 
-        # debug---
-#            from dolfin import plot, interactive
-#            for mu, vec in w.iteritems():
-#                plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
-#                vec.plot(title=str(mu), interactive=False)
-#            interactive()
-        # ---debug
-
         # exit when either error threshold or max_refinements is reached
-        if refinement >= max_refinements:
+        if refinement > max_refinements:
+            logger.info("skipping refinement after final solution in iteration %i", refinement)
             break
         if xi <= error_eps:
             logger.info("error reached requested accuracy, xi=%f", xi)

@@ -12,8 +12,9 @@ try:
                         interactive, project, errornorm)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver
-    from spuq.fem.fenics.fenics_vector import FEniCSVector
-    from spuq.application.egsz.sampling import get_proj_basis, compute_direct_sample_solution, compute_parametric_sample_solution, get_projected_sol
+#    from spuq.fem.fenics.fenics_vector import FEniCSVector
+    from spuq.application.egsz.sampling import (get_projection_basis, compute_direct_sample_solution,
+                                                compute_parametric_sample_solution, setup_vector, get_coeff_realisation)
 except Exception, e:
     import traceback
     print traceback.format_exc()
@@ -24,8 +25,8 @@ except Exception, e:
 
 # program parameters
 PLOT_SOLUTION = False
-MC_RUNS = 30
-MC_N = 30
+MC_RUNS = 2
+MC_N = 3
 MC_HMAX = 1 / 10
 MC_DEGREE = 1
 
@@ -62,14 +63,6 @@ lshape_xml = os.path.join(path, 'lshape.xml')
 
 # ------------------------------------------------------------
 
-# utility functions 
-
-# setup initial multivector
-def setup_vec(mesh):
-    fs = FunctionSpace(mesh, "CG", 1)
-    vec = FEniCSVector(Function(fs))
-    return vec
-
 
 # ============================================================
 # PART A: Problem Setup
@@ -80,23 +73,23 @@ def setup_vec(mesh):
 refinement = {"RES": True, "PROJ": True, "MI": True}
 uniform_refinement = False
 
-# define source term and diffusion coefficient
+# define source term
 f = Constant("1.0")
 
 # define initial multiindices
-mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 2)]
+mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # setup meshes
 #mesh0 = refine(Mesh(lshape_xml))
 mesh0 = UnitSquare(5, 5)
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine": 3})
 
-w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
+w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vector)
 
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=1, rvtype="uniform")
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=2, rvtype="uniform")
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -112,67 +105,45 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     max_refinements=2 * 0,
     pcg_eps=1e-4)
 
+logger.debug("active indices of w after solution: %s", w.active_indices())
+
 
 # ============================================================
 # PART C: Evaluation of Deterministic Solution and Comparison
 # ============================================================
 
 # create reference mesh and function space
-proj_basis = get_proj_basis(mesh0, maxh=1 / 10, degree=MC_DEGREE)
-
-# get realization of coefficient field
-RV_samples = coeff_field.sample_rvs()
-
-# store stochastic part of solution
-sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
-sample_sol_stochastic = sample_sol_param - get_projected_sol(w, Multiindex(), proj_basis)
-sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, f, w.max_order, proj_basis)
-
-# evaluate errors
-print "ERRORS: L2 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2"), \
-"  H1 =", errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
-sample_sol_err = sample_sol_param - sample_sol_direct
-sample_sol_err.coeffs = sample_sol_err.coeffs
-sample_sol_err.coeffs.abs()
-
-# plotting
-if PLOT_SOLUTION:
-    a_func = project(a, proj_basis._fefs)
-    a_vec = FEniCSVector(a_func)
-    a_vec.plot(interactive=False, title="coefficient field")
-    sample_sol_param.plot(interactive=False, title="parametric solution")
-    sample_sol_stochastic.plot(interactive=False, title="stochastic part of solution")
-    sample_sol_direct.plot(interactive=False, title="direct solution")
-    sample_sol_err.plot(interactive=True, title="error")
-
+proj_basis = get_projection_basis(mesh0, maxh=1 / 10, degree=MC_DEGREE)
 
 def run_mc(w, err):
 #    import time
-    from dolfin import plot
     
     # create reference mesh and function space
-    proj_basis = get_proj_basis(mesh0, maxh=1 / 10)
+    projection_basis = get_projection_basis(mesh0, maxh=1 / 10)
 
     # get realization of coefficient field
     err_L2, err_H1 = 0, 0
-    for _ in range(MC_N):
-        #logger.info("MC Iteration %i/%i", i + 1, N)
+    for i in range(MC_N):
+        logger.info("MC Iteration %i/%i", i , MC_N)
         RV_samples = coeff_field.sample_rvs()
+        logger.debug("RV_samples: %s", [RV_samples[j] for j in range(w.max_order)])
 #        t1 = time.time()
         sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis)
 #        t2 = time.time()
-        sample_sol_direct, a = compute_direct_sample_solution(RV_samples, coeff_field, A, f, w.max_order, proj_basis)
+        sample_sol_direct = compute_direct_sample_solution(RV_samples, coeff_field, A, f, w.max_order, projection_basis)
 #        t3 = time.time()
         cerr_L2 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
         err_L2 += 1.0 / MC_N * cerr_L2
         err_H1 += 1.0 / MC_N * cerr_H1
-        if cerr_H1 > 100:
-            print "cerr_H1 > 100: ", cerr_H1, " with samples ", RV_samples
-#            fa = project(a, proj_basis._fefs)
-#            plot(fa, title='coefficient field')
-#            sample_sol_param.plot(title="parametric")
-#            sample_sol_direct.plot(title="direct", interactive=True)
+        
+        if i == 0:
+            sample_sol_direct_a0 = compute_direct_sample_solution(RV_samples, coeff_field, A, f, 0, projection_basis)
+            L2_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "L2")
+            H1_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "H1")
+            print "deterministic error L2 = ", L2_a0, "   H1 = ", H1_a0
+            fc = get_coeff_realisation(RV_samples, coeff_field, w.max_order, projection_basis)
+            fc.plot(interactive=True)
             
 #        t4 = time.time()
 #        logger.info("TIMING: param: %s, direct %s, error %s", t2 - t1, t3 - t2, t4 - t3)

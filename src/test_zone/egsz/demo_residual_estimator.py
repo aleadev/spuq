@@ -23,7 +23,7 @@ except:
 
 # setup logging
 # log level and format configuration
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
                     format=log_format)
@@ -79,7 +79,7 @@ SAVE_SOLUTION = '' #"results/demo-residual"
 REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
 UNIFORM_REFINEMENT = False
 
-# define source term and diffusion coefficient
+# define source term
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
 f = Constant("1.0")
 

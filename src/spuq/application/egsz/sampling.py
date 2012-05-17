@@ -18,14 +18,14 @@ except Exception, e:
 
 
 # setup initial multivector
-def setup_vec(mesh):
-    fs = FunctionSpace(mesh, "CG", 1)
+def setup_vector(mesh, degree=1):
+    fs = FunctionSpace(mesh, "CG", degree)
     vec = FEniCSVector(Function(fs))
     return vec
 
 
 # create reference mesh and function space
-def get_proj_basis(mesh0, mesh_refinements=None, maxh=None, degree=1):
+def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1):
     if not(mesh_refinements is None):
         mesh = mesh0
         for _ in range(mesh_refinements):
@@ -38,19 +38,42 @@ def get_proj_basis(mesh0, mesh_refinements=None, maxh=None, degree=1):
         return B.refine_maxh(maxh, True)
 
 
-def get_projected_sol(w, mu, proj_basis):
+def get_projected_solution(w, mu, proj_basis):
     return w.project(w[mu], proj_basis)
 
 
 def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis):
     Lambda = w.active_indices()
     sample_map, _ = coeff_field.sample_realization(Lambda, RV_samples)
-
     # sum up (stochastic) solution vector on reference function space wrt samples
     Lambda = w.active_indices()
-
-    sample_sol = sum(get_projected_sol(w, mu, proj_basis) * sample_map[mu] for mu in Lambda)
+    sample_sol = sum(get_projected_solution(w, mu, proj_basis) * sample_map[mu] for mu in Lambda)
     return sample_sol
+
+
+def compute_direct_sample_solution(RV_samples, coeff_field, A, f, maxm, proj_basis):
+    try:
+        A0 = coeff_field.A
+        A_m = coeff_field.A_m
+    except AttributeError:
+        a = coeff_field.mean_func
+        A0 = FEMPoisson.assemble_lhs(a, proj_basis, withBC=False)
+        A_m = [None] * maxm
+        coeff_field.A = A0
+        coeff_field.A_m = A_m
+
+    A = A0.copy()
+    for m in range(maxm):
+        if A_m[m] is None:
+            a_m = coeff_field[m][0]
+            A_m[m] = FEMPoisson.assemble_lhs(a_m, proj_basis, withBC=False)
+        A += RV_samples[m] * A_m[m]
+
+    b = FEMPoisson.assemble_rhs(f, proj_basis, withBC=False)
+    A, b = FEMPoisson.apply_dirichlet_bc(proj_basis, A, b)
+    X = 0 * b
+    solve(A, X, b)
+    return FEniCSVector(Function(proj_basis._fefs, X))
 
 
 def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj_basis):
@@ -66,24 +89,9 @@ def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj
     return FEniCSVector(Function(proj_basis._fefs, X)), a
 
 
-def compute_direct_sample_solution(RV_samples, coeff_field, A, f, maxm, proj_basis):
-    try:
-        A = coeff_field.A
-        A_m = coeff_field.A_m
-    except AttributeError:
-        a = coeff_field.mean_func
-        A = FEMPoisson.assemble_lhs(a, proj_basis)
-        A_m = [None] * maxm
-        coeff_field.A = A
-        coeff_field.A_m = A_m
-
+def get_coeff_realisation(RV_samples, coeff_field, maxm, proj_basis):
+    a = coeff_field.mean_func
     for m in range(maxm):
-        if A_m[m] is None:
-            a_m = coeff_field[m][0]
-            A_m[m] = FEMPoisson.assemble_lhs(a_m, proj_basis)
-        A += RV_samples[m] * A_m[m]
-
-    b = FEMPoisson.assemble_rhs(f, proj_basis)
-    X = 0 * b
-    solve(A, X, b)
-    return FEniCSVector(Function(proj_basis._fefs, X)), coeff_field.mean_func
+        a_m = RV_samples[m] * coeff_field[m][0]
+        a += a_m
+    return FEniCSVector(project(a, proj_basis._fefs))

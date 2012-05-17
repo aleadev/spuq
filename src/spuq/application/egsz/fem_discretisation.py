@@ -17,54 +17,63 @@ class FEMPoisson(FEMDiscretisation):
     """
 
     @classmethod
-    def assemble_operator(cls, coeff, basis):
+    def assemble_operator(cls, coeff, basis, withBC=True):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-        matrix = cls.assemble_lhs(coeff, basis)
+        matrix = cls.assemble_lhs(coeff, basis, withBC)
         return FEniCSOperator(matrix, basis)
 
     @classmethod
-    def assemble_solve_operator(cls, coeff, basis):
-        matrix = cls.assemble_lhs(coeff, basis)
+    def assemble_solve_operator(cls, coeff, basis, withBC=True):
+        matrix = cls.assemble_lhs(coeff, basis, withBC)
         return FEniCSSolveOperator(matrix, basis)
 
     @classmethod
-    def assemble_lhs(cls, coeff, basis, uD=None):
-        """Assemble the discrete problem (i.e. the stiffness matrix)."""
-        # get FEniCS function space
-        V = basis._fefs
-
+    def apply_dirichlet_bc(cls, V, A=None, b=None, uD=None):
+        """Apply Dirichlet boundary conditions."""
         # define boundary conditions
         def uD_boundary(x, on_boundary):
             return on_boundary
         if uD is None:
             uD = Constant(0.0)
+        try:
+            V = V._fefs
+        except:
+            pass
         bc = DirichletBC(V, uD, uD_boundary)
+        val = []
+        if not A is None:
+            bc.apply(A)
+            val.append(A)
+        if not b is None:
+            bc.apply(b)
+            val.append(b)
+        if len(val) == 1:
+            val = val[0]
+        return val
 
+    @classmethod
+    def assemble_lhs(cls, coeff, basis, uD=None, withBC=True):
+        """Assemble the discrete problem (i.e. the stiffness matrix)."""
+        # get FEniCS function space
+        V = basis._fefs
         # setup problem, assemble and apply boundary conditions
         u = TrialFunction(V)
         v = TestFunction(V)
         a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
         A = assemble(a)
-        bc.apply(A)
+        if withBC:
+            A = cls.apply_dirichlet_bc(V, A=A, uD=uD)
         return A
 
     @classmethod
-    def assemble_rhs(cls, f, basis, uD=None):
+    def assemble_rhs(cls, f, basis, uD=None, withBC=True):
         """Assemble the discrete right-hand side."""
-
         # get FEniCS function space
         V = basis._fefs
-
-        # define boundary conditions
-        def uD_boundary(x, on_boundary):
-            return on_boundary
-        if uD is None:
-            uD = Constant(0.0)
-        bc = DirichletBC(V, uD, uD_boundary)
-
         # assemble and apply boundary conditions
         v = TestFunction(V)
         l = (f * v) * dx
         F = assemble(l)
-        bc.apply(F)
+        if withBC:
+            F = cls.apply_dirichlet_bc(V, b=F, uD=uD)
         return F
