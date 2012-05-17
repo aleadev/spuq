@@ -194,9 +194,9 @@ class MultiVectorWithProjection(MultiVector):
                 try:
                     V = self._proj_cache[degree]["V"]       # try to retrieve basis
                 except:
-                    V = self[mu_dest].copy(degree)          # create and store basis if necessary
+                    V = self[mu_dest].basis.copy(degree)    # create and store basis if necessary
                     self._proj_cache[degree]["V"] = V
-                vec = V.basis.project_onto(mu_src)
+                vec = V.project_onto(self[mu_src])
             self._proj_cache[degree][args] = vec
             #            print "P proj_cache size", len(self._proj_cache)
         #            print "P with keys", self._proj_cache.keys()

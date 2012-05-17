@@ -1,4 +1,4 @@
-from dolfin import Function, FunctionSpace, plot, File, Mesh
+from dolfin import Function, FunctionSpace, plot, File, Mesh, norm
 
 from spuq.utils.type_check import takes, anything, sequence_of, set_of
 from spuq.linalg.vector import Scalar
@@ -124,6 +124,9 @@ class FEniCSVector(FEMVector):
             func = Function(func.function_space())
             func.vector()[:] = values[0]
         plot(func, **kwargs)
+
+    def norm(self, norm_type="L2"):
+        return norm(self._fefunc, norm_type)
         
     @property
     def min_val(self):

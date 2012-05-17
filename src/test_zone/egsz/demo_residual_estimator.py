@@ -10,7 +10,7 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
 try:
-    from dolfin import (Function, FunctionSpace, Constant, UnitSquare, plot, interactive, set_log_level, set_log_active)
+    from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, plot, interactive, set_log_level, set_log_active)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
@@ -70,7 +70,7 @@ def setup_vec(mesh):
 PLOT_RESIDUAL = True
 
 # flag for final solution plotting
-PLOT_MESHES = False
+PLOT_MESHES = True
 
 # flag for final solution export
 SAVE_SOLUTION = '' #"results/demo-residual"
@@ -91,7 +91,7 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 # ---debug
 
 # setup meshes 
-#mesh0 = refine(Mesh(lshape_xml))
+#mesh0 = Mesh(lshape_xml)
 mesh0 = UnitSquare(4, 4)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":10, "random":(0.4, 0.3)})
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
@@ -114,8 +114,8 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # ---debug
 
 # define coefficient field
-#coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=1)
-coeff_field = SampleProblem.setupCF("constant", decayexp=2)
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=1, freqscale=1)
+#coeff_field = SampleProblem.setupCF("constant", decayexp=2)
 a0, _ = coeff_field[0]
 
 # define multioperator
@@ -231,7 +231,7 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
 
 # plot final meshes
 if PLOT_MESHES:
-    USE_MAYAVI = Plotter.hasMayavi() 
+    USE_MAYAVI = Plotter.hasMayavi() and False
     for mu, vec in w.iteritems():
         if USE_MAYAVI:
             # mesh
@@ -249,7 +249,7 @@ if PLOT_MESHES:
             Plotter.labels()
             Plotter.title(str(mu))
         else:
-            plot(vec.basis.mesh, title=str(mu), interactive=False, axes=True)
+            plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False, axes=True)
             vec.plot(title=str(mu), interactive=False)
     if USE_MAYAVI:
         Plotter.show(stop=True)

@@ -60,7 +60,7 @@ class SampleProblem(object):
 
     @classmethod
     @takes(anything, str, optional(dict))
-    def setupCF(cls, cftype, decayexp=2, amp=1, rvtype='uniform'):
+    def setupCF(cls, cftype, decayexp=2, amp=1, freqscale=1, rvtype='uniform'):
         """create parametric coefficient field of cftype (EF-square-cos,EF-square-sin,monomials,linear,constant,zero) with
             decay exponent, amplification and random variable type (uniform,normal)"""
         # mean value
@@ -75,34 +75,31 @@ class SampleProblem(object):
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
             mis.next()
-            a = (Expression('A*cos(pi*m*x[0])*cos(pi*n*x[1])', A=amp / (int(i) + 2) ** decayexp, m=int(mu[0]),
-                n=int(mu[1]), degree=3,
-                #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
-                element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
+            a = (Expression('A*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])', freq=freqscale, A=amp / (int(i) + 2) ** decayexp,
+                    m=int(mu[0]), n=int(mu[1]), degree=3,
+                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
         elif cftype == "EF-square-sin":
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
             mis.next()
-            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=amp / (int(i) + 2) ** decayexp, m=int(mu[0]),
-                n=int(mu[1]), degree=3,
-                #            a = (Expression('A*sin(pi*m*x[0])*sin(pi*n*x[1])', A=1 / (mu[0] + mu[1] + 1) ** 2, m=int(mu[0]), n=int(mu[1]), degree=2,
-                element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
+            a = (Expression('A*sin(freq*pi*m*x[0])*sin(freq*pi*n*x[1])', freq=freqscale, A=amp / (int(i) + 2) ** decayexp,
+                    m=int(mu[0]), n=int(mu[1]), degree=3,
+                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
         elif cftype == "monomials":
             # monomials
             mis = MultiindexSet.createCompleteOrderSet(2)
             mis.next()
-            p_str = lambda A, m, n: str(A) * "*" + "*".join(["x[0]" for _ in range(m)]) + "+" + "*".join(
-                ["x[1]" for _ in range(n)])
-            pex = lambda i, mn: Expression(p_str(amp / (int(i) + 2) ** decayexp, mn[0], mn[1]), degree=3,
+            p_str = lambda A, m, n: str(A) + "*" + "*".join(["x[0]" for _ in range(m)]) + "+" + "*".join(["x[1]" for _ in range(n)])
+            pex = lambda i, mn: Expression(p_str(amp / (int(i) + 1) ** decayexp, mn[0], mn[1]), degree=3,
                 element=FiniteElement('Lagrange', ufl.triangle, 1))
-            a = (pex(i, mn) for i, mn in enumerate(mis))
+            a = (pex(i, mn + freqscale) for i, mn in enumerate(mis))
         elif cftype == "linear":
             # linear functions
-            a = (Expression("A*(x[0]+x[1])", A=amp / (int(i) + 2) ** decayexp,
+            a = (Expression("A*(x[0]+x[1])", A=amp / (int(i) + 1) ** decayexp,
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "constant":
             # constant functions
-            a = (Expression(str(amp / (int(i) + 2) ** decayexp),
+            a = (Expression(str(amp / (int(i) + 1) ** decayexp),
                 element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
         elif cftype == "zero":
             # zero functions

@@ -92,7 +92,11 @@ class FEniCSBasis(FEMBasis):
 
     @property
     def maxh(self):
-        return self.mesh.maxh()
+        return self.mesh.hmax()
+
+    @property
+    def minh(self):
+        return self.mesh.hmin()
 
     @property
     def degree(self):        

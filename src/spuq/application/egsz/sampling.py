@@ -39,15 +39,23 @@ def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1):
 
 
 def get_projected_solution(w, mu, proj_basis):
+    # TODO: obfuscated method call since project is not obvious in the interface of MultiVector!
     return w.project(w[mu], proj_basis)
 
 
-def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis):
+def prepare_w_projections(w, proj_basis):
+    return {mu:get_projected_solution(w, mu, proj_basis) for mu in w.active_indices()}
+
+
+def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis, proj_cache=None):
     Lambda = w.active_indices()
     sample_map, _ = coeff_field.sample_realization(Lambda, RV_samples)
     # sum up (stochastic) solution vector on reference function space wrt samples
     Lambda = w.active_indices()
-    sample_sol = sum(get_projected_solution(w, mu, proj_basis) * sample_map[mu] for mu in Lambda)
+    if proj_cache is None:
+        sample_sol = sum(get_projected_solution(w, mu, proj_basis) * sample_map[mu] for mu in Lambda)
+    else:
+        sample_sol = sum(proj_cache[mu] * sample_map[mu] for mu in Lambda)
     return sample_sol
 
 
