@@ -6,6 +6,7 @@ from math import sqrt
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
+from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
@@ -62,15 +63,16 @@ def setup_vec(mesh):
     vec = FEniCSVector(Function(fs))
     return vec
 
+
 # ============================================================
-# PART A: Problem Setup
+# PART A: Simulation Options
 # ============================================================
 
 # flag for residual graph plotting
 PLOT_RESIDUAL = True
 
 # flag for final solution plotting
-PLOT_MESHES = True
+PLOT_MESHES = False
 
 # flag for final solution export
 SAVE_SOLUTION = '' #"results/demo-residual"
@@ -78,6 +80,16 @@ SAVE_SOLUTION = '' #"results/demo-residual"
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
 UNIFORM_REFINEMENT = False
+
+# MC error sampling
+MC_RUNS = 1
+MC_N = 10
+MC_HMAX = 1 / 20
+
+
+# ============================================================
+# PART B: Problem Setup
+# ============================================================
 
 # define source term
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
@@ -123,11 +135,12 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 
 
 # ============================================================
-# PART B: Adaptive Algorithm
+# PART C: Adaptive Algorithm
 # ============================================================
 
-# refinement loop
-# ===============
+# -------------------------------------------------------------
+# -------------- ADAPTIVE ALGORITHM OPTIONS -------------------
+# -------------------------------------------------------------
 # error constants
 gamma = 0.9
 cQ = 1.0
@@ -147,6 +160,14 @@ error_eps = 1e-2
 # refinements
 max_refinements = 10
 
+if MC_RUNS > 0:
+    w_history = []
+else:
+    w_history = None
+
+
+# refinement loop
+# ===============
 w0 = w
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
@@ -157,12 +178,8 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ
                     # adaptive algorithm threshold
                     error_eps=error_eps,
                     # refinements
-                    max_refinements=max_refinements, do_refinement=REFINEMENT, do_uniform_refinement=UNIFORM_REFINEMENT)
-
-
-# ============================================================
-# PART C: Plotting and Export of Data
-# ============================================================
+                    max_refinements=max_refinements, do_refinement=REFINEMENT, do_uniform_refinement=UNIFORM_REFINEMENT,
+                    w_history=w_history)
 
 from operator import itemgetter
 active_mi = [(mu, w[mu]._fefunc.function_space().mesh().num_cells()) for mu in w.active_indices()]
@@ -171,6 +188,27 @@ logger.info("==== FINAL MESHES ====")
 for mu in active_mi:
     logger.info("--- %s has %s cells", mu[0], mu[1])
 print "ACTIVE MI:", active_mi
+
+
+# ============================================================
+# PART D: MC Error Sampling
+# ============================================================
+if MC_RUNS > 0:
+    ref_maxm = w_history[-1].max_order
+    for i, w in enumerate(w_history):
+        logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
+        if i == 0:
+            continue
+        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
+        sim_stats[i - 1]["MC-L2ERR"] = L2err
+        sim_stats[i - 1]["MC-H1ERR"] = H1err
+        sim_stats[i - 1]["MC-L2ERR_a0"] = L2err_a0
+        sim_stats[i - 1]["MC-H1ERR_a0"] = H1err_a0
+
+
+# ============================================================
+# PART E: Plotting and Export of Data
+# ============================================================
 
 # save solution
 if SAVE_SOLUTION != "":
@@ -188,9 +226,14 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         x = [s["DOFS"] for s in sim_stats]
         L2 = [s["L2"] for s in sim_stats]
         H1 = [s["H1"] for s in sim_stats]
+        mcL2 = [s["MC-L2ERR"] for s in sim_stats]
+        mcH1 = [s["MC-H1ERR"] for s in sim_stats]
+        mcL2_a0 = [s["MC-L2ERR_a0"] for s in sim_stats]
+        mcH1_a0 = [s["MC-H1ERR_a0"] for s in sim_stats]
         errest = [sqrt(s["EST"]) for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
+        effest = [s["RES"] / s["MC-H1ERR_a0"] for s in sim_stats]
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
         # figure 1
@@ -203,8 +246,12 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
 #        ax.loglog(x, errest, '-g<', label='error estimator')
 #        ax.loglog(x, reserr, '-.cx', label='residual part')
 #        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
-        ax.loglog(x, H1, '-b^', label='H1 residual')
-        ax.loglog(x, L2, '-ro', label='L2 residual')
+        ax.loglog(x, H1, '-g<', label='H1 residual')
+        ax.loglog(x, L2, '-c+', label='L2 residual')
+        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+        ax.loglog(x, mcL2, '-ro', label='MC L2 error')
+        ax.loglog(x, mcH1_a0, '-.b^', label='MC H1 error a0')
+        ax.loglog(x, mcL2_a0, '-.ro', label='MC L2 error a0')
         legend(loc='upper right')
         if SAVE_SOLUTION != "":
             fig.savefig(os.path.join(SAVE_SOLUTION, 'RES.png'))
@@ -218,11 +265,24 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+        ax.loglog(x, mcL2, '-ro', label='MC L2 error')
 #        ax.loglog(x, H1, '-b^', label='H1 residual')
 #        ax.loglog(x, L2, '-ro', label='L2 residual')
         legend(loc='upper right')
         if SAVE_SOLUTION != "":
             fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.png'))
+        # figure 3
+        # --------
+        fig3 = figure()
+        fig3.suptitle("efficiency residual estimator")
+        ax = fig3.add_subplot(111)
+        ax.loglog(x, errest, '-g<', label='error estimator')
+        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+        ax.loglog(x, effest, '-ro', label='efficiency')        
+        legend(loc='upper right')
+        if SAVE_SOLUTION != "":
+            fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))
         show()  # this invalidates the figure instances...
     except:
         import traceback

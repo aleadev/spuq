@@ -1,4 +1,10 @@
 __all__ = ["coefficient_field",
          "fem_discretisation",
-         "operator",
-         "residual_estimator"]
+         "multi_operator",
+         "residual_estimator",
+         "adaptive_solver",
+         "multi_vector",
+         "pcg",
+         "sample_problems",
+         "sampling",
+         "mc_error_sampling"]
