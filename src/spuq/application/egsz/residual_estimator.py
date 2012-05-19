@@ -64,6 +64,7 @@ class ResidualEstimator(object):
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
         xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
               + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
+        logger.debug("Total Residual ERROR Factors: A1=%s  A2=%s  A3=%s  A4=%s", ceta / sqrt(1 - gamma), cQ / sqrt(1 - gamma), cQ * sqrt(zeta / (1 - gamma)), zeta / (1 - gamma))
         return (xi, resind, projind)
 
 

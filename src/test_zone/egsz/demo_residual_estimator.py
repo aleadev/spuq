@@ -83,8 +83,8 @@ UNIFORM_REFINEMENT = False
 
 # MC error sampling
 MC_RUNS = 1
-MC_N = 10
-MC_HMAX = 1 / 20
+MC_N = 5
+MC_HMAX = 1 / 10
 
 
 # ============================================================
@@ -126,7 +126,10 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # ---debug
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=1, freqscale=1)
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4, amp=1, freqscale=1)
+# NOTE: gamma has to be adjusted w.r.t. the coefficient field expansion!
+#gamma = 0.65                # EW decay=-2
+gamma = 0.085               # EW decay=-4
 #coeff_field = SampleProblem.setupCF("constant", decayexp=2)
 a0, _ = coeff_field[0]
 
@@ -142,11 +145,10 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 # -------------- ADAPTIVE ALGORITHM OPTIONS -------------------
 # -------------------------------------------------------------
 # error constants
-gamma = 0.9
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.3         # residual marking bulk parameter
+theta_eta = 0.5         # residual marking bulk parameter
 theta_zeta = 0.3        # projection marking threshold factor
 min_zeta = 1e-15        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
@@ -233,9 +235,12 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         errest = [sqrt(s["EST"]) for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
-        effest = [s["RES"] / s["MC-H1ERR_a0"] for s in sim_stats]
+        effest = [est / err for est, err in zip(errest, mcH1)]
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
+        print "mcH1", mcH1
+        print "errest", errest
+        print "efficiency", [est / err for est, err in zip(errest, mcH1)]
         # figure 1
         # --------
         fig = figure()
@@ -310,7 +315,7 @@ if PLOT_MESHES:
             Plotter.title(str(mu))
         else:
             plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False, axes=True)
-            vec.plot(title=str(mu), interactive=False)
+#            vec.plot(title=str(mu), interactive=False)
     if USE_MAYAVI:
         Plotter.show(stop=True)
         Plotter.close(allfig=True)
