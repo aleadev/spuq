@@ -103,8 +103,8 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 # ---debug
 
 # setup meshes 
-mesh0 = Mesh(lshape_xml)
-#mesh0 = UnitSquare(4, 4)
+#mesh0 = Mesh(lshape_xml)
+mesh0 = UnitSquare(4, 4)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":10, "random":(0.4, 0.3)})
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 
