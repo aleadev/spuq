@@ -88,7 +88,7 @@ def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj
     a = coeff_field.mean_func
     for m in range(maxm):
         a_m = RV_samples[m] * coeff_field[m][0]
-        a += a_m
+        a = a + a_m
 
     A = FEMPoisson.assemble_lhs(a, proj_basis)
     b = FEMPoisson.assemble_rhs(f, proj_basis)
@@ -100,6 +100,7 @@ def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj
 def get_coeff_realisation(RV_samples, coeff_field, maxm, proj_basis):
     a = coeff_field.mean_func
     for m in range(maxm):
+        print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", m, RV_samples[m] 
         a_m = RV_samples[m] * coeff_field[m][0]
-        a += a_m
+        a = a + a_m
     return FEniCSVector(project(a, proj_basis._fefs))

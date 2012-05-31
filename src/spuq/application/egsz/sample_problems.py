@@ -60,6 +60,57 @@ class SampleProblem(object):
 
     @classmethod
     @takes(anything, str, optional(dict))
+    def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1):
+        if rvtype == "uniform":
+            rvs = lambda i: UniformRV(a=-1, b=1)
+        elif rvtype == "normal":
+            rvs = lambda i: NormalRV(mu=0.5)
+        else:
+            raise ValueError("Unkown RV type %s", rvtype)
+
+        if functype == "cos":
+            func = "A*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])"
+        elif functype == "sin":
+            func = "A*sin(freq*pi*(m+1)*x[0])*cos(freq*pi*(n+1)*x[1])"
+        elif functype == "monomials":
+            func = "A*pow(x[0],freq*m)*pow(x[1],freq*n)"
+        else:
+            raise ValueError("Unkown func type %s", functype)
+            
+        def get_decay_start(exp, gamma=1):
+            start = 1
+            while zeta(exp, start) >= gamma:
+                start += 1
+            return start
+
+        if amptype == "decay-inf":
+            start = get_decay_start(exp, gamma)
+            amp = gamma / zeta(exp, start)
+            ampfunc = lambda i: amp / (float(i) + start) ** decayexp
+        elif amptype == "constant": 
+            amp = gamma / N
+            ampfunc = lambda i: gamma * (i<N)
+        else:
+            raise ValueError("Unkown amplitude type %s", amptype)
+        
+
+        element=FiniteElement('Lagrange', ufl.triangle, 1)
+
+        degree = None
+
+        mis = MultiindexSet.createCompleteOrderSet(2)
+        for i in range(freqskip + 1):
+            mis.next()
+
+        a0 = Expression("1.0", degree=degree, element=element)
+        a = (Expression(func, freq=freqscale, A=ampfunc(i), 
+                        m=int(mu[0]), n=int(mu[1]), 
+                        degree=degree, element=element) for i, mu in enumerate(mis))
+
+        return ParametricCoefficientField(a0, a, rvs)
+
+    @classmethod
+    @takes(anything, str, optional(dict))
     def setupCF(cls, cftype, decayexp=2, amp=1, freqscale=1, rvtype='uniform'):
         """create parametric coefficient field of cftype (EF-square-cos,EF-square-sin,monomials,linear,constant,zero) with
             decay exponent, amplification and random variable type (uniform,normal)"""
@@ -67,7 +118,7 @@ class SampleProblem(object):
         a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
         # random variables
         if rvtype == "uniform":
-            rvs = lambda _: UniformRV().scale(0.5)
+            rvs = lambda _: UniformRV(a=-1, b=1) # .scale(0.5)
         else:
             rvs = lambda _: NormalRV(mu=0.5)
 
@@ -75,6 +126,8 @@ class SampleProblem(object):
             # eigenfunctions on unit square
             mis = MultiindexSet.createCompleteOrderSet(2)
             mis.next()
+            for i in range(10):
+                mis.next()
             a = (Expression('A*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])', freq=freqscale, A=amp / (int(i) + 2) ** decayexp,
                     m=int(mu[0]), n=int(mu[1]), degree=3,
                     element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
@@ -83,7 +136,7 @@ class SampleProblem(object):
             mis = MultiindexSet.createCompleteOrderSet(2)
             mis.next()
             a = (Expression('A*sin(freq*pi*m*x[0])*sin(freq*pi*n*x[1])', freq=freqscale, A=amp / (int(i) + 2) ** decayexp,
-                    m=int(mu[0]), n=int(mu[1]), degree=3,
+                    m=int(mu[0]) + 1, n=int(mu[1]) + 1, degree=3,
                     element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
         elif cftype == "monomials":
             # monomials
