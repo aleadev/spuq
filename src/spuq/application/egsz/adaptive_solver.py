@@ -70,6 +70,9 @@ def AdaptiveSolver(A, coeff_field, f,
                     maxm=10, # maximal search length for new new multiindices
                     theta_delta=0.8, # number new multiindex activation bound
                     max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
+                    # projection error
+                    projection_degree_increase=1,
+                    refine_projection_mesh=False,
                     # pcg solver
                     pcg_eps=1e-6,
                     pcg_maxiter=100,
@@ -98,7 +101,7 @@ def AdaptiveSolver(A, coeff_field, f,
 
         # error evaluation
         # ----------------
-        xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, maxh)
+        xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, maxh, projection_degree_increase, refine_projection_mesh)
         reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
         projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
         logger.info("Overall Estimator Error xi = %s while residual error is %s and projection error is %s", xi, reserr, projerr)

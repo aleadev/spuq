@@ -247,7 +247,8 @@ class MultiVectorWithProjection(MultiVector):
             # ensure that source space is included in reference space by mesh refinement
             basis_src = self[mu_src].basis 
             minh = basis_src.minh
-            basis_reference = self[mu_dest].basis.refine_maxh(min)
+            basis_dest = self[mu_dest].basis.copy(dest_degree)
+            basis_reference = basis_dest.refine_maxh(minh)
             w_reference = basis_reference.project_onto(self[mu_src])
             w_dest = self.get_projection(mu_src, mu_dest)
             w_dest = basis_reference.project_onto(w_dest)

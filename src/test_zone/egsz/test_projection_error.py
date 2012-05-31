@@ -6,6 +6,11 @@ from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.math_utils.multiindex import Multiindex
 
+# FEniCS logging
+from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
+set_log_active(True)
+set_log_level(WARNING)
+
 ex1 = Expression('a*x[0]+b*x[1]', a=1, b=1)
 ex2 = Expression('sin(2*a*pi*x[0])+sin(2*b*pi*x[1])', a=1, b=1)
 ex3 = Expression('sin(2*a*pi*x[0])*cos(2*b*pi*x[1])', a=4, b=4)
@@ -94,13 +99,21 @@ def test4():
     for j, ex in enumerate(EX):
         print "ex[", j, "] =================="
         for degree in range(1, 4):
-            print "\tdegree ", degree
+            print "\t=== degree ", degree, "==="
             F2.interpolate(ex)
             F3.interpolate(ex)
             F4.interpolate(ex)
             err1 = mv.get_projection_error_function(mis[1], mis[0], degree, refine_mesh=False)
             err2 = mv.get_projection_error_function(mis[2], mis[0], degree, refine_mesh=False)
             err3 = mv.get_projection_error_function(mis[3], mis[0], degree, refine_mesh=False)
+            print "\t[NO DESTINATION MESH REFINEMENT]"
+            print "\t\tV2 L2", norm(err1._fefunc, 'L2'), "H1", norm(err1._fefunc, 'H1')
+            print "\t\tV3 L2", norm(err2._fefunc, 'L2'), "H1", norm(err2._fefunc, 'H1')
+            print "\t\tV4 L2", norm(err3._fefunc, 'L2'), "H1", norm(err3._fefunc, 'H1')
+            err1 = mv.get_projection_error_function(mis[1], mis[0], degree, refine_mesh=True)
+            err2 = mv.get_projection_error_function(mis[2], mis[0], degree, refine_mesh=True)
+            err3 = mv.get_projection_error_function(mis[3], mis[0], degree, refine_mesh=True)
+            print "\t[WITH DESTINATION MESH REFINEMENT]"
             print "\t\tV2 L2", norm(err1._fefunc, 'L2'), "H1", norm(err1._fefunc, 'H1')
             print "\t\tV3 L2", norm(err2._fefunc, 'L2'), "H1", norm(err2._fefunc, 'H1')
             print "\t\tV4 L2", norm(err3._fefunc, 'L2'), "H1", norm(err3._fefunc, 'H1')

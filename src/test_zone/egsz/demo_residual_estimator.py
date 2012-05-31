@@ -154,7 +154,10 @@ min_zeta = 1e-15        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 maxm = 10               # maximal search length for new new multiindices
 theta_delta = 0.9       # number new multiindex activation bound
-max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices 
+max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
+# projection error evaluation
+projection_degree_increase = 1
+refine_projection_mesh = False
 # pcg solver
 pcg_eps = 2e-6
 pcg_maxiter = 100
@@ -175,6 +178,8 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ
                     # marking parameters
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta, maxh=maxh, maxm=maxm, theta_delta=theta_delta,
                     max_Lambda_frac=max_Lambda_frac,
+                    # projection error evaluation
+                    projection_degree_increase=projection_degree_increase, refine_projection_mesh=refine_projection_mesh,
                     # pcg solver
                     pcg_eps=pcg_eps, pcg_maxiter=pcg_maxiter,
                     # adaptive algorithm threshold

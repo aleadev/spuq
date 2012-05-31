@@ -56,10 +56,10 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int))
-    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, projection_degree_increase=1):
+    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, projection_degree_increase=1, refine_projection_mesh=False):
         """Evaluate EGSZ Error (7.5)."""
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
-        projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase)
+        projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
         eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
         xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
@@ -171,7 +171,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool), optional(int))
-    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1):
+    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=True):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -202,7 +202,7 @@ class ResidualEstimator(object):
                     logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)",
                         len(coeff_field), maxm)
                     maxm = len(coeff_field)
-                zeta_mu = [cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Lambda, maxh, local, projection_degree_increase)
+                zeta_mu = [cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Lambda, maxh, local, projection_degree_increase, refine_mesh)
                                 for m in range(maxm)]
                 dmu = sum(zeta_mu)
                 if local:
@@ -225,7 +225,7 @@ class ResidualEstimator(object):
     @classmethod
     @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
         optional(bool), optional(int))
-    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Lambda, maxh=0.0, local=True, projection_degree_increase=1):
+    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Lambda, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=True):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -279,13 +279,7 @@ class ResidualEstimator(object):
             # ---debug
 
             # evaluate H1 semi-norm of projection error
-            error1 = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, False)
-
-#            w_reference = w.get_projection(mu1, mu, 1 + projection_degree_increase)
-#            w_dest = w.get_projection(mu1, mu)
-#            w_dest = w_reference.basis.project_onto(w_dest)
-#            error1 = w_dest - w_reference
-             
+            error1 = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error1, local)
             if local:
@@ -323,13 +317,7 @@ class ResidualEstimator(object):
             # ---debug
             
             # evaluate H1 semi-norm of projection error
-            error2 = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, False)
-
-#            w_reference = w.get_projection(mu2, mu, 1 + projection_degree_increase)
-#            w_dest = w.get_projection(mu2, mu)
-#            w_dest = w_reference.basis.project_onto(w_dest)
-#            error2 = w_dest - w_reference
-             
+            error2 = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error2, local)
             if local:
