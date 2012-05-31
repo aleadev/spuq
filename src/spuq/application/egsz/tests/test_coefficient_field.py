@@ -1,5 +1,4 @@
 import numpy as np
-from itertools import count
 
 from spuq.utils.testing import *
 from spuq.linalg.function import ConstFunction, SimpleFunction
@@ -68,7 +67,6 @@ def test_parametric():
 
     def rv_func(i):
         return [urv, nrv][i % 2]
-
 
     cf = ParametricCoefficientField(mean, func_func, rv_func)
     assert_true(len(cf) > 100000) # infty doesn't work

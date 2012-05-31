@@ -233,6 +233,26 @@ class MultiVectorWithProjection(MultiVector):
         #        print "BP dim vec =", vec.coeffs.size()
         return vec
 
+    @takes(anything, Multiindex, Multiindex, int, bool)
+    def get_projection_error_function(self, mu_src, mu_dest, dest_degree, refine_mesh=False):
+        """Construct projection error function by projecting mu_src vector to mu_dest space of dest_degree.
+        From this, the projection of mu_src onto the mu_dest space, then to the mu_dest space of dest_degree is subtracted.
+        If refine_mesh is True, the destination space of mu_dest is ensured to include the space of mu_src by mesh refinement."""
+        # TODO: proper description
+        if not refine_mesh:
+            w_reference = self.get_projection(mu_src, mu_dest, dest_degree)
+            w_dest = self.get_projection(mu_src, mu_dest)
+            w_dest = w_reference.basis.project_onto(w_dest)
+        else:
+            # ensure that source space is included in reference space by mesh refinement
+            basis_src = self[mu_src].basis 
+            minh = basis_src.minh
+            basis_reference = self[mu_dest].basis.refine_maxh(min)
+            w_reference = basis_reference.project_onto(self[mu_src])
+            w_dest = self.get_projection(mu_src, mu_dest)
+            w_dest = basis_reference.project_onto(w_dest)
+        return w_dest - w_reference    
+
     @property
     def cache_active(self):
         return self._cache_active

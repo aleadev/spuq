@@ -83,7 +83,7 @@ UNIFORM_REFINEMENT = False
 
 # MC error sampling
 MC_RUNS = 1
-MC_N = 5
+MC_N = 3
 MC_HMAX = 1 / 10
 
 
@@ -103,8 +103,8 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 # ---debug
 
 # setup meshes 
-#mesh0 = Mesh(lshape_xml)
-mesh0 = UnitSquare(4, 4)
+mesh0 = Mesh(lshape_xml)
+#mesh0 = UnitSquare(4, 4)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":10, "random":(0.4, 0.3)})
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
 
@@ -126,10 +126,10 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # ---debug
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=4, amp=1, freqscale=1)
+coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=1, freqscale=1)
 # NOTE: gamma has to be adjusted w.r.t. the coefficient field expansion!
-#gamma = 0.65                # EW decay=-2
-gamma = 0.085               # EW decay=-4
+gamma = 0.65                # EW decay=-2
+#gamma = 0.085               # EW decay=-4
 #coeff_field = SampleProblem.setupCF("constant", decayexp=2)
 a0, _ = coeff_field[0]
 
@@ -158,9 +158,9 @@ max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindic
 # pcg solver
 pcg_eps = 2e-6
 pcg_maxiter = 100
-error_eps = 1e-2
+error_eps = 1e-5
 # refinements
-max_refinements = 10
+max_refinements = 7
 
 if MC_RUNS > 0:
     w_history = []
@@ -246,11 +246,6 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         fig = figure()
         fig.suptitle("error")
         ax = fig.add_subplot(111)
-#        if REFINEMENT["MI"]:
-#            ax.loglog(x, num_mi, '--y+', label='active mi')
-#        ax.loglog(x, errest, '-g<', label='error estimator')
-#        ax.loglog(x, reserr, '-.cx', label='residual part')
-#        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
         ax.loglog(x, H1, '-g<', label='H1 residual')
         ax.loglog(x, L2, '-c+', label='L2 residual')
         ax.loglog(x, mcH1, '-b^', label='MC H1 error')

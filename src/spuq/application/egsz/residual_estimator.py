@@ -278,12 +278,14 @@ class ResidualEstimator(object):
 #                logger.info("DEBUG A --- global projection error %s - %s: %s", mu1, mu, perr)
             # ---debug
 
-            w_mu1_reference = w.get_projection(mu1, mu, 1 + projection_degree_increase)     # projection to higher order space as reference
-            w_mu1 = w.get_projection(mu1, mu)
-            w_mu1_V2 = w_mu1_reference.basis.project_onto(w_mu1)
-            
             # evaluate H1 semi-norm of projection error
-            error1 = w_mu1_V2 - w_mu1_reference
+            error1 = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, False)
+
+#            w_reference = w.get_projection(mu1, mu, 1 + projection_degree_increase)
+#            w_dest = w.get_projection(mu1, mu)
+#            w_dest = w_reference.basis.project_onto(w_dest)
+#            error1 = w_dest - w_reference
+             
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error1, local)
             if local:
@@ -319,13 +321,15 @@ class ResidualEstimator(object):
 #                perr = sqrt(assemble(aerr))
 #                logger.info("DEBUG B --- global projection error %s - %s: %s", mu2, mu, perr)
             # ---debug
-
-            w_mu2_reference = w.get_projection(mu2, mu, 1 + projection_degree_increase)     # projection to higher order space as reference
-            w_mu2 = w.get_projection(mu2, mu)
-            w_mu2_V2 = w_mu2_reference.basis.project_onto(w_mu2)
             
             # evaluate H1 semi-norm of projection error
-            error2 = w_mu2_V2 - w_mu2_reference
+            error2 = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, False)
+
+#            w_reference = w.get_projection(mu2, mu, 1 + projection_degree_increase)
+#            w_dest = w.get_projection(mu2, mu)
+#            w_dest = w_reference.basis.project_onto(w_dest)
+#            error2 = w_dest - w_reference
+             
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error2, local)
             if local:
