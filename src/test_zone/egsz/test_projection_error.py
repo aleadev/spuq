@@ -98,7 +98,7 @@ def test4():
     mv[mis[3]] = F4
     for j, ex in enumerate(EX):
         print "ex[", j, "] =================="
-        for degree in range(1, 4):
+        for degree in range(1, 5):
             print "\t=== degree ", degree, "==="
             F2.interpolate(ex)
             F3.interpolate(ex)
