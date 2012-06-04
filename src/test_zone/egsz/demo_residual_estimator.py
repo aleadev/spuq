@@ -105,8 +105,8 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 # setup meshes 
 #mesh0 = Mesh(lshape_xml)
 mesh0 = UnitSquare(4, 4)
-#meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":10, "random":(0.4, 0.3)})
-meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine":0})
+#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
+meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
 # debug---
 #from dolfin import refine

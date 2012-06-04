@@ -83,7 +83,7 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 # setup meshes
 #mesh0 = refine(Mesh(lshape_xml))
 mesh0 = UnitSquare(5, 5)
-meshes = SampleProblem.setupMeshes(mesh0, len(mis), {"refine": 0})
+meshes = SampleProblem.setupMeshes(mesh0, len(mis))
 
 w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vector)
 
@@ -91,7 +91,7 @@ logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
-coeff_field = SampleProblem.setupCF(coeff_types[0], decayexp=2, amp=1, freqscale=1, rvtype="uniform")
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, amp=1, freqscale=1, rvtype="uniform")
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -104,7 +104,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
-    max_refinements=1,
+    max_refinements=7,
     pcg_eps=1e-4)
 
 logger.debug("active indices of w after solution: %s", w.active_indices())

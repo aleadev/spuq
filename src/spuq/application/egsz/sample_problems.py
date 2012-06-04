@@ -1,5 +1,10 @@
 from __future__ import division
 
+from math import ceil
+from exceptions import NameError
+from numpy import random
+from scipy.special import zeta
+
 from spuq.application.egsz.coefficient_field import ParametricCoefficientField
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.stochastics.random_variable import NormalRV, UniformRV
@@ -8,37 +13,32 @@ from spuq.utils.type_check import takes, anything, optional
 
 from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement
 import ufl
-from itertools import count
-from exceptions import KeyError, NameError
-from numpy import random
-from math import ceil
 
 class SampleProblem(object):
     @classmethod
-    @takes(anything, Mesh, int, optional(dict))
-    def setupMeshes(cls, mesh, N, params=None):
-        """Create set of N meshes based on provided mesh. Parameters refine>=0 and 0<random<=1.0 specify refinement adjustments."""
-        try:
-            ref = int(params["refine"])
-            assert ref >= 0
-        except (KeyError, NameError):
-            ref = 0
-        try:
-            randref = params["random"]
-            assert 0 < randref[0] <= 1.0
-            assert 0 < randref[1] <= 1.0
-        except (KeyError, NameError):
-            randref = (1.0, 1.0)
-            # create set of (refined) meshes
+    @takes(anything, Mesh, int, optional(int), optional(tuple))
+    def setupMeshes(cls, mesh, N, num_refine=0, randref=(1.0, 1.0)):
+        """Create a set of N meshes based on provided mesh. Parameters
+        num_refine>=0 and randref specify refinement
+        adjustments. num_refine specifies the number of refinements
+        per mesh, randref[0] specifies the probability that a given
+        mesh is refined, and randref[1] specifies the probability that
+        an element of the mesh is refined (if it is refined at all).
+        """
+        assert num_refine >= 0
+
+        assert 0 < randref[0] <= 1.0
+        assert 0 < randref[1] <= 1.0
+
+        # create set of (refined) meshes
         meshes = list();
         for _ in range(N):
             m = Mesh(mesh)
-            for _ in range(ref):
-                cell_markers = CellFunction("bool", m)
-                if randref == 1.0:
-                #                    cell_markers.set_all(True)
+            for _ in range(num_refine):
+                if randref[0] == 1.0 and randref[1] == 1.0:
                     m = refine(m)
                 else:
+                    cell_markers = CellFunction("bool", m)
                     cell_markers.set_all(False)
                     if random.random() <= randref[0]:
                         cids = set()
@@ -59,7 +59,7 @@ class SampleProblem(object):
         return w
 
     @classmethod
-    @takes(anything, str, optional(dict))
+    #@takes(anything, str, str, optional(dict))
     def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1):
         if rvtype == "uniform":
             rvs = lambda i: UniformRV(a=-1, b=1)
@@ -84,15 +84,14 @@ class SampleProblem(object):
             return start
 
         if amptype == "decay-inf":
-            start = get_decay_start(exp, gamma)
-            amp = gamma / zeta(exp, start)
+            start = get_decay_start(decayexp, gamma)
+            amp = gamma / zeta(decayexp, start)
             ampfunc = lambda i: amp / (float(i) + start) ** decayexp
         elif amptype == "constant": 
             amp = gamma / N
             ampfunc = lambda i: gamma * (i<N)
         else:
             raise ValueError("Unkown amplitude type %s", amptype)
-        
 
         element=FiniteElement('Lagrange', ufl.triangle, 1)
 
@@ -111,53 +110,17 @@ class SampleProblem(object):
 
     @classmethod
     @takes(anything, str, optional(dict))
-    def setupCF(cls, cftype, decayexp=2, amp=1, freqscale=1, rvtype='uniform'):
-        """create parametric coefficient field of cftype (EF-square-cos,EF-square-sin,monomials,linear,constant,zero) with
-            decay exponent, amplification and random variable type (uniform,normal)"""
-        # mean value
-        a0 = Expression("1.0", element=FiniteElement('Lagrange', ufl.triangle, 1))
-        # random variables
-        if rvtype == "uniform":
-            rvs = lambda _: UniformRV(a=-1, b=1) # .scale(0.5)
-        else:
-            rvs = lambda _: NormalRV(mu=0.5)
-
+    def setupCF(cls, cftype, decayexp=2, amp=1, freqscale=1, freqskip=0, N=1, rvtype='uniform'):
+        #return cls.setupCF2(functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1):
         if cftype == "EF-square-cos":
-            # eigenfunctions on unit square
-            mis = MultiindexSet.createCompleteOrderSet(2)
-            mis.next()
-            for i in range(10):
-                mis.next()
-            a = (Expression('A*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])', freq=freqscale, A=amp / (int(i) + 2) ** decayexp,
-                    m=int(mu[0]), n=int(mu[1]), degree=3,
-                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
+            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=amp, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
         elif cftype == "EF-square-sin":
-            # eigenfunctions on unit square
-            mis = MultiindexSet.createCompleteOrderSet(2)
-            mis.next()
-            a = (Expression('A*sin(freq*pi*m*x[0])*sin(freq*pi*n*x[1])', freq=freqscale, A=amp / (int(i) + 2) ** decayexp,
-                    m=int(mu[0]) + 1, n=int(mu[1]) + 1, degree=3,
-                    element=FiniteElement('Lagrange', ufl.triangle, 1)) for i, mu in enumerate(mis))
+            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=amp, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
         elif cftype == "monomials":
-            # monomials
-            mis = MultiindexSet.createCompleteOrderSet(2)
-            mis.next()
-            p_str = lambda A, m, n: str(A) + "*" + "*".join(["x[0]" for _ in range(m)]) + "+" + "*".join(["x[1]" for _ in range(n)])
-            pex = lambda i, mn: Expression(p_str(amp / (int(i) + 1) ** decayexp, mn[0], mn[1]), degree=3,
-                element=FiniteElement('Lagrange', ufl.triangle, 1))
-            a = (pex(i, mn + freqscale) for i, mn in enumerate(mis))
+            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=amp, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
         elif cftype == "linear":
-            # linear functions
-            a = (Expression("A*(x[0]+x[1])", A=amp / (int(i) + 1) ** decayexp,
-                element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
-        elif cftype == "constant":
-            # constant functions
-            a = (Expression(str(amp / (int(i) + 1) ** decayexp),
-                element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
-        elif cftype == "zero":
-            # zero functions
-            a = (Expression("0.0", element=FiniteElement('Lagrange', ufl.triangle, 1)) for _ in count())
+            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=amp, N=2)
         else:
-            raise TypeError('unsupported function type')
+            raise ValueError('Unsupported function type: %s', cftype)
 
         return ParametricCoefficientField(a0, a, rvs)
