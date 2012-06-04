@@ -100,7 +100,6 @@ def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj
 def get_coeff_realisation(RV_samples, coeff_field, maxm, proj_basis):
     a = coeff_field.mean_func
     for m in range(maxm):
-        print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", m, RV_samples[m] 
         a_m = RV_samples[m] * coeff_field[m][0]
         a = a + a_m
     return FEniCSVector(project(a, proj_basis._fefs))

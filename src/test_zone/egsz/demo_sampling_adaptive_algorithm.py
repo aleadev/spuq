@@ -83,8 +83,8 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 # setup meshes
 #mesh0 = refine(Mesh(lshape_xml))
 mesh0 = UnitSquare(5, 5)
-meshes = SampleProblem.setupMeshes(mesh0, len(mis))
-
+#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=2, randref=(0.7, 0.8))
+meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vector)
 
 logger.info("active indices of w after initialisation: %s", w0.active_indices())

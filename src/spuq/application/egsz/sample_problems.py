@@ -2,7 +2,7 @@ from __future__ import division
 
 from math import ceil
 from exceptions import NameError
-from numpy import random
+from numpy.random import random, shuffle
 from scipy.special import zeta
 
 from spuq.application.egsz.coefficient_field import ParametricCoefficientField
@@ -37,15 +37,14 @@ class SampleProblem(object):
             for _ in range(num_refine):
                 if randref[0] == 1.0 and randref[1] == 1.0:
                     m = refine(m)
-                else:
+                elif random() <= randref[0]:
                     cell_markers = CellFunction("bool", m)
                     cell_markers.set_all(False)
-                    if random.random() <= randref[0]:
-                        cids = set()
-                        while len(cids) < ceil(m.num_cells() * randref[1]):
-                            cids.add(random.randint(0, m.num_cells()))
-                        for cid in cids:
-                            cell_markers[cid] = True
+                    cell_ids = range(m.num_cells())
+                    shuffle(cell_ids)
+                    num_ref_cells = int(ceil(m.num_cells() * randref[1]))
+                    for cell_id in cell_ids[0:num_ref_cells]:
+                        cell_markers[cell_id] = True
                     m = refine(m, cell_markers)
             meshes.append(m)
         return meshes
