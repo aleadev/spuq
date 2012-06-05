@@ -245,7 +245,7 @@ class MultiVectorWithProjection(MultiVector):
         from spuq.fem.fenics.fenics_basis import FEniCSBasis
         import numpy as np
         if not refine_mesh:
-            w_reference = self.get_projection(mu_src, mu_dest, dest_degree)
+            w_reference = self.get_projection(mu_src, mu_dest, reference_degree)
             w_dest = self.get_projection(mu_src, mu_dest)
             w_dest = w_reference.basis.project_onto(w_dest)
             sum_up = lambda vals: vals
