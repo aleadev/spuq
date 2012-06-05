@@ -109,16 +109,15 @@ class SampleProblem(object):
 
     @classmethod
     @takes(anything, str, optional(dict))
-    def setupCF(cls, cftype, decayexp=2, amp=1, freqscale=1, freqskip=0, N=1, rvtype='uniform'):
-        #return cls.setupCF2(functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1):
+    def setupCF(cls, cftype, decayexp=2, gamma=0.9, freqscale=1, freqskip=0, N=1, rvtype='uniform'):
         if cftype == "EF-square-cos":
-            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=amp, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
+            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
         elif cftype == "EF-square-sin":
-            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=amp, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
+            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
         elif cftype == "monomials":
-            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=amp, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
+            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
         elif cftype == "linear":
-            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=amp, N=2)
+            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=gamma, N=2)
         else:
             raise ValueError('Unsupported function type: %s', cftype)
 

@@ -27,9 +27,10 @@ except Exception, e:
 PLOT_SOLUTION = False
 MC_PLOT = True
 MC_RUNS = 1
-MC_N = 5
+MC_N = 1
 MC_HMAX = 1 / 20
 MC_DEGREE = 1
+NUM_REFINE = 7
 
 
 # log level and format configuration
@@ -91,7 +92,8 @@ logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 # define coefficient field
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, amp=1, freqscale=1, rvtype="uniform")
+gamma = 0.9
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform")
 
 # define multioperator
 A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
@@ -102,9 +104,10 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 # ============================================================
 
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
+    gamma=gamma,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
-    max_refinements=7,
+    max_refinements=NUM_REFINE,
     pcg_eps=1e-4)
 
 logger.debug("active indices of w after solution: %s", w.active_indices())
