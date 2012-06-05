@@ -8,14 +8,13 @@ The marking is carried out with respect to the
 
 from __future__ import division
 from math import ceil
-from operator import itemgetter
 from collections import defaultdict
+from operator import itemgetter
 
 from spuq.application.egsz.residual_estimator import ResidualEstimator
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.fem.fenics.fenics_utils import weighted_H1_norm
-from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.utils.type_check import takes, anything, optional
 
 import logging
@@ -41,9 +40,10 @@ class Marking(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int))
+    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int),
+           optional(int), optional(bool))
     def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10,
-                       projection_degree_increase=1, refine_projection_mesh=True):
+                       projection_degree_increase=1, refine_projection_mesh=1):
         """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
         #        # testing -->
         #        if logger.isEnabledFor(logging.DEBUG):
@@ -56,19 +56,20 @@ class Marking(object):
         resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         # evaluate projection errors
         projind, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, projection_degree_increase, refine_projection_mesh)
+        # evaluate inanctive mi projection error
+        mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, maxm)
         # mark
-        return cls.mark(resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
+        return cls.mark(resind, projind, mierr, w.max_order, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
 
 
     @classmethod
-    @takes(anything, MultiVector, MultiVector, MultiVector, CoefficientField, float, float, float, float,
-        optional(float))
-    def mark(cls, resind, projind, w, coeff_field, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10, max_Lambda_frac=1 / 10):
+    @takes(anything, MultiVector, MultiVector, list, int, float, float, float, float, optional(float))
+    def mark(cls, resind, projind, mierr, maxorder_Lambda, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, max_Lambda_frac=1 / 10):
         """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
         mesh_markers_R = cls.mark_residual(resind, theta_eta)
         mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh)
         if max_zeta >= min_zeta:
-            new_mi = cls.mark_inactive_multiindices(w, coeff_field, theta_delta, max_zeta, maxh, maxm, max_Lambda_frac)
+            new_mi = cls.mark_inactive_multiindices(mierr, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac)
         else:
             new_mi = {}
             logger.info("SKIPPING search for new multiindices due to very small max_zeta = %s", max_zeta)
@@ -135,52 +136,16 @@ class Marking(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, float, float, float, optional(int))
-    def mark_inactive_multiindices(cls, w, coeff_field, theta_delta, max_zeta, maxh=1 / 10, maxm=10, max_Lambda_frac=1 / 10):
-        """Estimate projection error for inactive indices and determine multiindices to be activated."""
+    @takes(anything, list, float, float, int, optional(float))
+    def mark_inactive_multiindices(cls, Lambda_candidates, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac=1 / 10):
+        """Determine multiindices to be activated."""
         # new multiindex activation
         # =========================
-        # determine possible new indices
-        a0_f = coeff_field.mean_func
-        Lambda_candidates = {}
-        Lambda = w.active_indices()
-        lambdaN = int(ceil(max_Lambda_frac * len(Lambda)))                    # max number new multiindices
-        for mu in Lambda:
-            # evaluate energy norm of w[mu]
-            norm_w = weighted_H1_norm(a0_f, w[mu])
-            # retrieve (sufficiently fine) function space for maximum norm evaluation
-            V = w[mu].basis.refine_maxh(maxh)
-            # determine ||\overline{a}||_{L\infty(D)} (approximately)
-            f = FEniCSVector.from_basis(V)
-            f.interpolate(a0_f)
-            min_a0 = f.min_val
-            logger.debug("NEW MI with mu = %s    norm(w) = %s", mu, norm_w)
-            # iterate multiindex extensions
-            for m in range(min(maxm, len(coeff_field))):
-                mu1 = mu.inc(m)
-                if mu1 in Lambda:
-                    continue
-                am_f, am_rv = coeff_field[m]
-                beta = am_rv.orth_polys.get_beta(mu1[m])
-                # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
-                f.interpolate(am_f)
-                max_am = f.max_val
-                ainfty = max_am / min_a0
-                assert isinstance(ainfty, float)
-
-                #                    logger.debug("A*** %f -- %f -- %f", beta[1], ainfty, norm_w)
-                #                    logger.debug("B*** %f", beta[1] * ainfty * norm_w)
-                #                    logger.debug("C*** %f -- %f", theta_delta, max_zeta)
-                #                    logger.debug("D*** %f", theta_delta * max_zeta)
-                #                    logger.debug("E*** %s", bool(beta[1] * ainfty * norm_w >= theta_delta * max_zeta))
-                logger.debug("\t beta[1] * ainfty * norm_w = %s      >=     theta_delta * max_zeta = %s", beta[1] * ainfty * norm_w, theta_delta * max_zeta)
-                
-                if beta[1] * ainfty * norm_w >= theta_delta * max_zeta:
-                    val1 = beta[1] * ainfty * norm_w
-                    if mu1 not in Lambda_candidates.keys() or (mu1 in Lambda_candidates.keys() and Lambda_candidates[mu1] < val1):
-                        Lambda_candidates[mu1] = val1
-
-        logger.info("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
-        Lambda_candidates = sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True)[:min(len(Lambda_candidates), lambdaN)]
-        logger.info("SELECTED NEW MULTIINDICES %s", Lambda_candidates)
-        return dict(Lambda_candidates)
+        zeta_threshold = theta_delta * max_zeta
+        lambdaN = int(ceil(max_Lambda_frac * maxorder_Lambda))                    # max number new multiindices
+        # select indices with largest projection error
+        Lambda_selection = sorted(Lambda_candidates, key=itemgetter(1), reverse=True)[:min(len(Lambda_candidates), lambdaN)]
+        # apply threshold criterion
+        Lambda_selection = [l for l in Lambda_selection if l[1] >= zeta_threshold]
+        logger.info("SELECTED NEW MULTIINDICES %s", Lambda_selection)
+        return dict(Lambda_selection)

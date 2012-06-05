@@ -65,14 +65,14 @@ def AdaptiveSolver(A, coeff_field, f,
                     # marking parameters
                     theta_eta=0.4, # residual marking bulk parameter
                     theta_zeta=0.3, # projection marking threshold factor
-                    min_zeta=1e-15, # minimal projection error considered
+                    min_zeta=1e-8, # minimal projection error to be considered 
                     maxh=0.1, # maximal mesh width for projection maximum norm evaluation
-                    maxm=10, # maximal search length for new new multiindices
+                    newmi_add_maxm=10, # maximal search length for new new multiindices (to be added to max order of solution w)
                     theta_delta=0.8, # number new multiindex activation bound
                     max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
                     # projection error
                     projection_degree_increase=1,
-                    refine_projection_mesh=False,
+                    refine_projection_mesh=1,
                     # pcg solver
                     pcg_eps=1e-6,
                     pcg_maxiter=100,
@@ -101,6 +101,7 @@ def AdaptiveSolver(A, coeff_field, f,
 
         # error evaluation
         # ----------------
+        # residual and projection errors
         xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, maxh, projection_degree_increase, refine_projection_mesh)
         reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
         projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
@@ -110,6 +111,8 @@ def AdaptiveSolver(A, coeff_field, f,
         stats["PROJ"] = projerr
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
         sim_stats.append(stats)
+        # inactice mi projection error
+        mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, newmi_add_maxm) 
 
         # exit when either error threshold or max_refinements is reached
         if refinement > max_refinements:
@@ -122,9 +125,9 @@ def AdaptiveSolver(A, coeff_field, f,
         # marking
         # -------
         if not do_uniform_refinement:
-            mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, w, coeff_field,
+            mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, mierr, w.max_order,
                                                                             theta_eta, theta_zeta, theta_delta,
-                                                                            min_zeta, maxh, maxm, max_Lambda_frac)
+                                                                            min_zeta, maxh, max_Lambda_frac)
             logger.info("MARKING will be carried out with %s (res) + %s (proj) cells and %s new multiindices",
                         sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()]),
                         sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))

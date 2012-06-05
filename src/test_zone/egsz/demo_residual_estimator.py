@@ -148,16 +148,16 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.5         # residual marking bulk parameter
-theta_zeta = 0.3        # projection marking threshold factor
-min_zeta = 1e-15        # minimal projection error considered
+theta_eta = 0.3         # residual marking bulk parameter
+theta_zeta = 0.2        # projection marking threshold factor
+min_zeta = 1e-10        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
-maxm = 10               # maximal search length for new new multiindices
-theta_delta = 0.9       # number new multiindex activation bound
+newmi_add_maxm = 10     # maximal search length for new new multiindices (to be added to max order of solution)
+theta_delta = 0.95       # number new multiindex activation bound
 max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
 # projection error evaluation
-projection_degree_increase = 1
-refine_projection_mesh = False
+projection_degree_increase = 2
+refine_projection_mesh = 2
 # pcg solver
 pcg_eps = 2e-6
 pcg_maxiter = 100
@@ -176,7 +176,8 @@ else:
 w0 = w
 w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
-                    theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta, maxh=maxh, maxm=maxm, theta_delta=theta_delta,
+                    theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta,
+                    maxh=maxh, newmi_add_maxm=newmi_add_maxm, theta_delta=theta_delta,
                     max_Lambda_frac=max_Lambda_frac,
                     # projection error evaluation
                     projection_degree_increase=projection_degree_increase, refine_projection_mesh=refine_projection_mesh,

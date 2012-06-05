@@ -31,10 +31,12 @@ The coefficients :math:`\alpha_j` follow from the recurrence coefficients
 
 from __future__ import division
 import numpy as np
+from operator import itemgetter
 
 from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm,
                     FunctionSpace, TestFunction, CellSize, FacetNormal)
 
+from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 from spuq.fem.fenics.fenics_utils import weighted_H1_norm
@@ -56,7 +58,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int))
-    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, projection_degree_increase=1, refine_projection_mesh=False):
+    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, projection_degree_increase=1, refine_projection_mesh=1):
         """Evaluate EGSZ Error (7.5)."""
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
@@ -171,7 +173,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool), optional(int))
-    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=True):
+    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=1):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -225,7 +227,7 @@ class ResidualEstimator(object):
     @classmethod
     @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
         optional(bool), optional(int))
-    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Lambda, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=True):
+    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Lambda, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=1):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -279,9 +281,10 @@ class ResidualEstimator(object):
             # ---debug
 
             # evaluate H1 semi-norm of projection error
-            error1 = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
+            error1, sum_up = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error1, local)
+            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:
@@ -317,9 +320,10 @@ class ResidualEstimator(object):
             # ---debug
             
             # evaluate H1 semi-norm of projection error
-            error2 = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
+            error2, sum_up = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error2, local)
+            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:
@@ -334,3 +338,68 @@ class ResidualEstimator(object):
         logger.debug("beta[-1] = %s  beta[1] = %s  ainfty = %s", beta[-1], beta[1], ainfty)
         zeta = ainfty * (zeta1 + zeta2)
         return zeta
+
+
+    @classmethod
+    @takes(anything, MultiVector, CoefficientField, optional(float), optional(int), optional(bool))
+    def evaluateInactiveMIProjectionError(cls, w, coeff_field, maxh=1 / 10, add_maxm=10, accumulate=True):
+        """Estimate projection error for inactive indices."""
+        def prepare_ainfty(Lambda, M):
+            ainfty = []
+            a0_f = coeff_field.mean_func
+            # retrieve (sufficiently fine) function space for maximum norm evaluation
+            # NOTE: we use the deterministic mesh since it is assumed to be the finest
+            V = w[Multiindex()].basis.refine_maxh(maxh)
+            # determine min \overline{a} on D (approximately)
+            f = FEniCSVector.from_basis(V)
+            f.interpolate(a0_f)
+            min_a0 = f.min_val
+            for m in range(M):
+                am_f, am_rv = coeff_field[m]
+                # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
+                f.interpolate(am_f)
+                max_am = f.max_val
+                ainftym = max_am / min_a0
+                assert isinstance(ainftym, float)
+                ainfty.append(ainftym)
+            return ainfty
+        
+        # determine possible new indices
+        Lambda_candidates = {}
+        Lambda = w.active_indices()
+        M = min(w.max_order + add_maxm, len(coeff_field))
+        ainfty = prepare_ainfty(Lambda, M)
+        for mu in Lambda:
+            # evaluate energy norm of w[mu]
+            norm_w = weighted_H1_norm(coeff_field.mean_func, w[mu])
+            logger.debug("NEW MI with mu = %s    norm(w) = %s", mu, norm_w)
+            # iterate multiindex extensions
+            for m in range(M):
+                mu1 = mu.inc(m)
+                if mu1 in Lambda:
+                    continue
+                _, am_rv = coeff_field[m]
+                beta = am_rv.orth_polys.get_beta(mu1[m])
+
+                #                    logger.debug("A*** %f -- %f -- %f", beta[1], ainfty[m], norm_w)
+                #                    logger.debug("B*** %f", beta[1] * ainfty[m] * norm_w)
+                #                    logger.debug("C*** %f -- %f", theta_delta, max_zeta)
+                #                    logger.debug("D*** %f", theta_delta * max_zeta)
+                #                    logger.debug("E*** %s", bool(beta[1] * ainfty[m] * norm_w >= theta_delta * max_zeta))
+                logger.debug("\t beta[1] * ainfty * norm_w = %s", beta[1] * ainfty[m] * norm_w)
+                
+                val1 = beta[1] * ainfty[m] * norm_w
+                if not accumulate:
+                    # set largest projection error for mu
+                    if mu1 not in Lambda_candidates.keys() or (mu1 in Lambda_candidates.keys() and Lambda_candidates[mu1] < val1):
+                        Lambda_candidates[mu1] = val1
+                else:
+                    # accumulate projection errors for mu
+                    if mu1 not in Lambda_candidates.keys():
+                        Lambda_candidates[mu1] = val1
+                    else:
+                        Lambda_candidates[mu1] += val1
+
+        logger.info("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
+        Lambda_candidates = sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True)
+        return Lambda_candidates

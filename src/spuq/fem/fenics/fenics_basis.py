@@ -32,8 +32,7 @@ class FEniCSBasis(FEMBasis):
         return FV.FEniCSVector(Function(self._fefs)) 
 
     def refine(self, cell_ids=None):
-        """Refine mesh of basis uniformly or wrt cells, returns
-        (new_basis,prolongate,restrict)."""
+        """Refine mesh of basis uniformly or wrt cells, returns (new_basis,prolongate,restrict)."""
         mesh = self._fefs.mesh()
         cell_markers = CellFunction("bool", mesh)
         if cell_ids is None:
