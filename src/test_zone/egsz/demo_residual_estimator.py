@@ -148,7 +148,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.5         # residual marking bulk parameter
+theta_eta = 0.3         # residual marking bulk parameter
 theta_zeta = 0.2        # projection marking threshold factor
 min_zeta = 1e-10        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
@@ -156,8 +156,8 @@ newmi_add_maxm = 10     # maximal search length for new new multiindices (to be 
 theta_delta = 0.95       # number new multiindex activation bound
 max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
 # projection error evaluation
-projection_degree_increase = 1
-refine_projection_mesh = False
+projection_degree_increase = 2
+refine_projection_mesh = 2
 # pcg solver
 pcg_eps = 2e-6
 pcg_maxiter = 100

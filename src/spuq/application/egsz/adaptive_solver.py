@@ -72,7 +72,7 @@ def AdaptiveSolver(A, coeff_field, f,
                     max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
                     # projection error
                     projection_degree_increase=1,
-                    refine_projection_mesh=False,
+                    refine_projection_mesh=1,
                     # pcg solver
                     pcg_eps=1e-6,
                     pcg_maxiter=100,

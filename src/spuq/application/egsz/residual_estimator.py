@@ -58,7 +58,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int))
-    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, projection_degree_increase=1, refine_projection_mesh=False):
+    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, projection_degree_increase=1, refine_projection_mesh=1):
         """Evaluate EGSZ Error (7.5)."""
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
@@ -173,7 +173,7 @@ class ResidualEstimator(object):
 
     @classmethod
     @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool), optional(int))
-    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=True):
+    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=1):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -227,7 +227,7 @@ class ResidualEstimator(object):
     @classmethod
     @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
         optional(bool), optional(int))
-    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Lambda, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=True):
+    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Lambda, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=1):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -281,9 +281,10 @@ class ResidualEstimator(object):
             # ---debug
 
             # evaluate H1 semi-norm of projection error
-            error1 = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
+            error1, sum_up = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error1, local)
+            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:
@@ -319,9 +320,10 @@ class ResidualEstimator(object):
             # ---debug
             
             # evaluate H1 semi-norm of projection error
-            error2 = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
+            error2, sum_up = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
             pe = weighted_H1_norm(a0_f, error2, local)
+            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:

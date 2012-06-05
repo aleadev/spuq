@@ -234,25 +234,49 @@ class MultiVectorWithProjection(MultiVector):
         return vec
 
     @takes(anything, Multiindex, Multiindex, int, bool)
-    def get_projection_error_function(self, mu_src, mu_dest, dest_degree, refine_mesh=False):
+    def get_projection_error_function(self, mu_src, mu_dest, reference_degree, refine_mesh=0):
         """Construct projection error function by projecting mu_src vector to mu_dest space of dest_degree.
         From this, the projection of mu_src onto the mu_dest space, then to the mu_dest space of dest_degree is subtracted.
-        If refine_mesh is True, the destination space of mu_dest is ensured to include the space of mu_src by mesh refinement."""
+        If refine_mesh > 0, the destination mesh is refined uniformly n times."""
+        # TODO: If refine_mesh is True, the destination space of mu_dest is ensured to include the space of mu_src by mesh refinement
         # TODO: proper description
+        # TODO: separation of fenics specific code
+        from dolfin import refine, FunctionSpace
+        from spuq.fem.fenics.fenics_basis import FEniCSBasis
+        import numpy as np
         if not refine_mesh:
             w_reference = self.get_projection(mu_src, mu_dest, dest_degree)
             w_dest = self.get_projection(mu_src, mu_dest)
             w_dest = w_reference.basis.project_onto(w_dest)
+            sum_up = lambda vals: vals
         else:
-            # ensure that source space is included in reference space by mesh refinement
+            # uniformly refine destination mesh
+            # NOTE: the cell_marker based refinement used in FEniCSBasis is a bisection of elements
+            # while refine(mesh) carries out a red-refinement of all cells (split into 4)
             basis_src = self[mu_src].basis 
-            minh = basis_src.minh
-            basis_dest = self[mu_dest].basis.copy(dest_degree)
-            basis_reference = basis_dest.refine_maxh(minh)
+            basis_dest = self[mu_dest].basis
+            mesh_reference = basis_dest.mesh
+            for _ in range(refine_mesh):
+                mesh_reference = refine(mesh_reference)
+            fs_reference = FunctionSpace(mesh_reference, basis_dest._fefs.ufl_element().family(), reference_degree)
+            basis_reference = FEniCSBasis(fs_reference, basis_dest._ptype)
+            # project both vectors to reference space
             w_reference = basis_reference.project_onto(self[mu_src])
             w_dest = self.get_projection(mu_src, mu_dest)
             w_dest = basis_reference.project_onto(w_dest)
-        return w_dest - w_reference    
+            sum_up = lambda vals: np.array([sum(vals[i * 4:(i + 1) * 4]) for i in range(len(vals) / 4 ** refine_mesh)])
+        return w_dest - w_reference, sum_up
+                    
+#            # ensure that source space is included in reference space by mesh refinement
+#            basis_src = self[mu_src].basis 
+#            minh = basis_src.minh
+#            basis_dest = self[mu_dest].basis.copy(dest_degree)
+#            basis_reference = basis_dest.refine_maxh(minh)
+#            w_reference = basis_reference.project_onto(self[mu_src])
+#            w_dest = self.get_projection(mu_src, mu_dest)
+#            w_dest = basis_reference.project_onto(w_dest)
+#            sum_up = lambda vals: [sum(t[i * 4:(i + 1) * 4]) for i in range(vals(t) / 4 ** refine_mesh)]
+#            return w_dest - w_reference, sum_up
 
     @property
     def cache_active(self):

@@ -43,7 +43,7 @@ class Marking(object):
     @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int),
            optional(int), optional(bool))
     def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10,
-                       projection_degree_increase=1, refine_projection_mesh=True):
+                       projection_degree_increase=1, refine_projection_mesh=1):
         """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
         #        # testing -->
         #        if logger.isEnabledFor(logging.DEBUG):
