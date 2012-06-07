@@ -67,6 +67,7 @@ class FEniCSVector(FEMVector):
 
     def interpolate(self, f):
         self._fefunc.interpolate(f)
+        return self
 
     def __eq__(self, other):
         """Compare vectors for equality.
