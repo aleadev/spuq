@@ -23,14 +23,14 @@ from numpy import array, sqrt
 
 # Error tolerance
 tolerance = 0.1
-max_iterations = 5
+max_iterations = 15
 
 # Refinement fraction
-fraction = 0.5
+fraction = 0.4
 
 # Create initial mesh
-mesh = UnitSquare(4, 4)
-#mesh = Mesh("lshape.xml")
+#mesh = UnitSquare(4, 4)
+mesh = Mesh("lshape.xml")
 
 for i in range(max_iterations):
 
@@ -47,7 +47,7 @@ for i in range(max_iterations):
     # Define boundary condition
 #    bc = DirichletBC(V, 0.0, "near(x[0], 0.0) || near(x[0], 1.0)")
     def u0_boundary(x, on_boundary):
-        return on_boundary
+        return (x[0] <= DOLFIN_EPS - 1.0 or (x[0] >= 0.0 - DOLFIN_EPS and x[1] < 1.0 - DOLFIN_EPS)) and on_boundary
     #    return x[0] < DOLFIN_EPS or x[0] > 1.0 - DOLFIN_EPS
     u0 = Constant(0.0)
     bc = DirichletBC(V, u0, u0_boundary)

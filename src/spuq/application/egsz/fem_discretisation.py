@@ -7,6 +7,8 @@ from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
 from spuq.fem.fem_discretisation import FEMDiscretisation
 from spuq.utils.type_check import takes, anything
 
+default_Dirichlet_boundary = lambda x, on_boundary: on_boundary
+
 class FEMPoisson(FEMDiscretisation):
     """FEM discrete Laplace operator with coefficient :math:`a` on domain :math:`\Omega:=[0,1]^2` with homogeneous Dirichlet boundary conditions.
 
@@ -17,29 +19,26 @@ class FEMPoisson(FEMDiscretisation):
     """
 
     @classmethod
-    def assemble_operator(cls, coeff, basis, withBC=True):
+    def assemble_operator(cls, coeff, basis, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-        matrix = cls.assemble_lhs(coeff, basis, withBC)
+        matrix = cls.assemble_lhs(coeff, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
         return FEniCSOperator(matrix, basis)
 
     @classmethod
-    def assemble_solve_operator(cls, coeff, basis, withBC=True):
-        matrix = cls.assemble_lhs(coeff, basis, withBC)
+    def assemble_solve_operator(cls, coeff, basis, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+        matrix = cls.assemble_lhs(coeff, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
         return FEniCSSolveOperator(matrix, basis)
 
     @classmethod
-    def apply_dirichlet_bc(cls, V, A=None, b=None, uD=None):
+    def apply_dirichlet_bc(cls, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
         """Apply Dirichlet boundary conditions."""
-        # define boundary conditions
-        def uD_boundary(x, on_boundary):
-            return on_boundary
         if uD is None:
             uD = Constant(0.0)
         try:
             V = V._fefs
         except:
             pass
-        bc = DirichletBC(V, uD, uD_boundary)
+        bc = DirichletBC(V, uD, Dirichlet_boundary)
         val = []
         if not A is None:
             bc.apply(A)
@@ -52,7 +51,7 @@ class FEMPoisson(FEMDiscretisation):
         return val
 
     @classmethod
-    def assemble_lhs(cls, coeff, basis, uD=None, withBC=True):
+    def assemble_lhs(cls, coeff, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
         """Assemble the discrete problem (i.e. the stiffness matrix)."""
         # get FEniCS function space
         V = basis._fefs
@@ -62,11 +61,11 @@ class FEMPoisson(FEMDiscretisation):
         a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
         A = assemble(a)
         if withBC:
-            A = cls.apply_dirichlet_bc(V, A=A, uD=uD)
+            A = cls.apply_dirichlet_bc(V, A=A, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
         return A
 
     @classmethod
-    def assemble_rhs(cls, f, basis, uD=None, withBC=True):
+    def assemble_rhs(cls, f, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
         """Assemble the discrete right-hand side."""
         # get FEniCS function space
         V = basis._fefs
@@ -75,5 +74,5 @@ class FEMPoisson(FEMDiscretisation):
         l = (f * v) * dx
         F = assemble(l)
         if withBC:
-            F = cls.apply_dirichlet_bc(V, b=F, uD=uD)
+            F = cls.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
         return F

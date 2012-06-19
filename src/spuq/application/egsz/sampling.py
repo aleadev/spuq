@@ -59,7 +59,7 @@ def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis, p
     return sample_sol
 
 
-def compute_direct_sample_solution(RV_samples, coeff_field, A, f, maxm, proj_basis):
+def compute_direct_sample_solution(RV_samples, coeff_field, A, f, maxm, proj_basis, Dirichlet_boundary=lambda x, on_boundary: on_boundary):
     try:
         A0 = coeff_field.A
         A_m = coeff_field.A_m
@@ -78,20 +78,20 @@ def compute_direct_sample_solution(RV_samples, coeff_field, A, f, maxm, proj_bas
         A += RV_samples[m] * A_m[m]
 
     b = FEMPoisson.assemble_rhs(f, proj_basis, withBC=False)
-    A, b = FEMPoisson.apply_dirichlet_bc(proj_basis, A, b)
+    A, b = FEMPoisson.apply_dirichlet_bc(proj_basis, A, b, Dirichlet_boundary=Dirichlet_boundary)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X))
 
 
-def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj_basis):
+def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj_basis, Dirichlet_boundary=lambda x, on_boundary: on_boundary):
     a = coeff_field.mean_func
     for m in range(maxm):
         a_m = RV_samples[m] * coeff_field[m][0]
         a = a + a_m
 
-    A = FEMPoisson.assemble_lhs(a, proj_basis)
-    b = FEMPoisson.assemble_rhs(f, proj_basis)
+    A = FEMPoisson.assemble_lhs(a, proj_basis, Dirichlet_boundary=Dirichlet_boundary)
+    b = FEMPoisson.assemble_rhs(f, proj_basis, Dirichlet_boundary=Dirichlet_boundary)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), a

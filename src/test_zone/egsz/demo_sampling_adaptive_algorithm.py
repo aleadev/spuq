@@ -1,6 +1,7 @@
 from __future__ import division
 import logging
 import os
+from functools import partial
 
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
@@ -9,7 +10,7 @@ from spuq.math_utils.multiindex_set import MultiindexSet
 
 try:
     from dolfin import (Function, FunctionSpace, Constant, UnitSquare,
-                        interactive, project, errornorm)
+                        interactive, project, errornorm, DOLFIN_EPS)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver
 #    from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -30,7 +31,7 @@ MC_RUNS = 1
 MC_N = 1
 MC_HMAX = 1 / 20
 MC_DEGREE = 1
-NUM_REFINE = 7
+NUM_REFINE = 5
 
 
 # log level and format configuration
@@ -95,8 +96,11 @@ coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
 coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform")
 
+# define Dirichlet boundary
+Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
+
 # define multioperator
-A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
+A = MultiOperator(coeff_field, partial(FEMPoisson.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
 
 
 # ============================================================
@@ -108,7 +112,7 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
     max_refinements=NUM_REFINE,
-    pcg_eps=1e-4)
+    pcg_eps=1e-1)
 
 logger.debug("active indices of w after solution: %s", w.active_indices())
 
@@ -118,7 +122,7 @@ logger.debug("active indices of w after solution: %s", w.active_indices())
 # ============================================================
 
 def run_mc(w, err):
-#    import time
+    import time
     from dolfin import norm
     
     # create reference mesh and function space
@@ -131,11 +135,11 @@ def run_mc(w, err):
         logger.info("---- MC Iteration %i/%i ----", i + 1 , MC_N)
         RV_samples = coeff_field.sample_rvs()
         logger.debug("-- RV_samples: %s", [RV_samples[j] for j in range(w.max_order)])
-#        t1 = time.time()
+        t1 = time.time()
         sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
-#        t2 = time.time()
-        sample_sol_direct = compute_direct_sample_solution(RV_samples, coeff_field, A, f, 2 * w.max_order, projection_basis)
-#        t3 = time.time()
+        t2 = time.time()
+        sample_sol_direct = compute_direct_sample_solution(RV_samples, coeff_field, A, f, 2 * w.max_order, projection_basis, Dirichlet_boundary=Dirichlet_boundary)
+        t3 = time.time()
         cerr_L2 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
         logger.debug("-- current error L2 = %s    H1 = %s", cerr_L2, cerr_H1)
@@ -165,8 +169,8 @@ def run_mc(w, err):
                 fc = get_coeff_realisation(RV_samples, coeff_field, w.max_order, projection_basis)
                 fc.plot(title="coeff", interactive=True)
             
-#        t4 = time.time()
-#        logger.info("TIMING: param: %s, direct %s, error %s", t2 - t1, t3 - t2, t4 - t3)
+        t4 = time.time()
+        logger.info("TIMING: param: %s, direct %s, error %s", t2 - t1, t3 - t2, t4 - t3)
 
     logger.info("MC Error: L2: %s, H1: %s", err_L2, err_H1)
     err.append((err_L2, err_H1))

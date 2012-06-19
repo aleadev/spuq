@@ -126,11 +126,9 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # ---debug
 
 # define coefficient field
-coeff_field = SampleProblem.setupCF("EF-square-cos", decayexp=2, amp=1, freqscale=1)
-# NOTE: gamma has to be adjusted w.r.t. the coefficient field expansion!
-gamma = 0.65                # EW decay=-2
-#gamma = 0.085               # EW decay=-4
-#coeff_field = SampleProblem.setupCF("constant", decayexp=2)
+coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
+gamma = 0.9
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")
 a0, _ = coeff_field[0]
 
 # define multioperator
@@ -148,7 +146,7 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.3         # residual marking bulk parameter
+theta_eta = 0.6         # residual marking bulk parameter
 theta_zeta = 0.2        # projection marking threshold factor
 min_zeta = 1e-10        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
@@ -163,7 +161,7 @@ pcg_eps = 2e-6
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 7
+max_refinements = 8
 
 if MC_RUNS > 0:
     w_history = []

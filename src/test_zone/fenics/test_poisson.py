@@ -19,7 +19,7 @@ V2 = FunctionSpace(mesh2, 'CG', 1)
 u0 = Constant(0.0)
 
 def u0_boundary(x, on_boundary):
-    return on_boundary
+    return (x[1] <= 0 or x[1] >= 1) and on_boundary
 
 bc1 = DirichletBC(V1, u0, u0_boundary)
 bc2 = DirichletBC(V2, u0, u0_boundary)
@@ -53,26 +53,27 @@ plot(u1, title="u1")
 plot(mesh1, title="mesh1")
 plot(u2, title="u2")
 plot(mesh2, title="mesh2")
-u12 = interpolate(u1, V2)
-err = Function(V2)
-err.vector()[:] = u12.vector() - u2.vector()
-print "H1 err =", norm(err, "H1")
-plot(err, title="err")
+#u12 = interpolate(u1, V2)
+#err = Function(V2)
+#err.vector()[:] = u12.vector() - u2.vector()
+#print "H1 err =", norm(err, "H1")
+#plot(err, title="err")
 interactive()
 
 
-# assemble mass matrix and get numpy vector
-M = assemble((u1 * v1) * dx)
-npM = M.array()
-# print 'shape of mass matrix M is ', npM.shape
-
-# interpolation and projection test
-mesh2 = UnitSquare(40, 40)
-V2 = FunctionSpace(mesh2, 'CG', 2)
-f2 = Expression('sin(4*3.141*x[0]*x[1])+x[0]*x[1]')
-f2_V2 = interpolate(f2, V2)
-pf2_V1 = project(f2_V2, V1)
-
-#plot(f2_V2)
-#plot(pf2_V1)
-#interactive()
+if False:
+    # assemble mass matrix and get numpy vector
+    M = assemble((u1 * v1) * dx)
+    npM = M.array()
+    # print 'shape of mass matrix M is ', npM.shape
+    
+    # interpolation and projection test
+    mesh2 = UnitSquare(40, 40)
+    V2 = FunctionSpace(mesh2, 'CG', 2)
+    f2 = Expression('sin(4*3.141*x[0]*x[1])+x[0]*x[1]')
+    f2_V2 = interpolate(f2, V2)
+    pf2_V1 = project(f2_V2, V1)
+    
+    #plot(f2_V2)
+    #plot(pf2_V1)
+    #interactive()
