@@ -153,6 +153,8 @@ maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluat
 newmi_add_maxm = 10     # maximal search length for new new multiindices (to be added to max order of solution)
 theta_delta = 0.95       # number new multiindex activation bound
 max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
+# residual error evaluation
+quadrature_degree = 10
 # projection error evaluation
 projection_degree_increase = 2
 refine_projection_mesh = 2
@@ -161,7 +163,7 @@ pcg_eps = 2e-6
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 8
+max_refinements = 3
 
 if MC_RUNS > 0:
     w_history = []
@@ -177,6 +179,8 @@ w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta,
                     maxh=maxh, newmi_add_maxm=newmi_add_maxm, theta_delta=theta_delta,
                     max_Lambda_frac=max_Lambda_frac,
+                    # residual error evaluation
+                    quadrature_degree=quadrature_degree,
                     # projection error evaluation
                     projection_degree_increase=projection_degree_increase, refine_projection_mesh=refine_projection_mesh,
                     # pcg solver

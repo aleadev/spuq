@@ -34,7 +34,7 @@ import numpy as np
 from operator import itemgetter
 
 from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm,
-                    FunctionSpace, TestFunction, CellSize, FacetNormal)
+                    FunctionSpace, TestFunction, CellSize, FacetNormal, parameters)
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -57,10 +57,10 @@ class ResidualEstimator(object):
     """
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int))
-    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, projection_degree_increase=1, refine_projection_mesh=1):
+    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int), optional(int), optional(int))
+    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
         """Evaluate EGSZ Error (7.5)."""
-        resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f)
+        resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f, quadrature_degree)
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
         eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
@@ -71,20 +71,20 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, CoefficientField, anything)
-    def evaluateResidualEstimator(cls, w, coeff_field, f):
+    @takes(anything, MultiVectorWithProjection, CoefficientField, anything, optional(int))
+    def evaluateResidualEstimator(cls, w, coeff_field, f, quadrature_degree= -1):
         """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
         # evaluate residual estimator for all multi indices
         eta = MultiVector()
         global_error = {}
         for mu in w.active_indices():
-            eta[mu], global_error[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, f)
+            eta[mu], global_error[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, f, quadrature_degree)
         return (eta, global_error)
 
 
     @classmethod
-    @takes(anything, Multiindex, MultiVectorWithProjection, CoefficientField, anything)
-    def _evaluateResidualEstimator(cls, mu, w, coeff_field, f):
+    @takes(anything, Multiindex, MultiVectorWithProjection, CoefficientField, anything, int)
+    def _evaluateResidualEstimator(cls, mu, w, coeff_field, f, quadrature_degree):
         """Evaluate the residual error according to EGSZ (5.7) which consists of volume terms (5.3) and jump terms (5.5).
 
             .. math:: \eta_{\mu,T}(w_N) &:= h_T || \overline{a}^{-1/2} (f\delta_{\mu,0} + \nabla\overline{a}\cdot\nabla w_{N,\mu}
@@ -94,6 +94,11 @@ class ResidualEstimator(object):
                                   ( \alpha_{\mu_m+1}^m\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m} - \alpha_{\mu_m}^m w_{N,\mu}
                                   + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m})\cdot\nu] ||_{L^2(S)}\\
         """
+        # set quadrature degree
+        quadrature_degree_old = parameters["form_compiler"]["quadrature_degree"]
+        parameters["form_compiler"]["quadrature_degree"] = quadrature_degree
+        logger.debug("residual quadrature order = ", quadrature_degree)
+        
         # get mean field of coefficient
         a0_f = coeff_field.mean_func
 
@@ -168,6 +173,9 @@ class ResidualEstimator(object):
 #        print "global =", global_error
 #        # ---debug
         
+        # restore quadrature degree
+        parameters["form_compiler"]["quadrature_degree"] = quadrature_degree_old
+
         return (FlatVector(eta_indicator), global_error)
 
 
