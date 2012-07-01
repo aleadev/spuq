@@ -61,7 +61,7 @@ class SampleProblem(object):
     #@takes(anything, str, str, optional(dict))
     def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1):
         if rvtype == "uniform":
-            rvs = lambda i: UniformRV(a=-1, b=1)
+            rvs = lambda i: UniformRV(a= -1, b=1)
         elif rvtype == "normal":
             rvs = lambda i: NormalRV(mu=0.5)
         else:
@@ -88,21 +88,21 @@ class SampleProblem(object):
             ampfunc = lambda i: amp / (float(i) + start) ** decayexp
         elif amptype == "constant": 
             amp = gamma / N
-            ampfunc = lambda i: gamma * (i<N)
+            ampfunc = lambda i: gamma * (i < N)
         else:
             raise ValueError("Unkown amplitude type %s", amptype)
 
-        element=FiniteElement('Lagrange', ufl.triangle, 1)
-
-        degree = None
+        element = FiniteElement('Lagrange', ufl.triangle, 1)
+        # NOTE: the explicit degree of the expression should influence the quadrature order during assembly
+        degree = 3
 
         mis = MultiindexSet.createCompleteOrderSet(2)
         for i in range(freqskip + 1):
             mis.next()
 
         a0 = Expression("1.0", degree=degree, element=element)
-        a = (Expression(func, freq=freqscale, A=ampfunc(i), 
-                        m=int(mu[0]), n=int(mu[1]), 
+        a = (Expression(func, freq=freqscale, A=ampfunc(i),
+                        m=int(mu[0]), n=int(mu[1]),
                         degree=degree, element=element) for i, mu in enumerate(mis))
 
         return ParametricCoefficientField(a0, a, rvs)

@@ -1,6 +1,6 @@
 """FEniCS FEM discretisation implementation for Poisson model problem"""
 
-from dolfin import (nabla_grad, TrialFunction, TestFunction,
+from dolfin import (nabla_grad, TrialFunction, TestFunction, tr, sym,
                     inner, assemble, dx, Constant, DirichletBC)
 
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
@@ -59,6 +59,83 @@ class FEMPoisson(FEMDiscretisation):
         u = TrialFunction(V)
         v = TestFunction(V)
         a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
+        A = assemble(a)
+        if withBC:
+            A = cls.apply_dirichlet_bc(V, A=A, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
+        return A
+
+    @classmethod
+    def assemble_rhs(cls, f, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+        """Assemble the discrete right-hand side."""
+        # get FEniCS function space
+        V = basis._fefs
+        # assemble and apply boundary conditions
+        v = TestFunction(V)
+        l = (f * v) * dx
+        F = assemble(l)
+        if withBC:
+            F = cls.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
+        return F
+
+
+
+class FEMNavierLame(FEMDiscretisation):
+    """FEM discrete Navier-Lame equation (linearised elasticity) with parameters :math:`E` and :math:`\nu` with provided boundary conditions.
+
+        ..math:: -\mathrm{div}a \nabla u = 0 \qquad\textrm{in }\Omega
+        ..math:: u = 0 \qquad\textrm{on }\partial\Omega
+
+        ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
+    """
+
+    def __init__(self, E=100000):
+        self.E = E
+
+    @classmethod
+    def assemble_operator(cls, coeff, basis, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+        """Assemble the discrete problem and return as Operator."""
+        matrix = cls.assemble_lhs(coeff, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
+        return FEniCSOperator(matrix, basis)
+
+    @classmethod
+    def assemble_solve_operator(cls, coeff, basis, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+        matrix = cls.assemble_lhs(coeff, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
+        return FEniCSSolveOperator(matrix, basis)
+
+    @classmethod
+    def apply_dirichlet_bc(cls, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
+        """Apply Dirichlet boundary conditions."""
+        if uD is None:
+            uD = Constant(0.0, 0.0)
+        try:
+            V = V._fefs
+        except:
+            pass
+        bc = DirichletBC(V, uD, Dirichlet_boundary)
+        val = []
+        if not A is None:
+            bc.apply(A)
+            val.append(A)
+        if not b is None:
+            bc.apply(b)
+            val.append(b)
+        if len(val) == 1:
+            val = val[0]
+        return val
+
+    @classmethod
+    def assemble_lhs(cls, nu, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+        """Assemble the discrete operator."""
+        # determine problem parameters
+        mu = E / (2.0 * (1.0 + nu))
+        lmbda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
+        # get FEniCS function space
+        V = basis._fefs
+        # setup problem, assemble and apply boundary conditions
+        u = TrialFunction(V)
+        v = TestFunction(V)
+        sigma = lambda v: 2.0 * mu * sym(nabla_grad(v)) + lmbda * tr(sym(nabla_grad(v))) * Identity(v.cell().d)
+        a = inner(sigma(u), nabla_grad(v)) * dx
         A = assemble(a)
         if withBC:
             A = cls.apply_dirichlet_bc(V, A=A, uD=uD, Dirichlet_boundary=Dirichlet_boundary)

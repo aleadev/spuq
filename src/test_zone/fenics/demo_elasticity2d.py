@@ -4,7 +4,8 @@ from dolfin import *
 
 # Load mesh and define function space
 mesh = UnitSquare(10, 10)
-V = VectorFunctionSpace(mesh, "CG", 1)
+degree = 1
+V = VectorFunctionSpace(mesh, "CG", degree)
 
 # Sub domain for clamp at left end
 def left(x, on_boundary):
@@ -12,7 +13,7 @@ def left(x, on_boundary):
 
 # Dirichlet boundary condition
 def default_force(values, x):
-    values[0], values[1] = 0.0, 0.1
+    values[0], values[1] = 0.0, 1
  
 class BCForce(Expression):
     def __init__(self, force=default_force):
@@ -33,7 +34,7 @@ u = TrialFunction(V)
 v = TestFunction(V)
 f = Constant((0.0, 0.0))
 
-E = 1000.0
+E = 1e5
 nu = 0.4
 
 mu = E / (2.0 * (1.0 + nu))
@@ -66,4 +67,5 @@ if MPI.num_processes() > 1:
     File("partitions2d.pvd") << CellFunction("uint", mesh, MPI.process_number())
 
 # Plot solution
+#plot(u, rescale=False, axes=True)
 plot(u, mode="displacement", mesh=mesh, wireframe=True, rescale=False, axes=True, interactive=True)

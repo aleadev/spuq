@@ -104,7 +104,7 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # setup meshes 
 #mesh0 = Mesh(lshape_xml)
-mesh0 = UnitSquare(4, 4)
+mesh0 = UnitSquare(10, 10)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
@@ -163,7 +163,7 @@ pcg_eps = 2e-6
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 3
+max_refinements = 6
 
 if MC_RUNS > 0:
     w_history = []
