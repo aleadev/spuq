@@ -1,4 +1,5 @@
 from __future__ import division
+import numpy as np
 
 from dolfin import *
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
@@ -57,34 +58,47 @@ def testA():
     u2_h = Function(V2)
 
     # iterate expressions
-    for j, ex in enumerate(EX):
-        for qdegree in range(quadrature_degree):
-            if qdegree == 0:
-                qdegree = -1
-            parameters["form_compiler"]["quadrature_degree"] = qdegree
-
-            # forms
-#            b1 = f * v1 * dx
-#            b2 = f * v2 * dx
-#            b1 = ex * v1 * dx
-#            b2 = ex * v2 * dx
-            b1 = inner(nabla_grad(ex), nabla_grad(ex)) * v1 * dx
-            b2 = inner(nabla_grad(ex), nabla_grad(ex)) * v2 * dx
-
-            a1 = inner(nabla_grad(u1), nabla_grad(v1)) * dx
-            a2 = inner(nabla_grad(u2), nabla_grad(v2)) * dx
-#            a1 = ex * inner(nabla_grad(u1), nabla_grad(v1)) * dx
-#            a2 = ex * inner(nabla_grad(u2), nabla_grad(v2)) * dx
-#            a1 = inner(nabla_grad(ex), nabla_grad(ex)) * inner(nabla_grad(u1), nabla_grad(v1)) * dx
-#            a2 = inner(nabla_grad(ex), nabla_grad(ex)) * inner(nabla_grad(u2), nabla_grad(v2)) * dx
-        
-            # compute solution
-            solve(a1 == b1, u1_h, bc1)
-            solve(a2 == b2, u2_h, bc2)
-        
-            print "[V1] norms for quad=", qdegree, "ex", j, ":", norm(u1_h, 'L2'), norm(u1_h, 'H1')
-            print "[V2] norms for quad=", qdegree, "ex", j, ":", norm(u2_h, 'L2'), norm(u2_h, 'H1')
-        print "-------------------------------------------------------------------------"
+    for run in range(2):
+        if run == 1:
+            u1_h.vector()[:] = np.ones(u1_h.function_space().dim())     # used for integration in form
+        for j, ex in enumerate(EX):
+            for qdegree in range(quadrature_degree):
+                if qdegree == 0:
+                    qdegree = -1
+                parameters["form_compiler"]["quadrature_degree"] = qdegree
+    
+                # forms
+    #            b1 = f * v1 * dx
+    #            b2 = f * v2 * dx
+    #            b1 = ex * v1 * dx
+    #            b2 = ex * v2 * dx
+                b1 = inner(nabla_grad(ex), nabla_grad(ex)) * v1 * dx
+                b2 = inner(nabla_grad(ex), nabla_grad(ex)) * v2 * dx
+                f1 = inner(nabla_grad(ex), nabla_grad(ex)) * u1_h * dx
+                f2 = inner(nabla_grad(ex), nabla_grad(ex)) * u1_h * dx
+    
+                a1 = inner(nabla_grad(u1), nabla_grad(v1)) * dx
+                a2 = inner(nabla_grad(u2), nabla_grad(v2)) * dx
+    #            a1 = ex * inner(nabla_grad(u1), nabla_grad(v1)) * dx
+    #            a2 = ex * inner(nabla_grad(u2), nabla_grad(v2)) * dx
+    #            a1 = inner(nabla_grad(ex), nabla_grad(ex)) * inner(nabla_grad(u1), nabla_grad(v1)) * dx
+    #            a2 = inner(nabla_grad(ex), nabla_grad(ex)) * inner(nabla_grad(u2), nabla_grad(v2)) * dx
+    
+                # compute solution
+                if run == 0:
+                    solve(a1 == b1, u1_h, bc1)
+                    solve(a2 == b2, u2_h, bc2)
+                    print "[V1] norms for quad=", qdegree, "ex", j, ":", norm(u1_h, 'L2'), norm(u1_h, 'H1')
+                    print "[V2] norms for quad=", qdegree, "ex", j, ":", norm(u2_h, 'L2'), norm(u2_h, 'H1')
+                                
+                # compute norms
+                if run == 1:
+                    N1 = sqrt(assemble(f1))
+                    N2 = sqrt(assemble(f2))
+                    print "[V1] norm for quad=", qdegree, "ex", j, ":", N1
+                    print "[V2] norm for quad=", qdegree, "ex", j, ":", N2
+    
+            print "-------------------------------------------------------------------------"
     parameters["form_compiler"]["quadrature_degree"] = quadrature_degree_old
 
 testA()
