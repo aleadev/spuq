@@ -2,8 +2,8 @@
 
 from dolfin import *
 
-# Load mesh and define function space
-mesh = UnitSquare(10, 10)
+# define mesh and vector function space
+mesh = UnitSquare(20, 20)
 degree = 1
 V = VectorFunctionSpace(mesh, "CG", degree)
 
@@ -35,7 +35,7 @@ v = TestFunction(V)
 f = Constant((0.0, 0.0))
 
 E = 1e5
-nu = 0.4
+nu = 0.25 + Expression("0.249*sin(A*pi*x[0])", degree=5, A=4)
 
 mu = E / (2.0 * (1.0 + nu))
 lmbda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
