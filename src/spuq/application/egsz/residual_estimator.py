@@ -57,10 +57,10 @@ class ResidualEstimator(object):
     """
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int), optional(int), optional(int))
-    def evaluateError(cls, w, coeff_field, f, zeta, gamma, ceta, cQ, maxh=0.1, quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
+    @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, optional(float), optional(int), optional(int), optional(int))
+    def evaluateError(cls, w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh=0.1, quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
         """Evaluate EGSZ Error (7.5)."""
-        resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f, quadrature_degree)
+        resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
         eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
@@ -71,20 +71,20 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, CoefficientField, anything, optional(int))
-    def evaluateResidualEstimator(cls, w, coeff_field, f, quadrature_degree= -1):
+    @takes(anything, MultiVectorWithProjection, CoefficientField, anything, anything, optional(int))
+    def evaluateResidualEstimator(cls, w, coeff_field, pde, f, quadrature_degree= -1):
         """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
         # evaluate residual estimator for all multi indices
         eta = MultiVector()
         global_error = {}
         for mu in w.active_indices():
-            eta[mu], global_error[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, f, quadrature_degree)
+            eta[mu], global_error[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, pde, f, quadrature_degree)
         return (eta, global_error)
 
 
     @classmethod
-    @takes(anything, Multiindex, MultiVectorWithProjection, CoefficientField, anything, int)
-    def _evaluateResidualEstimator(cls, mu, w, coeff_field, f, quadrature_degree):
+    @takes(anything, Multiindex, MultiVectorWithProjection, CoefficientField, anything, anything, int)
+    def _evaluateResidualEstimator(cls, mu, w, coeff_field, pde, f, quadrature_degree):
         """Evaluate the residual error according to EGSZ (5.7) which consists of volume terms (5.3) and jump terms (5.5).
 
             .. math:: \eta_{\mu,T}(w_N) &:= h_T || \overline{a}^{-1/2} (f\delta_{\mu,0} + \nabla\overline{a}\cdot\nabla w_{N,\mu}
@@ -98,6 +98,10 @@ class ResidualEstimator(object):
         quadrature_degree_old = parameters["form_compiler"]["quadrature_degree"]
         parameters["form_compiler"]["quadrature_degree"] = quadrature_degree
         logger.debug("residual quadrature order = ", quadrature_degree)
+    
+        # get pde residual terms
+        r_T = pde.r_T
+        r_E = pde.r_E
         
         # get mean field of coefficient
         a0_f = coeff_field.mean_func
@@ -108,10 +112,12 @@ class ResidualEstimator(object):
         nu = FacetNormal(mesh)
 
         # initialise volume and edge residual with deterministic part
-        R_T = dot(nabla_grad(a0_f), nabla_grad(w[mu]._fefunc))
+#        R_T = dot(nabla_grad(a0_f), nabla_grad(w[mu]._fefunc))
+        R_T = r_T(a0_f, w[mu]._fefunc)
         if not mu:
             R_T = R_T + f
-        R_E = a0_f * dot(nabla_grad(w[mu]._fefunc), nu)
+#        R_E = a0_f * dot(nabla_grad(w[mu]._fefunc), nu)
+        R_E = r_E(a0_f, w[mu]._fefunc, nu)
 
         # iterate m
         Lambda = w.active_indices()
@@ -142,11 +148,11 @@ class ResidualEstimator(object):
                 res += beta[-1] * w_mu2
 
             # add volume contribution for m
-            r_t = dot(nabla_grad(am_f), nabla_grad(res._fefunc))
-            R_T = R_T + r_t
+#            r_t = dot(nabla_grad(am_f), nabla_grad(res._fefunc))
+            R_T = R_T + r_T(am_f, res._fefunc)
             # add edge contribution for m
-            r_e = am_f * dot(nabla_grad(res._fefunc), nu)
-            R_E = R_E + r_e
+#            r_e = am_f * dot(nabla_grad(res._fefunc), nu)
+            R_E = R_E + r_E(am_f, res._fefunc, nu)
 
         # prepare more FEM variables for residual assembly
         V = w[mu]._fefunc.function_space()

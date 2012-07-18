@@ -17,8 +17,9 @@ except Exception, e:
 
 
 # setup initial multivector
-def setup_vector(mesh, degree=1):
-    fs = FunctionSpace(mesh, "CG", degree)
+def setup_vector(mesh, pde, degree=1):
+#    fs = FunctionSpace(mesh, "CG", degree)
+    fs = pde.function_space(mesh, degree=degree)
     vec = FEniCSVector(Function(fs))
     return vec
 

@@ -1,7 +1,7 @@
 from __future__ import division
 import logging
 import os
-from functools import partial
+import functools
 
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
@@ -71,13 +71,18 @@ lshape_xml = os.path.join(path, 'lshape.xml')
 # PART A: Problem Setup
 # ============================================================
 
+# problem discretisation
+pde = FEMPoisson
+
+# polynomial degree of FEM approximation
+degree = 1
 
 # flags for residual, projection, new mi refinement 
 refinement = {"RES": True, "PROJ": True, "MI": True}
 uniform_refinement = False
 
 # define source term
-f = Constant("1.0")
+f = pde.f(0)
 
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
@@ -106,7 +111,7 @@ right.maxx = maxx
 
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=2, randref=(0.7, 0.8))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
-w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vector)
+w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
 
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
@@ -115,19 +120,23 @@ coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
 coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform")
 
-## define Dirichlet boundary
+# define Dirichlet and Neumann boundaries
 #Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
 Dirichlet_boundary = (left, top)
+# homogeneous Neumann does not have to be set explicitly
+Neumann_boundary = None
+g = None
 
-# define multioperator
-A = MultiOperator(coeff_field, partial(FEMPoisson.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
+# define multioperator and rhs
+A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
+rhs = functools.partial(pde.assemble_rhs, f=f, g=g, Neumann_boundary=Neumann_boundary)
 
 
 # ============================================================
 # PART B: Adaptive Algorithm
 # ============================================================
 
-w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0,
+w, sim_stats = AdaptiveSolver(A, coeff_field, pde, rhs, f, mis, w0, mesh0,
     gamma=gamma,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
@@ -141,7 +150,7 @@ logger.debug("active indices of w after solution: %s", w.active_indices())
 # PART C: Evaluation of Deterministic Solution and Comparison
 # ============================================================
 
-def run_mc(w, err):
+def run_mc(w, err, pde):
     import time
     from dolfin import norm
     
@@ -156,7 +165,7 @@ def run_mc(w, err):
         RV_samples = coeff_field.sample_rvs()
         logger.debug("-- RV_samples: %s", [RV_samples[j] for j in range(w.max_order)])
         t1 = time.time()
-        sample_sol_param = compute_parametric_sample_solution(pde, RV_samples, coeff_field, w, projection_basis)
+        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
         t2 = time.time()
         sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, 2 * w.max_order, projection_basis, Dirichlet_boundary=Dirichlet_boundary)
         t3 = time.time()
@@ -198,7 +207,7 @@ def run_mc(w, err):
 # iterate MC
 err = []
 for _ in range(MC_RUNS):
-    run_mc(w, err)
+    run_mc(w, err, pde)
 
 #print "evaluated errors (L2,H1):", err
 L2err = sum([e[0] for e in err]) / len(err)

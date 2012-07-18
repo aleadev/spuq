@@ -40,9 +40,9 @@ class Marking(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, float, float, float, float, optional(float), optional(int),
+    @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, optional(float), optional(int),
            optional(int), optional(bool))
-    def estimate_mark(cls, w, coeff_field, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10,
+    def estimate_mark(cls, w, coeff_field, pde, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10,
                        quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
         """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
         #        # testing -->
@@ -53,7 +53,7 @@ class Marking(object):
         #        # <-- testing
 
         # evaluate residual estimator
-        resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, f, quadrature_degree)
+        resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
         # evaluate projection errors
         projind, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, projection_degree_increase, refine_projection_mesh)
         # evaluate inanctive mi projection error

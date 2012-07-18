@@ -57,7 +57,7 @@ def pcg_solve(A, w, coeff_field, rhs, stats, pcg_eps, pcg_maxiter):
 # refinement loop
 # ===============
 # error constants
-def AdaptiveSolver(A, coeff_field, rhs, f,
+def AdaptiveSolver(A, coeff_field, pde, rhs, f,
                     mis, w0, mesh0,
                     gamma=0.9,
                     cQ=1.0,
@@ -107,7 +107,7 @@ def AdaptiveSolver(A, coeff_field, rhs, f,
         # error evaluation
         # ----------------
         # residual and projection errors
-        xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, f, zeta, gamma, ceta, cQ, maxh, quadrature_degree, projection_degree_increase, refine_projection_mesh)
+        xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh, quadrature_degree, projection_degree_increase, refine_projection_mesh)
         reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
         projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
         logger.info("Overall Estimator Error xi = %s while residual error is %s and projection error is %s", xi, reserr, projerr)

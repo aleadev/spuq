@@ -7,7 +7,7 @@ from math import sqrt
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
-from spuq.application.egsz.mc_error_sampling import sample_error_mc
+from spuq.application.egsz.mc_error_sampling import sample_error_mc, setup_vector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
@@ -15,6 +15,7 @@ try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
                         plot, interactive, set_log_level, set_log_active)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
+    from spuq.application.egsz.fem_discretisation import FEMNavierLame
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
     import traceback
@@ -55,20 +56,12 @@ logging.getLogger("spuq").addHandler(ch)
 path = os.path.dirname(__file__)
 lshape_xml = os.path.join(path, 'lshape.xml')
 
-# ------------------------------------------------------------
-
-# utility functions 
-
-# setup initial multivector
-def setup_vec(mesh):
-    fs = FunctionSpace(mesh, "CG", 1)
-    vec = FEniCSVector(Function(fs))
-    return vec
-
-
 # ============================================================
 # PART A: Simulation Options
 # ============================================================
+
+# polynomial degree of FEM approximation
+degree = 1
 
 # flag for L-shaped domain
 lshape = False
@@ -99,8 +92,9 @@ MC_N = 3
 MC_HMAX = 1 / 10
 
 # set problem
-pde = FEMPoisson
-#pde = FEMLinearElasticity
+pdes = (FEMPoisson, FEMNavierLame)
+pdetype = 0
+pde = pdes[pdetype]
 
 
 # ============================================================
@@ -144,7 +138,7 @@ right.maxx = maxx
 #meshes[1] = refine(meshes[1])
 # ---debug
 
-w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
+w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 # ---debug
@@ -166,12 +160,14 @@ a0, _ = coeff_field[0]
 # define Dirichlet boundary
 #Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
 Dirichlet_boundary = (left, top, right, bottom)
+# homogeneous Neumann does not have to be set explicitly
 Neumann_boundary = None
 g = None
 
-# define multioperator
+# define multioperator and rhs
 #A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
+rhs = functools.partial(pde.assemble_rhs, f=f, g=g, Neumann_boundary=Neumann_boundary)
 
 
 # ============================================================
@@ -202,7 +198,7 @@ pcg_eps = 2e-3
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 2
+max_refinements = 3
 
 if MC_RUNS > 0:
     w_history = []
@@ -213,8 +209,7 @@ else:
 # refinement loop
 # ===============
 w0 = w
-rhs = functools.partial(pde.assemble_rhs, f=f, g=g, Neumann_boundary=Neumann_boundary)
-w, sim_stats = AdaptiveSolver(A, coeff_field, rhs, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
+w, sim_stats = AdaptiveSolver(A, coeff_field, pde, rhs, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta,
                     maxh=maxh, newmi_add_maxm=newmi_add_maxm, theta_delta=theta_delta,
