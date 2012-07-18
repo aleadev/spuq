@@ -1,6 +1,7 @@
 from __future__ import division
 import logging
 import os
+import functools
 from math import sqrt
 
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver
@@ -11,7 +12,8 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
 try:
-    from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, plot, interactive, set_log_level, set_log_active)
+    from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
+                        plot, interactive, set_log_level, set_log_active)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
@@ -68,6 +70,9 @@ def setup_vec(mesh):
 # PART A: Simulation Options
 # ============================================================
 
+# flag for L-shaped domain
+lshape = False
+
 # flag for residual graph plotting
 PLOT_RESIDUAL = True
 
@@ -75,11 +80,18 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flag for final solution export
-SAVE_SOLUTION = '' #"results/demo-residual"
+SAVE_SOLUTION = ''
+#SAVE_SOLUTION = "results/demo-residual-A2"
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
 UNIFORM_REFINEMENT = False
+
+# initial mesh elements
+initial_mesh_N = 10
+
+# decay exponent
+decay_exp = 2
 
 # MC error sampling
 MC_RUNS = 1
@@ -102,11 +114,26 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 #mis = (Multiindex(),)
 # ---debug
 
-# setup meshes 
-#mesh0 = Mesh(lshape_xml)
-mesh0 = UnitSquare(10, 10)
+# setup meshes
+if lshape: 
+    mesh0 = Mesh(lshape_xml)
+    maxx, minx, maxy, miny = 1, -1, 1, -1
+else:
+    mesh0 = UnitSquare(initial_mesh_N, initial_mesh_N)
+    maxx, minx, maxy, miny = 1, 0, 1, 0
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
+
+# setup boundary parts
+top, bottom, left, right = compile_subdomains([  'near(x[1], maxy) && on_boundary',
+                                                 'near(x[1], miny) && on_boundary',
+                                                 'near(x[0], minx) && on_boundary',
+                                                 'near(x[0], maxx) && on_boundary'])
+top.maxy = maxy
+bottom.miny = miny
+left.minx = minx
+right.maxx = maxx
+
 
 # debug---
 #from dolfin import refine
@@ -126,13 +153,19 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # ---debug
 
 # define coefficient field
+# NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")
 a0, _ = coeff_field[0]
 
+# define Dirichlet boundary
+#Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
+Dirichlet_boundary = (left, top)
+
 # define multioperator
-A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
+#A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
+A = MultiOperator(coeff_field, functools.partial(FEMPoisson.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
 
 
 # ============================================================
@@ -146,8 +179,8 @@ A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.6         # residual marking bulk parameter
-theta_zeta = 0.2        # projection marking threshold factor
+theta_eta = 0.5         # residual marking bulk parameter
+theta_zeta = 0.1        # projection marking threshold factor
 min_zeta = 1e-10        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 newmi_add_maxm = 10     # maximal search length for new new multiindices (to be added to max order of solution)
@@ -159,11 +192,11 @@ quadrature_degree = 10
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 2e-6
+pcg_eps = 2e-3
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 6
+max_refinements = 1
 
 if MC_RUNS > 0:
     w_history = []
@@ -199,16 +232,35 @@ for mu in active_mi:
     logger.info("--- %s has %s cells", mu[0], mu[1])
 print "ACTIVE MI:", active_mi
 
+# memory usage info
+import resource
+logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
+
 
 # ============================================================
-# PART D: MC Error Sampling
+# PART D: Export of Solution
+# ============================================================
+# NOTE: save at this point since MC tends to run out of memory
+if SAVE_SOLUTION != "":
+    # save solution (also creates directory if not existing)
+    w.pickle(SAVE_SOLUTION)
+    # save simulation data
+    import pickle
+    with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
+        pickle.dump(sim_stats, fout)
+
+
+# ============================================================
+# PART E: MC Error Sampling
 # ============================================================
 if MC_RUNS > 0:
     ref_maxm = w_history[-1].max_order
     for i, w in enumerate(w_history):
-        logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
         if i == 0:
             continue
+        logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
+        # memory usage info
+        logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
         L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
         sim_stats[i - 1]["MC-L2ERR"] = L2err
         sim_stats[i - 1]["MC-H1ERR"] = H1err
@@ -217,17 +269,14 @@ if MC_RUNS > 0:
 
 
 # ============================================================
-# PART E: Plotting and Export of Data
+# PART F: Export Updated Data and Plotting
 # ============================================================
-
-# save solution
+# save updated data
 if SAVE_SOLUTION != "":
-    # save solution (also creates directory if not existing)
-    w.pickle(SAVE_SOLUTION)
-    # save simulation data
+    # save updated statistics
     import pickle
-    with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as f:
-        pickle.dump(sim_stats, f)
+    with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
+        pickle.dump(sim_stats, fout)
 
 # plot residuals
 if PLOT_RESIDUAL and len(sim_stats) > 1:

@@ -48,7 +48,7 @@ if Cooks_membrane:
     maxx = 48
     minx = 0
     maxy = 60
-    miny = 0    
+    miny = 0
 else:
     mesh = Mesh("lshape.xml")
     maxx = 1
@@ -164,7 +164,7 @@ for i in range(max_iterations):
         # define boundary measures
         ds = Measure("ds")[Neumann_parts]
         # shear load (Neumann boundary)
-        g = Constant((0.0, 1000.0))
+        g = Constant((0.0, 100.0))
 #        g = Constant((0.0, 1.0))
         L -= dot(g, v) * ds(1)
     

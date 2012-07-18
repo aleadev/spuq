@@ -9,8 +9,8 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 
 try:
-    from dolfin import (Function, FunctionSpace, Constant, UnitSquare,
-                        interactive, project, errornorm, DOLFIN_EPS)
+    from dolfin import (Function, FunctionSpace, Constant, UnitSquare, compile_subdomains,
+                        Mesh, interactive, project, errornorm, DOLFIN_EPS)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver
 #    from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -31,7 +31,7 @@ MC_RUNS = 1
 MC_N = 1
 MC_HMAX = 1 / 20
 MC_DEGREE = 1
-NUM_REFINE = 5
+NUM_REFINE = 2
 
 
 # log level and format configuration
@@ -83,8 +83,27 @@ f = Constant("1.0")
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # setup meshes
-#mesh0 = refine(Mesh(lshape_xml))
-mesh0 = UnitSquare(5, 5)
+lshape = True
+
+if lshape: 
+    mesh0 = Mesh(lshape_xml)
+    maxx, minx, maxy, miny = 1, -1, 1, -1
+else:
+    mesh0 = UnitSquare(5, 5)
+    maxx, minx, maxy, miny = 1, 0, 1, 0
+#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
+meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
+
+# setup boundary parts
+top, bottom, left, right = compile_subdomains([  'near(x[1], maxy) && on_boundary',
+                                                 'near(x[1], miny) && on_boundary',
+                                                 'near(x[0], minx) && on_boundary',
+                                                 'near(x[0], maxx) && on_boundary'])
+top.maxy = maxy
+bottom.miny = miny
+left.minx = minx
+right.maxx = maxx
+
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=2, randref=(0.7, 0.8))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vector)
@@ -96,8 +115,9 @@ coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
 coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform")
 
-# define Dirichlet boundary
-Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
+## define Dirichlet boundary
+#Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
+Dirichlet_boundary = (left, top)
 
 # define multioperator
 A = MultiOperator(coeff_field, partial(FEMPoisson.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))

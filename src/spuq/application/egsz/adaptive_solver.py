@@ -93,6 +93,9 @@ def AdaptiveSolver(A, coeff_field, f,
     sim_stats = []                  # mis, residual, estimator and dof progress
     for refinement in range(max_refinements + 1):
         logger.info("************* REFINEMENT LOOP iteration %i *************", refinement)
+        # memory usage info
+        import resource
+        logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 
         # pcg solve
         # ---------

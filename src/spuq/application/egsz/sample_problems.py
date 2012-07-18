@@ -14,6 +14,11 @@ from spuq.utils.type_check import takes, anything, optional
 from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement
 import ufl
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 class SampleProblem(object):
     @classmethod
     @takes(anything, Mesh, int, optional(int), optional(tuple))
@@ -85,6 +90,7 @@ class SampleProblem(object):
         if amptype == "decay-inf":
             start = get_decay_start(decayexp, gamma)
             amp = gamma / zeta(decayexp, start)
+            logger.info("type is decay_inf with start = " + str(start) + " and amp = " + str(amp))
             ampfunc = lambda i: amp / (float(i) + start) ** decayexp
         elif amptype == "constant": 
             amp = gamma / N
