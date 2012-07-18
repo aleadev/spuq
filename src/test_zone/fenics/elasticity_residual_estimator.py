@@ -33,7 +33,7 @@ max_iterations = 15
 with_Neumann = True
 
 # set domain (lshape or Cook's membrane)
-Cooks_membrane = True
+Cooks_membrane = False
 
 # refinement fraction
 Theta = 0.4
@@ -45,16 +45,10 @@ if Cooks_membrane:
         return [48 * x, 44 * (x + y) - 18 * x * y]
     mesh.coordinates()[:] = array(cooks_domain(mesh.coordinates()[:, 0], mesh.coordinates()[:, 1])).transpose()
 #    plot(mesh, interactive=True, axes=True) 
-    maxx = 48
-    minx = 0
-    maxy = 60
-    miny = 0
+    maxx, minx, maxy, miny = 48, 0, 60, 0
 else:
     mesh = Mesh("lshape.xml")
-    maxx = 1
-    minx = -1
-    maxy = 1
-    miny = -1
+    maxx, minx, maxy, miny = 1, -1, 1, -1
 
 
 ## sub domain for clamp at left end

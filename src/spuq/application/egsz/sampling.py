@@ -5,7 +5,6 @@ import os
 try:
     from dolfin import (Function, FunctionSpace, Constant, refine,
                         solve, plot, interactive, project, errornorm)
-    from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_basis import FEniCSBasis
 except Exception, e:
@@ -59,13 +58,13 @@ def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis, p
     return sample_sol
 
 
-def compute_direct_sample_solution(RV_samples, coeff_field, A, f, maxm, proj_basis, Dirichlet_boundary=lambda x, on_boundary: on_boundary):
+def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, maxm, proj_basis, Dirichlet_boundary=lambda x, on_boundary: on_boundary):
     try:
         A0 = coeff_field.A
         A_m = coeff_field.A_m
     except AttributeError:
         a = coeff_field.mean_func
-        A0 = FEMPoisson.assemble_lhs(a, proj_basis, withBC=False)
+        A0 = pde.assemble_lhs(a, proj_basis, withBC=False)
         A_m = [None] * maxm
         coeff_field.A = A0
         coeff_field.A_m = A_m
@@ -74,24 +73,24 @@ def compute_direct_sample_solution(RV_samples, coeff_field, A, f, maxm, proj_bas
     for m in range(maxm):
         if A_m[m] is None:
             a_m = coeff_field[m][0]
-            A_m[m] = FEMPoisson.assemble_lhs(a_m, proj_basis, withBC=False)
+            A_m[m] = pde.assemble_lhs(a_m, proj_basis, withBC=False)
         A += RV_samples[m] * A_m[m]
 
-    b = FEMPoisson.assemble_rhs(f, proj_basis, withBC=False)
-    A, b = FEMPoisson.apply_dirichlet_bc(proj_basis, A, b, Dirichlet_boundary=Dirichlet_boundary)
+    b = pde.assemble_rhs(f, proj_basis, withBC=False)
+    A, b = pde.apply_dirichlet_bc(proj_basis, A, b, Dirichlet_boundary=Dirichlet_boundary)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X))
 
 
-def compute_direct_sample_solution_old(RV_samples, coeff_field, A, f, maxm, proj_basis, Dirichlet_boundary=lambda x, on_boundary: on_boundary):
+def compute_direct_sample_solution_old(pde, RV_samples, coeff_field, A, f, maxm, proj_basis, Dirichlet_boundary=lambda x, on_boundary: on_boundary):
     a = coeff_field.mean_func
     for m in range(maxm):
         a_m = RV_samples[m] * coeff_field[m][0]
         a = a + a_m
 
-    A = FEMPoisson.assemble_lhs(a, proj_basis, Dirichlet_boundary=Dirichlet_boundary)
-    b = FEMPoisson.assemble_rhs(f, proj_basis, Dirichlet_boundary=Dirichlet_boundary)
+    A = pde.assemble_lhs(a, proj_basis, Dirichlet_boundary=Dirichlet_boundary)
+    b = pde.assemble_rhs(f, proj_basis, Dirichlet_boundary=Dirichlet_boundary)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), a

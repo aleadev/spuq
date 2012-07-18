@@ -98,6 +98,10 @@ MC_RUNS = 1
 MC_N = 3
 MC_HMAX = 1 / 10
 
+# set problem
+pde = FEMPoisson
+#pde = FEMLinearElasticity
+
 
 # ============================================================
 # PART B: Problem Setup
@@ -105,7 +109,7 @@ MC_HMAX = 1 / 10
 
 # define source term
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
-f = Constant("1.0")
+f = pde.f(0)
 
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
@@ -161,11 +165,13 @@ a0, _ = coeff_field[0]
 
 # define Dirichlet boundary
 #Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
-Dirichlet_boundary = (left, top)
+Dirichlet_boundary = (left, top, right, bottom)
+Neumann_boundary = None
+g = None
 
 # define multioperator
 #A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
-A = MultiOperator(coeff_field, functools.partial(FEMPoisson.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
+A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
 
 
 # ============================================================
@@ -196,7 +202,7 @@ pcg_eps = 2e-3
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 1
+max_refinements = 2
 
 if MC_RUNS > 0:
     w_history = []
@@ -207,7 +213,8 @@ else:
 # refinement loop
 # ===============
 w0 = w
-w, sim_stats = AdaptiveSolver(A, coeff_field, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
+rhs = functools.partial(pde.assemble_rhs, f=f, g=g, Neumann_boundary=Neumann_boundary)
+w, sim_stats = AdaptiveSolver(A, coeff_field, rhs, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta,
                     maxh=maxh, newmi_add_maxm=newmi_add_maxm, theta_delta=theta_delta,
@@ -261,7 +268,7 @@ if MC_RUNS > 0:
         logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
         # memory usage info
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
-        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
+        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
         sim_stats[i - 1]["MC-L2ERR"] = L2err
         sim_stats[i - 1]["MC-H1ERR"] = H1err
         sim_stats[i - 1]["MC-L2ERR_a0"] = L2err_a0
@@ -300,18 +307,18 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         print "efficiency", [est / err for est, err in zip(errest, mcH1)]
         # figure 1
         # --------
-        fig = figure()
-        fig.suptitle("error")
-        ax = fig.add_subplot(111)
-        ax.loglog(x, H1, '-g<', label='H1 residual')
-        ax.loglog(x, L2, '-c+', label='L2 residual')
-        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-        ax.loglog(x, mcL2, '-ro', label='MC L2 error')
-        ax.loglog(x, mcH1_a0, '-.b^', label='MC H1 error a0')
-        ax.loglog(x, mcL2_a0, '-.ro', label='MC L2 error a0')
-        legend(loc='upper right')
-        if SAVE_SOLUTION != "":
-            fig.savefig(os.path.join(SAVE_SOLUTION, 'RES.png'))
+#        fig = figure()
+#        fig.suptitle("error")
+#        ax = fig.add_subplot(111)
+#        ax.loglog(x, H1, '-g<', label='H1 residual')
+#        ax.loglog(x, L2, '-c+', label='L2 residual')
+#        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+#        ax.loglog(x, mcL2, '-ro', label='MC L2 error')
+#        ax.loglog(x, mcH1_a0, '-.b^', label='MC H1 error a0')
+#        ax.loglog(x, mcL2_a0, '-.ro', label='MC L2 error a0')
+#        legend(loc='upper right')
+#        if SAVE_SOLUTION != "":
+#            fig.savefig(os.path.join(SAVE_SOLUTION, 'RES.png'))
         # figure 2
         # --------
         fig2 = figure()

@@ -156,9 +156,9 @@ def run_mc(w, err):
         RV_samples = coeff_field.sample_rvs()
         logger.debug("-- RV_samples: %s", [RV_samples[j] for j in range(w.max_order)])
         t1 = time.time()
-        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+        sample_sol_param = compute_parametric_sample_solution(pde, RV_samples, coeff_field, w, projection_basis)
         t2 = time.time()
-        sample_sol_direct = compute_direct_sample_solution(RV_samples, coeff_field, A, f, 2 * w.max_order, projection_basis, Dirichlet_boundary=Dirichlet_boundary)
+        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, 2 * w.max_order, projection_basis, Dirichlet_boundary=Dirichlet_boundary)
         t3 = time.time()
         cerr_L2 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
@@ -171,7 +171,7 @@ def run_mc(w, err):
             errf = sample_sol_param - sample_sol_direct
             
             # deterministic part
-            sample_sol_direct_a0 = compute_direct_sample_solution(RV_samples, coeff_field, A, f, 0, projection_basis)
+            sample_sol_direct_a0 = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, 0, projection_basis)
             L2_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "L2")
             H1_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "H1")
             logger.info("-- DETERMINISTIC error L2 = %s    H1 = %s", L2_a0, H1_a0)

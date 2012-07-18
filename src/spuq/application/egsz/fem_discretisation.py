@@ -19,6 +19,11 @@ class FEMPoisson(FEMDiscretisation):
     """
 
     @classmethod
+    def f(cls, type):
+        assert type == 0
+        return Constant("1.0")
+
+    @classmethod
     def assemble_operator(cls, coeff, basis, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
         matrix = cls.assemble_lhs(coeff, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
