@@ -1,4 +1,4 @@
-from dolfin import FunctionSpace, FunctionSpaceBase, Function, TestFunction, TrialFunction, CellFunction, assemble, dx, refine, cells
+from dolfin import FunctionSpace, VectorFunctionSpace, FunctionSpaceBase, Function, TestFunction, TrialFunction, CellFunction, assemble, dx, refine, cells
 import dolfin
 
 from spuq.utils.type_check import takes, anything, optional
@@ -23,7 +23,10 @@ class FEniCSBasis(FEMBasis):
         if degree is None or self._fefs.ufl_element().degree() == degree:
             return FEniCSBasis(self._fefs, self._ptype)
         else:
-            newfs = FunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
+            if isinstance(self._fefs, VectorFunctionSpace):
+                newfs = VectorFunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
+            else:
+                newfs = FunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
             return FEniCSBasis(newfs, self._ptype) 
 
     def new_vec(self):
@@ -42,7 +45,10 @@ class FEniCSBasis(FEMBasis):
             for cid in cell_ids:
                 cell_markers[cid] = True
         new_mesh = refine(mesh, cell_markers)
-        new_fs = FunctionSpace(new_mesh, self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
+        if isinstance(self._fefs, VectorFunctionSpace):
+            new_fs = VectorFunctionSpace(new_mesh, self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
+        else:
+            new_fs = FunctionSpace(new_mesh, self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
         new_basis = FEniCSBasis(new_fs)
         prolongate = new_basis.project_onto
         restrict = self.project_onto
@@ -64,8 +70,11 @@ class FEniCSBasis(FEMBasis):
                 for c in cells(mesh):
                     if c.diameter() > maxh:
                         cell_markers[c.index()] = True
-                mesh = refine(mesh, cell_markers) 
-        new_fefs = FunctionSpace(mesh, ufl.family(), ufl.degree())
+                mesh = refine(mesh, cell_markers)
+        if isinstance(self._fefs, VectorFunctionSpace):
+            new_fefs = VectorFunctionSpace(mesh, ufl.family(), ufl.degree())
+        else:
+            new_fefs = FunctionSpace(mesh, ufl.family(), ufl.degree())
         return FEniCSBasis(new_fefs, self._ptype)
 
     @takes(anything, "FEniCSVector", anything)

@@ -159,7 +159,8 @@ class FEniCSVector(FEMVector):
         logger.info("unpickling data (and mesh) from file %s", os.path.join(indir, 'DATA_' + filename + '.pkl'))
         mesh = Mesh(os.path.join(indir, 'MESH_' + filename + '.xml'))
         with open(os.path.join(indir, 'DATA_' + filename + '.pkl'), "rb") as f:
-            data = pickle.load(f) 
+            data = pickle.load(f)
+        # TODO: support VectorFunctionSpace! 
         fs = FunctionSpace(mesh, data[1][0], data[1][1])
         f = Function(fs)
         f.coeffs = data[0]

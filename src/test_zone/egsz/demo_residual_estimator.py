@@ -92,7 +92,7 @@ MC_N = 3
 MC_HMAX = 1 / 10
 
 # set problem
-pdes = (FEMPoisson, FEMNavierLame)
+pdes = (FEMPoisson(), FEMNavierLame(mu=1e4))
 pdetype = 0
 pde = pdes[pdetype]
 
@@ -133,11 +133,6 @@ left.minx = minx
 right.maxx = maxx
 
 
-# debug---
-#from dolfin import refine
-#meshes[1] = refine(meshes[1])
-# ---debug
-
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
@@ -165,7 +160,6 @@ Neumann_boundary = None
 g = None
 
 # define multioperator and rhs
-#A = MultiOperator(coeff_field, FEMPoisson.assemble_operator)
 A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
 rhs = functools.partial(pde.assemble_rhs, f=f, g=g, Neumann_boundary=Neumann_boundary)
 

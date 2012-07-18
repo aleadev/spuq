@@ -23,7 +23,7 @@ largest error indicator)
 """
 
 from dolfin import *
-from numpy import array, sqrt, hstack
+from numpy import array, sqrt
 
 # error tolerance
 tolerance = 0.1

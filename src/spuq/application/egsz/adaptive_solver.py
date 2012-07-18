@@ -34,11 +34,11 @@ def setup_vec(mesh):
     return vec
 
 
-def pcg_solve(A, w, coeff_field, rhs, stats, pcg_eps, pcg_maxiter):
+def pcg_solve(A, w, coeff_field, pde, rhs, stats, pcg_eps, pcg_maxiter):
     b = 0 * w
     b0 = b[Multiindex()]
     b0.coeffs = rhs(basis=b0.basis)
-    P = PreconditioningOperator(coeff_field.mean_func, FEMPoisson.assemble_solve_operator)
+    P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
     b2 = A * w
@@ -100,7 +100,7 @@ def AdaptiveSolver(A, coeff_field, pde, rhs, f,
         # pcg solve
         # ---------
         stats = {}
-        w, zeta = pcg_solve(A, w, coeff_field, rhs, stats, pcg_eps, pcg_maxiter)
+        w, zeta = pcg_solve(A, w, coeff_field, pde, rhs, stats, pcg_eps, pcg_maxiter)
         if not w_history is None:
             w_history.append(w)
 

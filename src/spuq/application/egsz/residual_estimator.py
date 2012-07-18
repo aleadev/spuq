@@ -163,9 +163,9 @@ class ResidualEstimator(object):
         # scaling of residual terms and definition of residual form
         R_T = (1 / a0_f) * R_T
         R_E = (1 / a0_f) * R_E
-        res_form = (h ** 2 * R_T ** 2 * s * dx
-                    + avg(h) * avg(R_E) ** 2 * 2 * avg(s) * dS)
-        #                    + h * R_E * s * ds)    NOTE: this term is incorrect for Dirichlet BC, Neumann data is not supported yet!
+        res_form = (h ** 2 * dot(R_T, R_T) * s * dx
+                    + avg(h) * dot(avg(R_E), avg(R_E)) * 2 * avg(s) * dS)
+        # TODO: add Neumann boundaries!
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
