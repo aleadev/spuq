@@ -12,10 +12,10 @@ try:
     from dolfin import (Function, FunctionSpace, Constant, UnitSquare, compile_subdomains,
                         Mesh, interactive, project, errornorm, DOLFIN_EPS)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
-    from spuq.application.egsz.adaptive_solver import AdaptiveSolver
+    from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 #    from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.application.egsz.sampling import (get_projection_basis, compute_direct_sample_solution,
-                                                compute_parametric_sample_solution, setup_vector, get_coeff_realisation)
+                                                compute_parametric_sample_solution, get_coeff_realisation)
 except Exception, e:
     import traceback
     print traceback.format_exc()
@@ -71,18 +71,12 @@ lshape_xml = os.path.join(path, 'lshape.xml')
 # PART A: Problem Setup
 # ============================================================
 
-# problem discretisation
-pde = FEMPoisson()
-
 # polynomial degree of FEM approximation
 degree = 1
 
 # flags for residual, projection, new mi refinement 
 refinement = {"RES": True, "PROJ": True, "MI": True}
 uniform_refinement = False
-
-# define source term
-f = pde.f()
 
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
@@ -109,34 +103,45 @@ bottom.miny = miny
 left.minx = minx
 right.maxx = maxx
 
-#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=2, randref=(0.7, 0.8))
-meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
-w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
-
-logger.info("active indices of w after initialisation: %s", w0.active_indices())
-
 # define coefficient field
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
 coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform")
 
+# define RHS
+f = Constant(1.0)
+
 # define Dirichlet and Neumann boundaries
-#Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
 Dirichlet_boundary = (left, top)
+uD = (Constant(0.0), Constant(0.0))
 # homogeneous Neumann does not have to be set explicitly
 Neumann_boundary = None
 g = None
+# create pde instance
+pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
+                 neumann_boundary=Neumann_boundary, g=g,
+                 f=f)
+
 
 # define multioperator and rhs
-A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
-rhs = functools.partial(pde.assemble_rhs, f=f, g=g, Neumann_boundary=Neumann_boundary)
+A = MultiOperator(coeff_field, pde.assemble_operator)
+rhs = pde.assemble_rhs
+
+#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=2, randref=(0.7, 0.8))
+meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
+w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
+print
+print w0, type(w0)
+print
+print
+logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 
 # ============================================================
 # PART B: Adaptive Algorithm
 # ============================================================
 
-w, sim_stats = AdaptiveSolver(A, coeff_field, pde, rhs, f, mis, w0, mesh0,
+w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, degree, 
     gamma=gamma,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
@@ -167,7 +172,7 @@ def run_mc(w, err, pde):
         t1 = time.time()
         sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
         t2 = time.time()
-        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, 2 * w.max_order, projection_basis, Dirichlet_boundary=Dirichlet_boundary)
+        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, 2 * w.max_order, projection_basis)
         t3 = time.time()
         cerr_L2 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
@@ -180,7 +185,7 @@ def run_mc(w, err, pde):
             errf = sample_sol_param - sample_sol_direct
             
             # deterministic part
-            sample_sol_direct_a0 = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, 0, projection_basis)
+            sample_sol_direct_a0 = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, 0, projection_basis)
             L2_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "L2")
             H1_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "H1")
             logger.info("-- DETERMINISTIC error L2 = %s    H1 = %s", L2_a0, H1_a0)

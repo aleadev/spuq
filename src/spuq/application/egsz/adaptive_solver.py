@@ -6,8 +6,13 @@ import logging
 import os
 
 from spuq.application.egsz.pcg import pcg
-from spuq.application.egsz.multi_operator import PreconditioningOperator
+from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator
+from spuq.application.egsz.coefficient_field import CoefficientField
+from spuq.application.egsz.fem_discretisation import FEMDiscretisation
+from spuq.application.egsz.multi_vector import MultiVector
 from spuq.math_utils.multiindex import Multiindex
+from spuq.utils.type_check import takes, anything
+
 try:
     from dolfin import (Function, FunctionSpace, cells)
     from spuq.application.egsz.marking import Marking
@@ -57,6 +62,7 @@ def pcg_solve(A, w, coeff_field, pde, rhs, stats, pcg_eps, pcg_maxiter):
 # refinement loop
 # ===============
 # error constants
+@takes(MultiOperator, CoefficientField, FEMDiscretisation, list, MultiVector, anything, int)
 def AdaptiveSolver(A, coeff_field, pde,
                     mis, w0, mesh0, degree,
                     gamma=0.9,
