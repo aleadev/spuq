@@ -13,7 +13,7 @@ class Multiindex(object):
     @takes(anything, optional(np.ndarray, list_of(int)))
     def __init__(self, arr=None):
         # create numpy array or make a copy if it already is
-        if arr is None:
+        if arr is None or len(arr) == 0:
             arr = [0]
         arr = np.array(arr)
         if not issubclass(arr.dtype.type, int):

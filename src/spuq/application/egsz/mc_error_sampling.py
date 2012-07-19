@@ -6,14 +6,15 @@ from spuq.math_utils.multiindex import Multiindex
 try:
     from dolfin import (interactive, project, errornorm, norm)
     from spuq.application.egsz.sampling import (get_projection_basis, compute_direct_sample_solution,
-                                                compute_parametric_sample_solution, setup_vector)
+                                                compute_parametric_sample_solution)
 except Exception, e:
     print "FEniCS has to be available"
 
 # module logger
 logger = logging.getLogger(__name__)
 
-def run_mc(err, w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, uD=None, Dirichlet_boundary=None, g=None, Neumann_boundary=None):
+
+def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX):
     # create reference mesh and function space
     sub_spaces = w[Multiindex()].basis.num_sub_spaces
     degree = w[Multiindex()].basis.degree
@@ -27,8 +28,7 @@ def run_mc(err, w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, uD=No
         RV_samples = coeff_field.sample_rvs()
         logger.info("-- RV_samples: %s", [RV_samples[j] for j in range(w.max_order)])
         sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
-        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, ref_maxm, projection_basis,
-                                                            uD=uD, Dirichlet_boundary=Dirichlet_boundary, g=g, Neumann_boundary=Neumann_boundary)
+        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
         cerr_L2 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
         logger.debug("-- current error L2 = %s    H1 = %s", cerr_L2, cerr_H1)
@@ -37,7 +37,7 @@ def run_mc(err, w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, uD=No
         
         if i + 1 == MC_N:
             # deterministic part
-            sample_sol_direct_a0 = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, 0, projection_basis)
+            sample_sol_direct_a0 = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, 0, projection_basis)
             L2_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "L2")
             H1_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "H1")
             logger.debug("-- DETERMINISTIC error L2 = %s    H1 = %s", L2_a0, H1_a0)
@@ -58,15 +58,12 @@ def run_mc(err, w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, uD=No
     err.append((err_L2, err_H1, L2_a0, H1_a0))
 
 
-def sample_error_mc(w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX,
-                        uD=None, Dirichlet_boundary=None, g=None, Neumann_boundary=None):
+def sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX):
     # iterate MC
     err = []
     for i in range(MC_RUNS):
         logger.info("---> MC RUN %i/%i <---", i + 1, MC_RUNS)
-        run_mc(err, w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX,
-               uD=uD, Dirichlet_boundary=Dirichlet_boundary, g=g, Neumann_boundary=Neumann_boundary)
-    
+        run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX)
     #print "evaluated errors (L2,H1):", err
     L2err = sum([e[0] for e in err]) / len(err)
     H1err = sum([e[1] for e in err]) / len(err)

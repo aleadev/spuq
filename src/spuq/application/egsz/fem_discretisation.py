@@ -18,31 +18,37 @@ class FEMPoisson(FEMDiscretisation):
         ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
     """
 
-    @classmethod
-    def f(cls, type=0):
-        assert type == 0
-        return Constant(1.0)
+    def __init__(self, f=Constant(1.0),
+                 dirichlet_boundary=default_Dirichlet_boundary, uD=None,
+                 neumann_boundary=None, g=None):
+        self._f = f
+        self._dirichlet_boundary = dirichlet_boundary
+        self._uD = uD
+        self._neumann_boundary = neumann_boundary
+        self._g = g
 
-    @classmethod
-    def function_space(cls, mesh, degree=1):
+    @property
+    def f(self):
+        return self._f
+
+    def function_space(self, mesh, degree=1):
         return FunctionSpace(mesh, "CG", degree=degree)
 
-    @classmethod
-    def assemble_operator(cls, coeff, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+    def assemble_operator(self, coeff, basis, withBC=True):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-        matrix = cls.assemble_lhs(coeff, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
+        matrix = self.assemble_lhs(coeff, basis, withBC=withBC)
         return FEniCSOperator(matrix, basis)
 
-    @classmethod
-    def assemble_solve_operator(cls, coeff, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
-        matrix = cls.assemble_lhs(coeff, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
+    def assemble_solve_operator(self, coeff, basis, withBC=True):
+        matrix = self.assemble_lhs(coeff, basis, withBC=withBC)
         return FEniCSSolveOperator(matrix, basis)
 
-    @classmethod
-    def apply_dirichlet_bc(cls, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
+    def apply_dirichlet_bc(self, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
         """Apply Dirichlet boundary conditions."""
         if uD is None:
-            uD = Constant(0.0)
+            uD = self._uD
+            if self._dirichlet_boundary is not None:
+                Dirichlet_boundary = self._dirichlet_boundary
         try:
             V = V._fefs
         except:
@@ -69,8 +75,7 @@ class FEMPoisson(FEMDiscretisation):
             val = val[0]
         return val
 
-    @classmethod
-    def assemble_lhs(cls, coeff, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+    def assemble_lhs(self, coeff, basis, withBC=True):
         """Assemble the discrete problem (i.e. the stiffness matrix)."""
         # get FEniCS function space
         V = basis._fefs
@@ -79,13 +84,19 @@ class FEMPoisson(FEMDiscretisation):
         v = TestFunction(V)
         a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
         A = assemble(a)
+        # apply Dirichlet bc
         if withBC:
-            A = cls.apply_dirichlet_bc(V, A=A, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
+            A = self.apply_dirichlet_bc(V, A=A, uD=self._uD, Dirichlet_boundary=self._dirichlet_boundary)
         return A
 
-    @classmethod
-    def assemble_rhs(cls, f, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary, g=None, Neumann_boundary=None):
+    def assemble_rhs(self, basis, withBC=True):
         """Assemble the discrete right-hand side."""
+        f = self._f
+        Dirichlet_boundary = self._dirichlet_boundary
+        uD = self._uD
+        Neumann_boundary = self._neumann_boundary
+        g = self._g
+
         # get FEniCS function space
         V = basis._fefs
         # assemble and apply boundary conditions
@@ -113,35 +124,31 @@ class FEMPoisson(FEMDiscretisation):
         F = assemble(l)
         # apply Dirichlet bc
         if withBC:
-            F = cls.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
+            F = self.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
         return F
 
-    @classmethod
-    def sigma(cls, a, v):
+    def sigma(self, a, v):
         """Flux."""
         return a * nabla_grad(v)
     
-    @classmethod
-    def Dsigma(cls, a, v):
+    def Dsigma(self, a, v):
         """First derivative of flux."""
         if v.ufl_element().degree() < 2:
             return dot(nabla_grad(a), nabla_grad(v))
         else:
             return dot(nabla_grad(a), nabla_grad(v)) + a * div(nabla_grad(v))
 
-    @classmethod
-    def r_T(cls, a, v):
+    def r_T(self, a, v):
         """Volume residual."""
-        return cls.Dsigma(a, v)
+        return self.Dsigma(a, v)
 
-    @classmethod
-    def r_E(cls, a, v, nu):
+    def r_E(self, a, v, nu):
         """Edge residual."""
         return a * dot(nabla_grad(v), nu)
 
-    @classmethod
-    def r_Nb(cls, a, v, nu):
+    def r_Nb(self, a, v, nu):
         """Neumann boundary residual."""
+        # TODO!
         pass
 
 
@@ -154,32 +161,39 @@ class FEMNavierLame(FEMDiscretisation):
         ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
     """
 
-    def __init__(self, mu):
+    def __init__(self, mu,
+                 f=Constant(1.0),
+                 dirichlet_boundary=default_Dirichlet_boundary, uD=None,
+                 neumann_boundary=None, g=None):
         self.mu = mu
+        self._f = f
+        self._dirichlet_boundary = dirichlet_boundary
+        self._uD = uD
+        self._neumann_boundary = neumann_boundary
+        self._g = g
 
-    @classmethod
-    def f(cls, type=0):
-        assert type == 0
-        return Constant((0.0, 0.0))
+    @property
+    def f(self):
+        return self._f
 
-    @classmethod
-    def function_space(cls, mesh, degree=1):
+    def function_space(self, mesh, degree=1):
         return VectorFunctionSpace(mesh, "CG", degree=degree)
 
-    def assemble_operator(self, lmbda, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+    def assemble_operator(self, lmbda, basis, withBC=True):
         """Assemble the discrete problem and return as Operator."""
-        matrix = self.assemble_lhs(lmbda, basis, uD=uD, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
+        matrix = self.assemble_lhs(lmbda, basis, withBC=withBC)
         return FEniCSOperator(matrix, basis)
 
-    def assemble_solve_operator(self, lmbda, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
-        matrix = self.assemble_lhs(lmbda, basis, uD=uD, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
+    def assemble_solve_operator(self, lmbda, basis, withBC=True):
+        matrix = self.assemble_lhs(lmbda, basis, withBC=withBC)
         return FEniCSSolveOperator(matrix, basis)
 
-    @classmethod
-    def apply_dirichlet_bc(cls, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
+    def apply_dirichlet_bc(self, V, A=None, b=None, uD=None, Dirichlet_boundary=None):
         """Apply Dirichlet boundary conditions."""
         if uD is None:
-            uD = Constant((0.0, 0.0))
+            uD = self._uD
+            if self._dirichlet_boundary is not None:
+                Dirichlet_boundary = self._dirichlet_boundary
         try:
             V = V._fefs
         except:
@@ -211,7 +225,7 @@ class FEMNavierLame(FEMDiscretisation):
             val = val[0]
         return val
 
-    def assemble_lhs(self, lmbda, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+    def assemble_lhs(self, lmbda, basis, withBC=True):
         """Assemble the discrete operator."""
         # get FEniCS function space
         V = basis._fefs
@@ -220,13 +234,19 @@ class FEMNavierLame(FEMDiscretisation):
         v = TestFunction(V)
         a = inner(self.sigma(lmbda, self.mu, u), sym(nabla_grad(v))) * dx
         A = assemble(a)
-        # apply bc
+        # apply Dirichlet bc
         if withBC:
-            A = self.apply_dirichlet_bc(V, A=A, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
+            A = self.apply_dirichlet_bc(V, A=A, uD=self._uD, Dirichlet_boundary=self._dirichlet_boundary)
         return A
 
-    def assemble_rhs(self, f, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary, g=None, Neumann_boundary=None):
+    def assemble_rhs(self, basis, withBC=True):
         """Assemble the discrete right-hand side."""
+        f = self._f
+        Dirichlet_boundary = self._dirichlet_boundary
+        uD = self._uD
+        Neumann_boundary = self._neumann_boundary
+        g = self._g
+
         # get FEniCS function space
         V = basis._fefs
         # define linear form
@@ -257,13 +277,11 @@ class FEMNavierLame(FEMDiscretisation):
             F = self.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
         return F
 
-    @classmethod
-    def sigma(cls, lmbda, mu, v):
+    def sigma(self, lmbda, mu, v):
         """Flux."""
         return 2.0 * mu * sym(nabla_grad(v)) + lmbda * tr(sym(nabla_grad(v))) * Identity(v.cell().d)
     
-    @classmethod
-    def Dsigma(cls, lmbda, mu, v):
+    def Dsigma(self, lmbda, mu, v):
         """First derivative of flux."""
         if v.ufl_element().degree() < 2:
             return 2.0 * mu * div(sym(nabla_grad(v))) + dot(nabla_grad(lmbda), tr(sym(nabla_grad(v))) * Identity(v.cell().d))
@@ -278,7 +296,6 @@ class FEMNavierLame(FEMDiscretisation):
         """Edge residual."""
         return lmbda * dot(self.sigma(lmbda, self.mu, v), nu)
 
-    @classmethod
-    def r_Nb(cls, lmbda, v, nu):
+    def r_Nb(self, lmbda, v, nu):
         """Neumann boundary residual."""
         pass

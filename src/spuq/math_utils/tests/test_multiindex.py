@@ -87,6 +87,12 @@ def test_inc_dec():
     assert_equal(alpha.dec(8, 1), None)
 
 
+def test_inc_dec_empty():
+    alpha1 = Multiindex()
+    alpha2 = Multiindex(np.array([1]))
+    assert_equal(alpha1.inc(0),  alpha2)
+
+
 def test_le():
     alpha1 = Multiindex(np.array([0, 1, 3, 0]))
     alpha2 = Multiindex(np.array([0, 1, 3]))

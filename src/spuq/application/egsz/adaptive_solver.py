@@ -12,7 +12,6 @@ try:
     from dolfin import (Function, FunctionSpace, cells)
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
-    from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_utils import error_norm
 except:
@@ -28,8 +27,9 @@ logger = logging.getLogger(__name__)
 
 
 # setup initial multivector
-def setup_vec(mesh):
-    fs = FunctionSpace(mesh, "CG", 1)
+def setup_vector(mesh, pde, degree=1):
+#    fs = FunctionSpace(mesh, "CG", degree)
+    fs = pde.function_space(mesh, degree=degree)
     vec = FEniCSVector(Function(fs))
     return vec
 
@@ -57,8 +57,8 @@ def pcg_solve(A, w, coeff_field, pde, rhs, stats, pcg_eps, pcg_maxiter):
 # refinement loop
 # ===============
 # error constants
-def AdaptiveSolver(A, coeff_field, pde, rhs, f,
-                    mis, w0, mesh0,
+def AdaptiveSolver(A, coeff_field, pde,
+                    mis, w0, mesh0, degree,
                     gamma=0.9,
                     cQ=1.0,
                     ceta=1.0,
@@ -85,6 +85,9 @@ def AdaptiveSolver(A, coeff_field, pde, rhs, f,
                     do_refinement={"RES":True, "PROJ":True, "MI":False},
                     do_uniform_refinement=False,
                     w_history=None):
+    f = pde.f
+    rhs = pde.assemble_rhs
+
     w = w0
     if not w_history is None:
         w_history.append(w)
@@ -166,7 +169,7 @@ def AdaptiveSolver(A, coeff_field, pde, rhs, f,
             new_multiindices = {}
         
         # carry out refinement of meshes
-        Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vec, mesh=mesh0))
+        Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
 
     logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
                 refinement, max_refinements, sim_stats[refinement]["DOFS"], len(sim_stats[refinement]["MI"]))

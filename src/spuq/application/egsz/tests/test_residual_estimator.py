@@ -92,8 +92,9 @@ def test_estimator_refinement():
     B = FEniCSBasis(fs0)
     u0 = Function(fs0)
     diffcoeff = Constant("1.0")
-    fem_A = FEMPoisson.assemble_lhs(diffcoeff, B)
-    fem_b = FEMPoisson.assemble_rhs(f, B)
+    pde = FEMPoisson()
+    fem_A = pde.assemble_lhs(diffcoeff, B)
+    fem_b = pde.assemble_rhs(f, B)
     solve(fem_A, u0.vector(), fem_b)
     vec0 = FEniCSVector(u0)
 
@@ -113,8 +114,9 @@ def test_estimator_refinement():
     for i, mi in enumerate(mis):
         B = FEniCSBasis(fss[i])
         u = Function(fss[i])
-        fem_A = FEMPoisson.assemble_lhs(diffcoeff, B)
-        fem_b = FEMPoisson.assemble_rhs(f, B)
+        pde = FEMPoisson()
+        fem_A = pde.assemble_lhs(diffcoeff, B)
+        fem_b = pde.assemble_rhs(f, B)
         solve(fem_A, u.vector(), fem_b)
         w[mi] = FEniCSVector(u)
         #        plot(w[mi]._fefunc)
@@ -241,8 +243,9 @@ def test_estimator_refinement():
             fs = vec._fefunc.function_space()
             B = FEniCSBasis(fs)
             u = Function(fs)
-            fem_A = FEMPoisson.assemble_lhs(diffcoeff, B)
-            fem_b = FEMPoisson.assemble_rhs(f, B)
+            pde = FEMPoisson()
+            fem_A = pde.assemble_lhs(diffcoeff, B)
+            fem_b = pde.assemble_rhs(f, B)
             solve(fem_A, vec.coeffs, fem_b)
             w[mu] = vec
 
@@ -275,8 +278,9 @@ def test_marking():
             mesh0 = UnitSquare(4, 4)
             fs = FunctionSpace(mesh0, "CG", 1)
             vec = FEniCSVector(Function(fs))
-        fem_A = FEMPoisson.assemble_lhs(diffcoeff, vec.basis)
-        fem_b = FEMPoisson.assemble_rhs(f, vec.basis)
+        pde = FEMPoisson()
+        fem_A = pde.assemble_lhs(diffcoeff, vec.basis)
+        fem_b = pde.assemble_rhs(f, vec.basis)
         solve(fem_A, vec.coeffs, fem_b)
         return vec
 

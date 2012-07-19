@@ -72,7 +72,7 @@ lshape_xml = os.path.join(path, 'lshape.xml')
 # ============================================================
 
 # problem discretisation
-pde = FEMPoisson
+pde = FEMPoisson()
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -82,7 +82,7 @@ refinement = {"RES": True, "PROJ": True, "MI": True}
 uniform_refinement = False
 
 # define source term
-f = pde.f(0)
+f = pde.f()
 
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]

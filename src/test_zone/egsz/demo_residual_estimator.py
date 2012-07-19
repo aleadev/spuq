@@ -4,10 +4,9 @@ import os
 import functools
 from math import sqrt
 
-from spuq.application.egsz.adaptive_solver import AdaptiveSolver
+from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
-from spuq.application.egsz.sampling import setup_vector
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
@@ -88,23 +87,17 @@ initial_mesh_N = 10
 decay_exp = 2
 
 # MC error sampling
-MC_RUNS = 1
+MC_RUNS = 3
 MC_N = 1
 MC_HMAX = 1 / 10
 
-# set problem
-pdes = (FEMPoisson(), FEMNavierLame(mu=1e4))
-pdetype = 0
-pde = pdes[pdetype]
+# set problem (0:Poisson, 1:Navier-Lame)
+pdetype = 1
 
 
 # ============================================================
 # PART B: Problem Setup
 # ============================================================
-
-# define source term
-#f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
-f = pde.f(0)
 
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
@@ -134,9 +127,6 @@ left.minx = minx
 right.maxx = maxx
 
 
-w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
-logger.info("active indices of w after initialisation: %s", w.active_indices())
-
 # ---debug
 #from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 #if SAVE_SOLUTION != "":
@@ -153,27 +143,46 @@ gamma = 0.9
 coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")
 a0, _ = coeff_field[0]
 
-# define Dirichlet boundary
-#Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
 if pdetype == 1:
-#    Dirichlet_boundary = (left, right)
-#    uD = (Constant((0.0, 0.0)), Constant((0.0, 1.0)))
+    # ========== Navier-Lame ===========
+    # define source term
+    f = Constant((0.0, 0.0))
+    # define Dirichlet bc
+    # Dirichlet_boundary = (left, right)
+    # uD = (Constant((0.0, 0.0)), Constant((0.0, 1.0)))
     Dirichlet_boundary = (left)
     uD = Constant((0.0, 0.0))
     # homogeneous Neumann does not have to be set explicitly
     Neumann_boundary = (right)
     g = Constant((0.0, 100.0))
+    # create pde instance
+    pde = FEMNavierLame(mu=1e4,
+                        dirichlet_boundary=Dirichlet_boundary, uD=uD,
+                        neumann_boundary=Neumann_boundary, g=g,
+                        f=f)
 else:
-    Dirichlet_boundary = (left, right, top)
-    uD = (Constant(0.0), Constant(0.0), Constant(0.0))
+    assert pdetype == 0
+    # ========== Poisson ===========
+    # define source term
+    #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
+    f = Constant(1.0)
+    # define Dirichlet bc
+    Dirichlet_boundary = (left, right)
+    uD = (Constant(0.0), Constant(0.0))
     # homogeneous Neumann does not have to be set explicitly
     Neumann_boundary = None
     g = None
-
+    # create pde instance
+    pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
+                     neumann_boundary=Neumann_boundary, g=g,
+                     f=f)
 
 # define multioperator and rhs
-A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, uD=uD, Dirichlet_boundary=Dirichlet_boundary))
-rhs = functools.partial(pde.assemble_rhs, f=f, uD=uD, Dirichlet_boundary=Dirichlet_boundary, g=g, Neumann_boundary=Neumann_boundary)
+A = MultiOperator(coeff_field, pde.assemble_operator)
+rhs = pde.assemble_rhs
+
+w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
+logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 
 # ============================================================
@@ -204,7 +213,7 @@ pcg_eps = 2e-3
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 5
+max_refinements = 2
 
 if MC_RUNS > 0:
     w_history = []
@@ -215,7 +224,7 @@ else:
 # refinement loop
 # ===============
 w0 = w
-w, sim_stats = AdaptiveSolver(A, coeff_field, pde, rhs, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
+w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, degree, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta,
                     maxh=maxh, newmi_add_maxm=newmi_add_maxm, theta_delta=theta_delta,
@@ -270,8 +279,7 @@ if MC_RUNS > 0:
         logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
         # memory usage info
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
-        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX,
-                                                            uD=uD, Dirichlet_boundary=Dirichlet_boundary, g=g, Neumann_boundary=Neumann_boundary)
+        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
         sim_stats[i - 1]["MC-L2ERR"] = L2err
         sim_stats[i - 1]["MC-H1ERR"] = H1err
         sim_stats[i - 1]["MC-L2ERR_a0"] = L2err_a0
