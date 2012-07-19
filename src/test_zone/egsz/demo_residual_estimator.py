@@ -7,7 +7,8 @@ from math import sqrt
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
-from spuq.application.egsz.mc_error_sampling import sample_error_mc, setup_vector
+from spuq.application.egsz.sampling import setup_vector
+from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
@@ -87,13 +88,13 @@ initial_mesh_N = 10
 decay_exp = 2
 
 # MC error sampling
-MC_RUNS = 3
+MC_RUNS = 1
 MC_N = 1
 MC_HMAX = 1 / 10
 
 # set problem
 pdes = (FEMPoisson(), FEMNavierLame(mu=1e4))
-pdetype = 1
+pdetype = 0
 pde = pdes[pdetype]
 
 
@@ -163,8 +164,8 @@ if pdetype == 1:
     Neumann_boundary = (right)
     g = Constant((0.0, 100.0))
 else:
-    Dirichlet_boundary = (left, right)
-    uD = (Constant(0.0), Constant(0.0))
+    Dirichlet_boundary = (left, right, top)
+    uD = (Constant(0.0), Constant(0.0), Constant(0.0))
     # homogeneous Neumann does not have to be set explicitly
     Neumann_boundary = None
     g = None
@@ -203,7 +204,7 @@ pcg_eps = 2e-3
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 7
+max_refinements = 5
 
 if MC_RUNS > 0:
     w_history = []
@@ -269,7 +270,8 @@ if MC_RUNS > 0:
         logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
         # memory usage info
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
-        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
+        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX,
+                                                            uD=uD, Dirichlet_boundary=Dirichlet_boundary, g=g, Neumann_boundary=Neumann_boundary)
         sim_stats[i - 1]["MC-L2ERR"] = L2err
         sim_stats[i - 1]["MC-H1ERR"] = H1err
         sim_stats[i - 1]["MC-L2ERR_a0"] = L2err_a0

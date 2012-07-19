@@ -73,7 +73,8 @@ def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis, p
     return sample_sol
 
 
-def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, maxm, proj_basis, Dirichlet_boundary=lambda x, on_boundary: on_boundary):
+def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, maxm, proj_basis,
+                                    uD=Constant(0.0), Dirichlet_boundary=lambda x, on_boundary: on_boundary, g=None, Neumann_boundary=None):
     try:
         A0 = coeff_field.A
         A_m = coeff_field.A_m
@@ -91,8 +92,8 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, f, maxm, pro
             A_m[m] = pde.assemble_lhs(a_m, proj_basis, withBC=False)
         A += RV_samples[m] * A_m[m]
 
-    b = pde.assemble_rhs(f, proj_basis, withBC=False)
-    A, b = pde.apply_dirichlet_bc(proj_basis, A, b, Dirichlet_boundary=Dirichlet_boundary)
+    b = pde.assemble_rhs(f, proj_basis, withBC=False, g=g, Neumann_boundary=Neumann_boundary)
+    A, b = pde.apply_dirichlet_bc(proj_basis, A, b, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X))
