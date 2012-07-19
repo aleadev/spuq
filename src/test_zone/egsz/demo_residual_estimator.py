@@ -101,9 +101,6 @@ pde = pdes[pdetype]
 # PART B: Problem Setup
 # ============================================================
 
-# define source term
-#f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
-f = pde.f(0)
 
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
@@ -155,13 +152,22 @@ a0, _ = coeff_field[0]
 # define Dirichlet boundary
 #Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
 Dirichlet_boundary = (left, top, right, bottom)
+uD = None
+
 # homogeneous Neumann does not have to be set explicitly
 Neumann_boundary = None
 g = None
 
+# define source term
+#f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
+f = Constant(1.0)
+
+pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD, 
+                 neumann_boundary=Neumann_boundary, g=g,
+                 f=f)
+
 # define multioperator and rhs
-A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
-rhs = functools.partial(pde.assemble_rhs, f=f, g=g, Neumann_boundary=Neumann_boundary)
+A = MultiOperator(coeff_field, pde.assemble_operator)
 
 
 # ============================================================
@@ -203,7 +209,7 @@ else:
 # refinement loop
 # ===============
 w0 = w
-w, sim_stats = AdaptiveSolver(A, coeff_field, pde, rhs, f, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
+w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, gamma=gamma, cQ=cQ, ceta=ceta,
                     # marking parameters
                     theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta,
                     maxh=maxh, newmi_add_maxm=newmi_add_maxm, theta_delta=theta_delta,
@@ -257,7 +263,7 @@ if MC_RUNS > 0:
         logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
         # memory usage info
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
-        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
+        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
         sim_stats[i - 1]["MC-L2ERR"] = L2err
         sim_stats[i - 1]["MC-H1ERR"] = H1err
         sim_stats[i - 1]["MC-L2ERR_a0"] = L2err_a0
