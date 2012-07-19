@@ -23,8 +23,13 @@ class FEniCSVector(FEMVector):
 
     @classmethod
     @takes(anything, FEniCSBasis)
-    def from_basis(cls, basis):
-        f = Function(basis._fefs)
+    def from_basis(cls, basis, sub_spaces=None):
+        if sub_spaces is None or sub_spaces == basis.num_sub_spaces:
+            f = Function(basis._fefs)
+        else:
+            assert sub_spaces == 0
+            V = FunctionSpace(basis._fefs.mesh(), basis._fefs.ufl_element().family(), basis._fefs.ufl_element().degree())
+            f = Function(V)
         return FEniCSVector(f)
 
     def copy(self):
@@ -32,8 +37,12 @@ class FEniCSVector(FEMVector):
 
     @property
     def basis(self):
-        '''return FEniCSBasis'''
+        '''Return FEniCSBasis.'''
         return FEniCSBasis(self._fefunc.function_space())
+
+    @property
+    def num_sub_spaces(self):
+        return self._fefunc.function_space().num_sub_spaces() 
 
     @property
     def coeffs(self):

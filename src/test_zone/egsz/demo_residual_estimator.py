@@ -27,7 +27,7 @@ except:
 
 # setup logging
 # log level and format configuration
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
                     format=log_format)
@@ -88,12 +88,12 @@ decay_exp = 2
 
 # MC error sampling
 MC_RUNS = 1
-MC_N = 3
+MC_N = 1
 MC_HMAX = 1 / 10
 
 # set problem
 pdes = (FEMPoisson(), FEMNavierLame(mu=1e4))
-pdetype = 0
+pdetype = 1
 pde = pdes[pdetype]
 
 
@@ -183,7 +183,7 @@ newmi_add_maxm = 10     # maximal search length for new new multiindices (to be 
 theta_delta = 0.95       # number new multiindex activation bound
 max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
 # residual error evaluation
-quadrature_degree = 10
+quadrature_degree = 3
 # projection error evaluation
 projection_degree_increase = 2
 refine_projection_mesh = 2
@@ -227,6 +227,7 @@ logger.info("==== FINAL MESHES ====")
 for mu in active_mi:
     logger.info("--- %s has %s cells", mu[0], mu[1])
 print "ACTIVE MI:", active_mi
+print
 
 # memory usage info
 import resource

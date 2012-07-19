@@ -33,7 +33,7 @@ from __future__ import division
 import numpy as np
 from operator import itemgetter
 
-from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm,
+from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFunctionSpace,
                     FunctionSpace, TestFunction, CellSize, FacetNormal, parameters)
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -97,7 +97,7 @@ class ResidualEstimator(object):
         # set quadrature degree
         quadrature_degree_old = parameters["form_compiler"]["quadrature_degree"]
         parameters["form_compiler"]["quadrature_degree"] = quadrature_degree
-        logger.debug("residual quadrature order = ", quadrature_degree)
+        logger.debug("residual quadrature order = " + str(quadrature_degree))
     
         # get pde residual terms
         r_T = pde.r_T
@@ -155,7 +155,6 @@ class ResidualEstimator(object):
             R_E = R_E + r_E(am_f, res._fefunc, nu)
 
         # prepare more FEM variables for residual assembly
-        V = w[mu]._fefunc.function_space()
         DG = FunctionSpace(mesh, "DG", 0)
         s = TestFunction(DG)
         h = CellSize(mesh)
@@ -257,7 +256,10 @@ class ResidualEstimator(object):
         # create discretisation space
         V_coeff = w[mu].basis.refine_maxh(maxh)
         # interpolate coefficient functions on mesh
-        f_coeff = V_coeff.new_vec()
+        f_coeff = V_coeff.new_vector(sub_spaces=0)
+#        print "evaluateLocalProjectionError"
+#        print f_coeff.num_sub_spaces
+#        print a0_f.value_shape()
         f_coeff.interpolate(a0_f)
         amin = f_coeff.min_val
         f_coeff.interpolate(am_f)
@@ -365,7 +367,7 @@ class ResidualEstimator(object):
             # NOTE: we use the deterministic mesh since it is assumed to be the finest
             V = w[Multiindex()].basis.refine_maxh(maxh)
             # determine min \overline{a} on D (approximately)
-            f = FEniCSVector.from_basis(V)
+            f = FEniCSVector.from_basis(V, sub_spaces=0)
             f.interpolate(a0_f)
             min_a0 = f.min_val
             for m in range(M):

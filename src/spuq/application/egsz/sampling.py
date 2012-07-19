@@ -3,7 +3,7 @@ import os
 
 
 try:
-    from dolfin import (Function, FunctionSpace, Constant, refine,
+    from dolfin import (Function, VectorFunctionSpace, FunctionSpace, Constant, refine,
                         solve, plot, interactive, project, errornorm)
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_basis import FEniCSBasis
@@ -25,21 +25,35 @@ def setup_vector(mesh, pde, degree=1):
 
 
 # create reference mesh and function space
-def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1):
+def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1, sub_spaces=None, family=None):
+    if family is None:
+        family = 'CG'
     if not(mesh_refinements is None):
         mesh = mesh0
         for _ in range(mesh_refinements):
             mesh = refine(mesh)
-        V = FunctionSpace(mesh, "CG", degree)
+        if sub_spaces is None or sub_spaces == 0:
+            V = FunctionSpace(mesh, family, degree)
+        else:
+            V = VectorFunctionSpace(mesh, family, degree)
+            assert V.num_sub_spaces() == sub_spaces
         return FEniCSBasis(V)
     else:
         assert not(maxh is None)
-        B = FEniCSBasis(FunctionSpace(mesh0, "CG", degree))
+        if sub_spaces is None or sub_spaces == 0:
+            V = FunctionSpace(mesh0, family, degree)
+        else:
+            V = VectorFunctionSpace(mesh0, family, degree)
+            assert V.num_sub_spaces() == sub_spaces
+        B = FEniCSBasis(V)
         return B.refine_maxh(maxh, True)
 
 
 def get_projected_solution(w, mu, proj_basis):
     # TODO: obfuscated method call since project is not obvious in the interface of MultiVector!
+#    print "sampling.get_projected_solution"
+#    print w[mu].num_sub_spaces
+#    print proj_basis.num_sub_spaces
     return w.project(w[mu], proj_basis)
 
 

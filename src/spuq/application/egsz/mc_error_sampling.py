@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 def run_mc(err, w, pde, A, f, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX):
     # create reference mesh and function space
-    projection_basis = get_projection_basis(mesh0, maxh=min(w[Multiindex()].basis.minh / 4, MC_HMAX))
+    sub_spaces = w[Multiindex()].basis.num_sub_spaces
+    degree = w[Multiindex()].basis.degree
+    projection_basis = get_projection_basis(mesh0, maxh=min(w[Multiindex()].basis.minh / 4, MC_HMAX), degree=degree, sub_spaces=sub_spaces)
     logger.debug("hmin of mi[0] = %s, reference mesh = (%s, %s)", w[Multiindex()].basis.minh, projection_basis.minh, projection_basis.maxh)
 
     # get realization of coefficient field
