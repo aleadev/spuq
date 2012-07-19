@@ -12,7 +12,6 @@ try:
     from dolfin import (Function, FunctionSpace, cells)
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
-    from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_utils import error_norm
 except:
@@ -57,7 +56,7 @@ def pcg_solve(A, w, coeff_field, pde, rhs, stats, pcg_eps, pcg_maxiter):
 # refinement loop
 # ===============
 # error constants
-def AdaptiveSolver(A, coeff_field, pde, rhs, f,
+def AdaptiveSolver(A, coeff_field, pde,
                     mis, w0, mesh0,
                     gamma=0.9,
                     cQ=1.0,
@@ -85,6 +84,9 @@ def AdaptiveSolver(A, coeff_field, pde, rhs, f,
                     do_refinement={"RES":True, "PROJ":True, "MI":False},
                     do_uniform_refinement=False,
                     w_history=None):
+    f = pde.f()
+    rhs = pde.assemble_rhs
+
     w = w0
     if not w_history is None:
         w_history.append(w)
