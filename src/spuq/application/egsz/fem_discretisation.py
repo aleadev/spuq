@@ -1,6 +1,6 @@
 """FEniCS FEM discretisation implementation for Poisson model problem"""
 
-from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSpace, Identity,
+from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSpace, Identity, Measure, FacetFunction,
                     dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC)
 
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
@@ -98,16 +98,27 @@ class FEMPoisson(FEMDiscretisation):
         # assemble and apply boundary conditions
         v = TestFunction(V)
         l = (f * v) * dx
+
+        # treat Neumann boundary
         if Neumann_boundary is not None:
             assert g is not None
-            ds = Measure("ds")[Neumann_boundary]
+            # mark boundary
             if not isinstance(Neumann_boundary, (tuple, list)):
                 Neumann_boundary = [Neumann_boundary]
             if not isinstance(g, (tuple, list)):
                 g = [g]
-            for b in range(len(Neumann_boundary)):
-                l -= dot(g, v) * ds(b)
+            mesh = V.mesh()
+            Neumann_parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
+            Neumann_parts.set_all(0)
+            for j, bnd in enumerate(Neumann_boundary):
+                bnd.mark(Neumann_parts, j + 1)
+            # evaluate boundary flux terms
+            ds = Measure("ds")[Neumann_parts]
+            for j in range(len(Neumann_boundary)):
+                l -= dot(g[j], v) * ds(j + 1)
+        # assemble linear form
         F = assemble(l)
+        # apply Dirichlet bc
         if withBC:
             F = self.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
         return F
@@ -145,23 +156,30 @@ class FEMNavierLame(FEMDiscretisation):
         ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
     """
 
-    def __init__(self, mu):
+    def __init__(self, mu,
+                 f=Constant(1.0), 
+                 dirichlet_boundary=default_Dirichlet_boundary, uD=None, 
+                 neumann_boundary=None, g=None):
         self.mu = mu
+        self._f = f
+        self._dirichlet_boundary = dirichlet_boundary
+        self._uD = uD
+        self._neumann_boundary = neumann_boundary
+        self._g = g
 
-    def f(self, type=0):
-        assert type == 0
-        return Constant((0.0, 0.0))
+    def f(self):
+        return self._f
 
     def function_space(self, mesh, degree=1):
         return VectorFunctionSpace(mesh, "CG", degree=degree)
 
-    def assemble_operator(self, lmbda, basis, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
+    def assemble_operator(self, lmbda, basis, withBC=True):
         """Assemble the discrete problem and return as Operator."""
-        matrix = self.assemble_lhs(lmbda, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
+        matrix = self.assemble_lhs(lmbda, basis, uD=self._uD, withBC=withBC, Dirichlet_boundary=self._dirichlet_boundary)
         return FEniCSOperator(matrix, basis)
 
-    def assemble_solve_operator(self, lmbda, basis, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary):
-        matrix = self.assemble_lhs(lmbda, basis, uD=None, withBC=withBC, Dirichlet_boundary=Dirichlet_boundary)
+    def assemble_solve_operator(self, lmbda, basis, withBC=True):
+        matrix = self.assemble_lhs(lmbda, basis, uD=self._uD, withBC=withBC, Dirichlet_boundary=self._dirichlet_boundary)
         return FEniCSSolveOperator(matrix, basis)
 
     def apply_dirichlet_bc(self, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
@@ -208,12 +226,20 @@ class FEMNavierLame(FEMDiscretisation):
         v = TestFunction(V)
         a = inner(self.sigma(lmbda, self.mu, u), sym(nabla_grad(v))) * dx
         A = assemble(a)
+        # apply bc
         if withBC:
             A = self.apply_dirichlet_bc(V, A=A, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
         return A
 
-    def assemble_rhs(self, f, basis, uD=None, withBC=True, Dirichlet_boundary=default_Dirichlet_boundary, g=None, Neumann_boundary=None):
+    def assemble_rhs(self, basis, withBC=True):
         """Assemble the discrete right-hand side."""
+        f = self._f
+        Dirichlet_boundary = self._dirichlet_boundary
+        uD = self._uD
+        Neumann_boundary = self._neumann_boundary
+        g = self._g
+
+
         # get FEniCS function space
         V = basis._fefs
         # define linear form
@@ -223,14 +249,20 @@ class FEMNavierLame(FEMDiscretisation):
         # treat Neumann boundary
         if Neumann_boundary is not None:
             assert g is not None
-            ds = Measure("ds")[Neumann_boundary]
+            # mark boundary
             if not isinstance(Neumann_boundary, (tuple, list)):
                 Neumann_boundary = [Neumann_boundary]
             if not isinstance(g, (tuple, list)):
                 g = [g]
-            for b in range(len(Neumann_boundary)):
-                l -= dot(g, v) * ds(b)
-                
+            mesh = V.mesh()
+            Neumann_parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
+            Neumann_parts.set_all(0)
+            for j, bnd in enumerate(Neumann_boundary):
+                bnd.mark(Neumann_parts, j + 1)
+            # evaluate boundary flux terms
+            ds = Measure("ds")[Neumann_parts]
+            for j in range(len(Neumann_boundary)):
+                l -= dot(g[j], v) * ds(j + 1)                
         # assemble linear form
         F = assemble(l)
         # apply Dirichlet boundary conditions

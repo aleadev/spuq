@@ -87,14 +87,12 @@ initial_mesh_N = 10
 decay_exp = 2
 
 # MC error sampling
-MC_RUNS = 1
-MC_N = 3
+MC_RUNS = 3
+MC_N = 1
 MC_HMAX = 1 / 10
 
 # set problem
-pdes = (FEMPoisson(), FEMNavierLame(mu=1e4))
 pdetype = 0
-pde = pdes[pdetype]
 
 
 # ============================================================
@@ -130,9 +128,6 @@ left.minx = minx
 right.maxx = maxx
 
 
-w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
-logger.info("active indices of w after initialisation: %s", w.active_indices())
-
 # ---debug
 #from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 #if SAVE_SOLUTION != "":
@@ -149,25 +144,43 @@ gamma = 0.9
 coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")
 a0, _ = coeff_field[0]
 
-# define Dirichlet boundary
-#Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
-Dirichlet_boundary = (left, top, right, bottom)
-uD = None
-
-# homogeneous Neumann does not have to be set explicitly
-Neumann_boundary = None
-g = None
-
 # define source term
 #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
 f = Constant(1.0)
 
-pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD, 
-                 neumann_boundary=Neumann_boundary, g=g,
-                 f=f)
+if pdetype == 1:
+    # Dirichlet_boundary = (left, right)
+    # uD = (Constant((0.0, 0.0)), Constant((0.0, 1.0)))
+    Dirichlet_boundary = (left)
+    uD = Constant((0.0, 0.0))
+    # homogeneous Neumann does not have to be set explicitly
+    Neumann_boundary = (right)
+    g = Constant((0.0, 100.0))
+
+    pde = FEMNavierLame(mu=1e4,
+                        dirichlet_boundary=Dirichlet_boundary, uD=uD, 
+                        neumann_boundary=Neumann_boundary, g=g,
+                        f=f)
+else:
+    Dirichlet_boundary = (left, right)
+    uD = (Constant(0.0), Constant(0.0))
+    # homogeneous Neumann does not have to be set explicitly
+    Neumann_boundary = None
+    g = None
+
+    pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD, 
+                     neumann_boundary=Neumann_boundary, g=g,
+                     f=f)
+
+
+
 
 # define multioperator and rhs
 A = MultiOperator(coeff_field, pde.assemble_operator)
+rhs = pde.assemble_rhs
+
+w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
+logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 
 # ============================================================
@@ -189,7 +202,7 @@ newmi_add_maxm = 10     # maximal search length for new new multiindices (to be 
 theta_delta = 0.95       # number new multiindex activation bound
 max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
 # residual error evaluation
-quadrature_degree = 10
+quadrature_degree = 3
 # projection error evaluation
 projection_degree_increase = 2
 refine_projection_mesh = 2
@@ -198,7 +211,7 @@ pcg_eps = 2e-3
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 3
+max_refinements = 7
 
 if MC_RUNS > 0:
     w_history = []
@@ -233,6 +246,7 @@ logger.info("==== FINAL MESHES ====")
 for mu in active_mi:
     logger.info("--- %s has %s cells", mu[0], mu[1])
 print "ACTIVE MI:", active_mi
+print
 
 # memory usage info
 import resource
@@ -287,19 +301,21 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         x = [s["DOFS"] for s in sim_stats]
         L2 = [s["L2"] for s in sim_stats]
         H1 = [s["H1"] for s in sim_stats]
-        mcL2 = [s["MC-L2ERR"] for s in sim_stats]
-        mcH1 = [s["MC-H1ERR"] for s in sim_stats]
-        mcL2_a0 = [s["MC-L2ERR_a0"] for s in sim_stats]
-        mcH1_a0 = [s["MC-H1ERR_a0"] for s in sim_stats]
         errest = [sqrt(s["EST"]) for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
-        effest = [est / err for est, err in zip(errest, mcH1)]
+        if MC_RUNS > 0:
+            mcL2 = [s["MC-L2ERR"] for s in sim_stats]
+            mcH1 = [s["MC-H1ERR"] for s in sim_stats]
+            mcL2_a0 = [s["MC-L2ERR_a0"] for s in sim_stats]
+            mcH1_a0 = [s["MC-H1ERR_a0"] for s in sim_stats]
+            effest = [est / err for est, err in zip(errest, mcH1)]
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
-        print "mcH1", mcH1
         print "errest", errest
-        print "efficiency", [est / err for est, err in zip(errest, mcH1)]
+        if MC_RUNS > 0:
+            print "mcH1", mcH1
+            print "efficiency", [est / err for est, err in zip(errest, mcH1)]
         # figure 1
         # --------
 #        fig = figure()
@@ -324,8 +340,9 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
-        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-        ax.loglog(x, mcL2, '-ro', label='MC L2 error')
+        if MC_RUNS > 0:
+            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+            ax.loglog(x, mcL2, '-ro', label='MC L2 error')
 #        ax.loglog(x, H1, '-b^', label='H1 residual')
 #        ax.loglog(x, L2, '-ro', label='L2 residual')
         legend(loc='upper right')
@@ -337,8 +354,9 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         fig3.suptitle("efficiency residual estimator")
         ax = fig3.add_subplot(111)
         ax.loglog(x, errest, '-g<', label='error estimator')
-        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-        ax.loglog(x, effest, '-ro', label='efficiency')        
+        if MC_RUNS > 0:
+            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+            ax.loglog(x, effest, '-ro', label='efficiency')        
         legend(loc='upper right')
         if SAVE_SOLUTION != "":
             fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))

@@ -127,7 +127,7 @@ class MultiVector(Vector):
         """unpickle object"""
         with open(os.path.join(indir, 'MI.pkl'), "rb") as f:
             Lambda = pickle.load(f)
-            print "Lambda:", Lambda
+            print "from_pickle Lambda:", Lambda
             w = cls()
             for mu in Lambda:
                 w[mu] = veccls.from_pickle(indir, str(mu))
@@ -152,7 +152,6 @@ class MultiVectorWithProjection(MultiVector):
             basis = dest.basis
         else:
             basis = dest
-
         assert hasattr(basis, "project_onto")
         return basis.project_onto(vec_src)
 
@@ -241,7 +240,7 @@ class MultiVectorWithProjection(MultiVector):
         # TODO: If refine_mesh is True, the destination space of mu_dest is ensured to include the space of mu_src by mesh refinement
         # TODO: proper description
         # TODO: separation of fenics specific code
-        from dolfin import refine, FunctionSpace
+        from dolfin import refine, FunctionSpace, VectorFunctionSpace
         from spuq.fem.fenics.fenics_basis import FEniCSBasis
         import numpy as np
         if not refine_mesh:
@@ -258,7 +257,14 @@ class MultiVectorWithProjection(MultiVector):
             mesh_reference = basis_dest.mesh
             for _ in range(refine_mesh):
                 mesh_reference = refine(mesh_reference)
-            fs_reference = FunctionSpace(mesh_reference, basis_dest._fefs.ufl_element().family(), reference_degree)
+#            print "multi_vector::get_projection_error_function"
+#            print type(basis_src._fefs), type(basis_dest._fefs)
+#            print basis_src._fefs.num_sub_spaces(), basis_dest._fefs.num_sub_spaces()
+#            if isinstance(basis_dest, VectorFunctionSpace):
+            if basis_dest._fefs.num_sub_spaces() > 0:
+                fs_reference = VectorFunctionSpace(mesh_reference, basis_dest._fefs.ufl_element().family(), reference_degree)
+            else:
+                fs_reference = FunctionSpace(mesh_reference, basis_dest._fefs.ufl_element().family(), reference_degree)
             basis_reference = FEniCSBasis(fs_reference, basis_dest._ptype)
             # project both vectors to reference space
             w_reference = basis_reference.project_onto(self[mu_src])

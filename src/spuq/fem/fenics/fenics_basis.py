@@ -23,16 +23,22 @@ class FEniCSBasis(FEMBasis):
         if degree is None or self._fefs.ufl_element().degree() == degree:
             return FEniCSBasis(self._fefs, self._ptype)
         else:
-            if isinstance(self._fefs, VectorFunctionSpace):
+#            if isinstance(self._fefs, VectorFunctionSpace):
+            if self._fefs.num_sub_spaces() > 1:
                 newfs = VectorFunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
             else:
                 newfs = FunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
             return FEniCSBasis(newfs, self._ptype) 
 
-    def new_vec(self):
+    def new_vector(self, sub_spaces=None):
         """Create null vector on this space."""
         import spuq.fem.fenics.fenics_vector as FV          # this circumvents circular inclusions
-        return FV.FEniCSVector(Function(self._fefs)) 
+        if sub_spaces == 0 and self.num_sub_spaces > 0:
+            V = FunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
+            return FV.FEniCSVector(Function(V))
+        else:
+            assert sub_spaces is None or sub_spaces == self.num_sub_spaces
+            return FV.FEniCSVector(Function(self._fefs)) 
 
     def refine(self, cell_ids=None):
         """Refine mesh of basis uniformly or wrt cells, returns (new_basis,prolongate,restrict)."""
@@ -45,7 +51,8 @@ class FEniCSBasis(FEMBasis):
             for cid in cell_ids:
                 cell_markers[cid] = True
         new_mesh = refine(mesh, cell_markers)
-        if isinstance(self._fefs, VectorFunctionSpace):
+#        if isinstance(self._fefs, VectorFunctionSpace):
+        if self._fefs.num_sub_spaces() > 1:
             new_fs = VectorFunctionSpace(new_mesh, self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
         else:
             new_fs = FunctionSpace(new_mesh, self._fefs.ufl_element().family(), self._fefs.ufl_element().degree())
@@ -71,7 +78,8 @@ class FEniCSBasis(FEMBasis):
                     if c.diameter() > maxh:
                         cell_markers[c.index()] = True
                 mesh = refine(mesh, cell_markers)
-        if isinstance(self._fefs, VectorFunctionSpace):
+#        if isinstance(self._fefs, VectorFunctionSpace):
+        if self._fefs.num_sub_spaces() > 1:
             new_fefs = VectorFunctionSpace(mesh, ufl.family(), ufl.degree())
         else:
             new_fefs = FunctionSpace(mesh, ufl.family(), ufl.degree())
@@ -83,6 +91,10 @@ class FEniCSBasis(FEMBasis):
         if ptype is None:
             ptype = self._ptype
         if ptype == PROJECTION.INTERPOLATION:
+#            print "fenics_basis::project_onto"
+#            print vec._fefunc.value_size()
+#            print "sub spaces", self.num_sub_spaces
+#            print type(self._fefs)
             new_fefunc = dolfin.interpolate(vec._fefunc, self._fefs)
         elif ptype == PROJECTION.L2PROJECTION:
             new_fefunc = dolfin.project(vec._fefunc, self._fefs)
@@ -93,6 +105,10 @@ class FEniCSBasis(FEMBasis):
     @property
     def dim(self):
         return self._fefs.dim()
+
+    @property
+    def num_sub_spaces(self):
+        return self._fefs.num_sub_spaces()
 
     @property
     def mesh(self):
