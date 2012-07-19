@@ -104,6 +104,11 @@ def AdaptiveSolver(A, coeff_field, pde, rhs, f,
         if not w_history is None:
             w_history.append(w)
 
+#        print "===== SOLUTION w"
+#        for mu in w.active_indices():
+#            print "for mu:", w[mu]
+#            print w[mu].array()
+
         # error evaluation
         # ----------------
         # residual and projection errors

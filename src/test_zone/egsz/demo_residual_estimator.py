@@ -27,7 +27,7 @@ except:
 
 # setup logging
 # log level and format configuration
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
                     format=log_format)
@@ -87,7 +87,7 @@ initial_mesh_N = 10
 decay_exp = 2
 
 # MC error sampling
-MC_RUNS = 1
+MC_RUNS = 3
 MC_N = 1
 MC_HMAX = 1 / 10
 
@@ -154,14 +154,25 @@ a0, _ = coeff_field[0]
 
 # define Dirichlet boundary
 #Dirichlet_boundary = lambda x, on_boundary: on_boundary and (x[0] <= DOLFIN_EPS or x[0] >= 1.0 - DOLFIN_EPS)# or x[1] >= 1.0 - DOLFIN_EPS)
-Dirichlet_boundary = (left, top, right, bottom)
-# homogeneous Neumann does not have to be set explicitly
-Neumann_boundary = None
-g = None
+if pdetype == 1:
+#    Dirichlet_boundary = (left, right)
+#    uD = (Constant((0.0, 0.0)), Constant((0.0, 1.0)))
+    Dirichlet_boundary = (left)
+    uD = Constant((0.0, 0.0))
+    # homogeneous Neumann does not have to be set explicitly
+    Neumann_boundary = (right)
+    g = Constant((0.0, 100.0))
+else:
+    Dirichlet_boundary = (left, right)
+    uD = (Constant(0.0), Constant(0.0))
+    # homogeneous Neumann does not have to be set explicitly
+    Neumann_boundary = None
+    g = None
+
 
 # define multioperator and rhs
-A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, Dirichlet_boundary=Dirichlet_boundary))
-rhs = functools.partial(pde.assemble_rhs, f=f, g=g, Neumann_boundary=Neumann_boundary)
+A = MultiOperator(coeff_field, functools.partial(pde.assemble_operator, uD=uD, Dirichlet_boundary=Dirichlet_boundary))
+rhs = functools.partial(pde.assemble_rhs, f=f, uD=uD, Dirichlet_boundary=Dirichlet_boundary, g=g, Neumann_boundary=Neumann_boundary)
 
 
 # ============================================================
@@ -192,7 +203,7 @@ pcg_eps = 2e-3
 pcg_maxiter = 100
 error_eps = 1e-5
 # refinements
-max_refinements = 3
+max_refinements = 7
 
 if MC_RUNS > 0:
     w_history = []
@@ -282,19 +293,21 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         x = [s["DOFS"] for s in sim_stats]
         L2 = [s["L2"] for s in sim_stats]
         H1 = [s["H1"] for s in sim_stats]
-        mcL2 = [s["MC-L2ERR"] for s in sim_stats]
-        mcH1 = [s["MC-H1ERR"] for s in sim_stats]
-        mcL2_a0 = [s["MC-L2ERR_a0"] for s in sim_stats]
-        mcH1_a0 = [s["MC-H1ERR_a0"] for s in sim_stats]
         errest = [sqrt(s["EST"]) for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
-        effest = [est / err for est, err in zip(errest, mcH1)]
+        if MC_RUNS > 0:
+            mcL2 = [s["MC-L2ERR"] for s in sim_stats]
+            mcH1 = [s["MC-H1ERR"] for s in sim_stats]
+            mcL2_a0 = [s["MC-L2ERR_a0"] for s in sim_stats]
+            mcH1_a0 = [s["MC-H1ERR_a0"] for s in sim_stats]
+            effest = [est / err for est, err in zip(errest, mcH1)]
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
-        print "mcH1", mcH1
         print "errest", errest
-        print "efficiency", [est / err for est, err in zip(errest, mcH1)]
+        if MC_RUNS > 0:
+            print "mcH1", mcH1
+            print "efficiency", [est / err for est, err in zip(errest, mcH1)]
         # figure 1
         # --------
 #        fig = figure()
@@ -319,8 +332,9 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
-        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-        ax.loglog(x, mcL2, '-ro', label='MC L2 error')
+        if MC_RUNS > 0:
+            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+            ax.loglog(x, mcL2, '-ro', label='MC L2 error')
 #        ax.loglog(x, H1, '-b^', label='H1 residual')
 #        ax.loglog(x, L2, '-ro', label='L2 residual')
         legend(loc='upper right')
@@ -332,8 +346,9 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         fig3.suptitle("efficiency residual estimator")
         ax = fig3.add_subplot(111)
         ax.loglog(x, errest, '-g<', label='error estimator')
-        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-        ax.loglog(x, effest, '-ro', label='efficiency')        
+        if MC_RUNS > 0:
+            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+            ax.loglog(x, effest, '-ro', label='efficiency')        
         legend(loc='upper right')
         if SAVE_SOLUTION != "":
             fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))
