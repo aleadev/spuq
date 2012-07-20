@@ -137,8 +137,6 @@ class ParametricCoefficientField(CoefficientField):
     def __len__(self):
         """Length of coefficient field expansion."""
         return sys.maxint
-        # Note: infty doesn't work here because it cannot be converted to
-        # integer (that's what len() does to the value returned from here)
 
     def __getitem__(self, i):
         return self._funcs[i], self._rvs[i]

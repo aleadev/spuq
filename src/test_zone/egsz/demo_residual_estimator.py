@@ -141,7 +141,7 @@ right.maxx = maxx
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
 coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")
-a0, _ = coeff_field[0]
+a0 = coeff_field.mean_func
 
 if pdetype == 1:
     # ========== Navier-Lame ===========
@@ -156,7 +156,7 @@ if pdetype == 1:
     Neumann_boundary = (right)
     g = Constant((0.0, 100.0))
     # create pde instance
-    pde = FEMNavierLame(mu=1e4,
+    pde = FEMNavierLame(mu=1e4, lmbda0=a0,
                         dirichlet_boundary=Dirichlet_boundary, uD=uD,
                         neumann_boundary=Neumann_boundary, g=g,
                         f=f)
@@ -173,7 +173,7 @@ else:
     Neumann_boundary = None
     g = None
     # create pde instance
-    pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
+    pde = FEMPoisson(a0=a0, dirichlet_boundary=Dirichlet_boundary, uD=uD,
                      neumann_boundary=Neumann_boundary, g=g,
                      f=f)
 
