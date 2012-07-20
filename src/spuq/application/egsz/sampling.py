@@ -70,6 +70,25 @@ def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis, c
     return sample_sol
 
 
+def compute_solution_variance(coeff_field, w, proj_basis):
+    Lambda = w.active_indices()
+    # sum up (stochastic) solution vector on reference function space wrt samples
+
+    sample_sol = 0
+    for mu in Lambda:
+        if mu.order == 0:
+            continue
+        w_mu = get_projected_solution(w, mu, proj_basis)
+        f = w_mu._fefunc
+        #print "1>" + str(list(f.vector().array()))
+        f.vector()[:] = (f.vector().array())**2
+        #print "2>" + str(list(f.vector().array()))
+        #f2 = project(f*f, w_mu.basis._fefs)
+        #sample_sol += FEniCSVector(f2)
+        sample_sol += FEniCSVector(f)
+    return sample_sol
+
+
 def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_basis, cache=None):
     try:
         A0 = cache.A
