@@ -8,8 +8,8 @@ from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
-from spuq.application.egsz.mc_error_sampling import (sample_error_mc,
-                             compute_parametric_sample_solution, compute_direct_sample_solution)
+from spuq.application.egsz.mc_error_sampling import sample_error_mc
+from spuq.application.egsz.sampling import compute_parametric_sample_solution, compute_direct_sample_solution, compute_solution_variance
 from spuq.application.egsz.sampling import get_projection_basis
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
@@ -76,7 +76,7 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 6
+max_refinements = 3
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -135,7 +135,7 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")#, scale=1000)
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")#, scale=1000)
 a0 = coeff_field.mean_func
 
 # setup boundary conditions
@@ -168,11 +168,11 @@ else:
     f = Constant(1.0)
     # define Dirichlet bc
     # 4 Dirichlet
-    Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
-    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
-#    # 2 Dirichlet
-#    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-#    uD = (Constant(0.0), Constant(0.0))
+    # Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
+    # uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
+    # 2 Dirichlet
+    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+    uD = (Constant(0.0), Constant(0.0))
 #    # 1 Dirichlet
 #    Dirichlet_boundary = (boundaries['left'])
 #    uD = (Constant(0.0))
@@ -216,7 +216,7 @@ quadrature_degree = 3
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 2e-2
+pcg_eps = 1e-4
 pcg_maxiter = 100
 error_eps = 1e-4
 
@@ -420,10 +420,14 @@ if PLOT_SOLUTION:
     projection_basis = get_projection_basis(mesh0, maxh=min(w[Multiindex()].basis.minh / 4, MC_HMAX), degree=degree, sub_spaces=sub_spaces)
     sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
     sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+    sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
+
     # plot
     if sub_spaces == 0:
         viz_p = plot(sample_sol_param._fefunc, "parametric solution", axes=True)
-        viz_d = plot(sample_sol_direct._fefunc, "direct solution", axes=True, interactive=True)
+        viz_d = plot(sample_sol_direct._fefunc, "direct solution", axes=True)
+        viz_v = plot(sol_variance._fefunc, "solution variance", axes=True)
+        interactive()
     else:
         mesh_param = sample_sol_param._fefunc.function_space().mesh()
         mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
