@@ -36,10 +36,6 @@ class FEMPoisson(FEMDiscretisation):
     @property
     def norm(self):
         '''Energy norm wrt operator.'''
-#        from dolfin import Expression
-#        print "XXXXXX", self._a0(0, 0), self._a0(1, 0), self._a0(0, 1), self._a0(1, 1)
-#        print self._a0.cppcode
-#        _a0 = Expression("1.0")
         return lambda v: np.sqrt(assemble(self._a0 * inner(nabla_grad(v), nabla_grad(v)) * dx))
 
     def function_space(self, mesh, degree=1):
@@ -134,6 +130,8 @@ class FEMPoisson(FEMDiscretisation):
             boundary = [boundary]
         if not isinstance(g, (tuple, list)):
             g = [g]
+        if len(g) == 1:
+            g *= len(boundary)
         parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
         parts.set_all(0)
         for j, bnd in enumerate(boundary):
@@ -161,16 +159,16 @@ class FEMPoisson(FEMDiscretisation):
         """Edge residual."""
         return a * dot(nabla_grad(v), nu)
 
-    def r_Nb(self, a, v, nu, w=1):
+    def r_Nb(self, a, v, nu, mesh):
         """Neumann boundary residual."""
         form = None
         if self._neumann_boundary is not None:
-            g = self._g
-            if not isinstance(g, (tuple, list)):
-                g = [g]
-            for j in enumerate(self._neumann_boundary):
-                Nberr = g[j] + dot(nabla_grad(v), nu)
-                form += w * a * inner(Nberr, Nberr) * ds(1)
+            form = []
+            g, ds = self._prepareNeumann(mesh)
+            for j, gj in enumerate(g):
+                # TODO: check sign!
+                Nbres = gj - dot(nabla_grad(v), nu)
+                form.append((a * inner(Nbres, Nbres), ds(j + 1)))
         return form
 
 
@@ -301,6 +299,8 @@ class FEMNavierLame(FEMDiscretisation):
             boundary = [boundary]
         if not isinstance(g, (tuple, list)):
             g = [g]
+        if len(g) == 1:
+            g *= len(boundary)
         parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
         parts.set_all(0)
         for j, bnd in enumerate(boundary):
@@ -328,14 +328,13 @@ class FEMNavierLame(FEMDiscretisation):
         """Edge residual."""
         return dot(self.sigma(lmbda, self.mu, v), nu)
 
-    def r_Nb(self, a, v, nu, w=1):
+    def r_Nb(self, lmbda, v, nu, mesh):
         """Neumann boundary residual."""
         form = None
         if self._neumann_boundary is not None:
-            g = self._g
-            if not isinstance(g, (tuple, list)):
-                g = [g]
-            for j in enumerate(self._neumann_boundary):
-                Nberr = g[j] + dot(self.sigma(v), nu)
-                form += w * a * inner(Nberr, Nberr) * ds(1)
-        return form
+            form = []
+            g, ds = self._prepareNeumann(mesh)
+            for j, gj in enumerate(g):
+                # TODO: check sign!
+                Nbres = gj - dot(self.sigma(lmbda, self.mu, v), nu)
+                form.append((inner(Nbres, Nbres), ds(j + 1)))

@@ -8,7 +8,9 @@ from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
-from spuq.application.egsz.mc_error_sampling import sample_error_mc
+from spuq.application.egsz.mc_error_sampling import (sample_error_mc,
+                             compute_parametric_sample_solution, compute_direct_sample_solution)
+from spuq.application.egsz.sampling import get_projection_basis
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
@@ -64,8 +66,10 @@ path = os.path.dirname(__file__)
 # ============================================================
 
 # set problem (0:Poisson, 1:Navier-Lame)
-pdetype = 1
-domain = 'square'
+pdetype = 0
+domaintype = 0
+domains = ('square', 'lshape', 'cooks')
+domain = domains[domaintype]
 
 # decay exponent
 decay_exp = 2
@@ -130,18 +134,23 @@ gamma = 0.9
 coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")#, scale=1000)
 a0 = coeff_field.mean_func
 
+# setup boundary conditions
+Dirichlet_boundary = None
+uD = None
+Neumann_boundary = None
+g = None
 if pdetype == 1:
     # ========== Navier-Lame ===========
     # define source term
     f = Constant((0.0, 0.0))
     # define Dirichlet bc
-    # Dirichlet_boundary = (left, right)
-    # uD = (Constant((0.0, 0.0)), Constant((0.0, 1.0)))
     Dirichlet_boundary = (boundaries['left'])
-    uD = Constant((0.0, 0.0))
+    uD = (Constant((0.0, 0.0)))
+#    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+#    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
     # homogeneous Neumann does not have to be set explicitly
     Neumann_boundary = (boundaries['right'])
-    g = Constant((0.0, 100.0))
+    g = Constant((0.0, 10.0))
     # create pde instance
     pde = FEMNavierLame(mu=1e4, lmbda0=a0,
                         dirichlet_boundary=Dirichlet_boundary, uD=uD,
@@ -156,9 +165,11 @@ else:
     # define Dirichlet bc
     Dirichlet_boundary = (boundaries['left'], boundaries['right'])
     uD = (Constant(0.0), Constant(0.0))
-    # homogeneous Neumann does not have to be set explicitly
-    Neumann_boundary = None
-    g = None
+#    Dirichlet_boundary = (boundaries['left'])
+#    uD = (Constant(0.0))
+#    # homogeneous Neumann does not have to be set explicitly
+#    Neumann_boundary = None
+#    g = None
     # create pde instance
     pde = FEMPoisson(a0=a0, dirichlet_boundary=Dirichlet_boundary, uD=uD,
                      neumann_boundary=Neumann_boundary, g=g,
@@ -200,13 +211,17 @@ pcg_eps = 2e-2
 pcg_maxiter = 100
 error_eps = 1e-4
 # refinements
-max_refinements = 2
+max_refinements = 1
 
 if MC_RUNS > 0:
     w_history = []
 else:
     w_history = None
 
+# NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
+if domaintype == 2:
+    maxh = 0.0
+    MC_HMAX = 0
 
 # refinement loop
 # ===============
@@ -337,6 +352,7 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         legend(loc='upper right')
         if SAVE_SOLUTION != "":
             fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.png'))
+            fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.eps'))
         # figure 3
         # --------
         fig3 = figure()
@@ -349,6 +365,7 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         legend(loc='upper right')
         if SAVE_SOLUTION != "":
             fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))
+            fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.eps'))
         show()  # this invalidates the figure instances...
     except:
         import traceback
@@ -382,3 +399,25 @@ if PLOT_MESHES:
         Plotter.close(allfig=True)
     else:
         interactive()
+
+# plot sample solution
+if PLOT_SOLUTION:
+    # get random field sample and evaluate solution (direct and parametric)
+    RV_samples = coeff_field.sample_rvs()
+    ref_maxm = w_history[-1].max_order
+    sub_spaces = w[Multiindex()].basis.num_sub_spaces
+    degree = w[Multiindex()].basis.degree
+    projection_basis = get_projection_basis(mesh0, maxh=min(w[Multiindex()].basis.minh / 4, MC_HMAX), degree=degree, sub_spaces=sub_spaces)
+    sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+    sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+    # plot
+    if sub_spaces == 0:
+        plot(sample_sol_param._fefunc, "parametric solution", axes=True)
+        plot(sample_sol_direct._fefunc, "direct solution", axes=True, interactive=True)
+    else:
+        mesh_param = sample_sol_param._fefunc.function_space().mesh()
+        mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
+        wireframe = True
+        plot(sample_sol_param._fefunc, "parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+        plot(sample_sol_direct._fefunc, "direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe, interactive=True)#, rescale=False)
+

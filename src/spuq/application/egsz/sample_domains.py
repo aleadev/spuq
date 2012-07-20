@@ -1,9 +1,11 @@
 from dolfin import Mesh, UnitSquare, compile_subdomains
+import os
+import numpy as np
 
 class SampleDomain(object):
     @classmethod
     def setupDomain(cls, name, **kwargs):
-        _domains = {'lshape':cls._lshape, 'square':cls._square, 'cooks':cls._cook}
+        _domains = {'lshape':cls._lshape, 'square':cls._square, 'cooks':cls._cooks}
         return _domains[name](**kwargs)
     
     @classmethod
@@ -39,11 +41,11 @@ class SampleDomain(object):
         return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right}
 
     @classmethod
-    def _cook(cls, **kwargs):
+    def _cooks(cls, **kwargs):
         mesh = UnitSquare(10, 5)
         def cooks_domain(x, y):
             return [48 * x, 44 * (x + y) - 18 * x * y]
-        mesh.coordinates()[:] = array(cooks_domain(mesh.coordinates()[:, 0], mesh.coordinates()[:, 1])).transpose()
+        mesh.coordinates()[:] = np.array(cooks_domain(mesh.coordinates()[:, 0], mesh.coordinates()[:, 1])).transpose()
     #    plot(mesh, interactive=True, axes=True) 
         maxx, minx, maxy, miny = 48, 0, 60, 0
         # setup boundary parts

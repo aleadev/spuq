@@ -122,6 +122,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         # error evaluation
         # ----------------
         # residual and projection errors
+        logger.debug("evaluating ResidualEstimator.evaluateError")
         xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh, quadrature_degree, projection_degree_increase, refine_projection_mesh)
         reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
         projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
@@ -132,6 +133,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
         sim_stats.append(stats)
         # inactice mi projection error
+        logger.debug("evaluating ResidualEstimator.evaluateInactiveProjectionError")
         mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, newmi_add_maxm) 
 
         # exit when either error threshold or max_refinements is reached
@@ -144,7 +146,8 @@ def AdaptiveSolver(A, coeff_field, pde,
 
         # marking
         # -------
-        if not do_uniform_refinement:
+        if not do_uniform_refinement:        
+            logger.debug("starting Marking.mark")
             mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, mierr, w.max_order,
                                                                             theta_eta, theta_zeta, theta_delta,
                                                                             min_zeta, maxh, max_Lambda_frac)

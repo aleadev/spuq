@@ -34,7 +34,7 @@ import numpy as np
 from operator import itemgetter
 
 from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFunctionSpace,
-                    FunctionSpace, TestFunction, CellSize, FacetNormal, parameters)
+                    Constant, FunctionSpace, TestFunction, CellSize, FacetNormal, parameters)
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -60,13 +60,15 @@ class ResidualEstimator(object):
     @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, optional(float), optional(int), optional(int), optional(int))
     def evaluateError(cls, w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh=0.1, quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
         """Evaluate EGSZ Error (7.5)."""
+        logger.debug("starting evaluateResidualEstimator")
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
+        logger.debug("starting evaluateProjectionEstimator")
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
         eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
         delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
         xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
               + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
-        logger.debug("Total Residual ERROR Factors: A1=%s  A2=%s  A3=%s  A4=%s", ceta / sqrt(1 - gamma), cQ / sqrt(1 - gamma), cQ * sqrt(zeta / (1 - gamma)), zeta / (1 - gamma))
+        logger.info("Total Residual ERROR Factors: A1=%s  A2=%s  A3=%s  A4=%s", ceta / sqrt(1 - gamma), cQ / sqrt(1 - gamma), cQ * sqrt(zeta / (1 - gamma)), zeta / (1 - gamma))
         return (xi, resind, projind)
 
 
@@ -102,6 +104,7 @@ class ResidualEstimator(object):
         # get pde residual terms
         r_T = pde.r_T
         r_E = pde.r_E
+        r_Nb = pde.r_Nb
         
         # get mean field of coefficient
         a0_f = coeff_field.mean_func
@@ -118,6 +121,8 @@ class ResidualEstimator(object):
             R_T = R_T + f
 #        R_E = a0_f * dot(nabla_grad(w[mu]._fefunc), nu)
         R_E = r_E(a0_f, w[mu]._fefunc, nu)
+        # get Neumann residual
+        R_Nb = r_Nb(a0_f, w[mu]._fefunc, nu, mesh)
 
         # iterate m
         Lambda = w.active_indices()
@@ -164,7 +169,10 @@ class ResidualEstimator(object):
         R_E = (1 / a0_f) * R_E
         res_form = (h ** 2 * dot(R_T, R_T) * s * dx
                     + avg(h) * dot(avg(R_E), avg(R_E)) * 2 * avg(s) * dS)
-        # TODO: add Neumann boundaries!
+        # add Neumann residuals
+        if R_Nb is not None:
+            for rj, dsj in R_Nb:
+                res_form = res_form + (1 / a0_f) * h * s * rj * dsj
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)

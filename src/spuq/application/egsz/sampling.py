@@ -80,9 +80,10 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
         A0 = pde.assemble_lhs(a, proj_basis, withBC=False)
         b = pde.assemble_rhs(proj_basis, withBC=False)
         A_m = [None] * maxm
-        cache.A = A0
-        cache.A_m = A_m
-        cache.b = b
+        if cache is not None:
+            cache.A = A0
+            cache.A_m = A_m
+            cache.b = b
 
     from spuq.utils.timing import timing
     with timing(msg="direct AM", logfunc=logger.info):

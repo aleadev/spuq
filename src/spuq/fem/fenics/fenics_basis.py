@@ -63,7 +63,7 @@ class FEniCSBasis(FEMBasis):
 
     def refine_maxh(self, maxh, uniform=False):
         """Refine mesh of FEM basis such that maxh of mesh is smaller than given value."""
-        if maxh == 0 or self.mesh.hmax() < maxh:
+        if maxh <= 0 or self.mesh.hmax() < maxh:
             return self
         ufl = self._fefs.ufl_element()
         mesh = self.mesh

@@ -33,7 +33,7 @@ max_iterations = 15
 with_Neumann = True
 
 # set domain (lshape or Cook's membrane)
-Cooks_membrane = False
+Cooks_membrane = True
 
 # refinement fraction
 Theta = 0.4
