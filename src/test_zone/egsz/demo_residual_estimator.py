@@ -28,7 +28,6 @@ except:
 
 # ------------------------------------------------------------
 
-# setup logging
 def setup_logging(level):
     # log level and format configuration
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -55,6 +54,8 @@ def setup_logging(level):
     logger.addHandler(ch)
     logging.getLogger("spuq").addHandler(ch)
     return logger
+
+# setup logging
 LOG_LEVEL = logging.INFO
 logger = setup_logging(LOG_LEVEL)
 
@@ -74,6 +75,9 @@ domain = domains[domaintype]
 # decay exponent
 decay_exp = 2
 
+# refinements
+max_refinements = 6
+
 # polynomial degree of FEM approximation
 degree = 1
 
@@ -87,8 +91,8 @@ PLOT_MESHES = False
 PLOT_SOLUTION = True
 
 # flag for final solution export
-SAVE_SOLUTION = ''
-#SAVE_SOLUTION = "results/demo-residual-A2"
+#SAVE_SOLUTION = ''
+SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
@@ -163,8 +167,13 @@ else:
     #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
     f = Constant(1.0)
     # define Dirichlet bc
-    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-    uD = (Constant(0.0), Constant(0.0))
+    # 4 Dirichlet
+    Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
+    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
+#    # 2 Dirichlet
+#    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+#    uD = (Constant(0.0), Constant(0.0))
+#    # 1 Dirichlet
 #    Dirichlet_boundary = (boundaries['left'])
 #    uD = (Constant(0.0))
 #    # homogeneous Neumann does not have to be set explicitly
@@ -210,8 +219,6 @@ refine_projection_mesh = 2
 pcg_eps = 2e-2
 pcg_maxiter = 100
 error_eps = 1e-4
-# refinements
-max_refinements = 1
 
 if MC_RUNS > 0:
     w_history = []
@@ -392,7 +399,10 @@ if PLOT_MESHES:
             Plotter.labels()
             Plotter.title(str(mu))
         else:
-            plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False, axes=True)
+            viz_mesh = plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False, axes=True)
+            if SAVE_SOLUTION != '':
+                viz_mesh.write_png(SAVE_SOLUTION + '/mesh' + str(mu) + '.png')
+                viz_mesh.write_ps(SAVE_SOLUTION + '/mesh' + str(mu), format='pdf')
 #            vec.plot(title=str(mu), interactive=False)
     if USE_MAYAVI:
         Plotter.show(stop=True)
@@ -412,12 +422,14 @@ if PLOT_SOLUTION:
     sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
     # plot
     if sub_spaces == 0:
-        plot(sample_sol_param._fefunc, "parametric solution", axes=True)
-        plot(sample_sol_direct._fefunc, "direct solution", axes=True, interactive=True)
+        viz_p = plot(sample_sol_param._fefunc, "parametric solution", axes=True)
+        viz_d = plot(sample_sol_direct._fefunc, "direct solution", axes=True, interactive=True)
     else:
         mesh_param = sample_sol_param._fefunc.function_space().mesh()
         mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
         wireframe = True
-        plot(sample_sol_param._fefunc, "parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
-        plot(sample_sol_direct._fefunc, "direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe, interactive=True)#, rescale=False)
+        viz_p = plot(sample_sol_param._fefunc, "parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+        viz_d = plot(sample_sol_direct._fefunc, "direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe, interactive=True)#, rescale=False)
 
+if SAVE_SOLUTION != '':
+    logger.info("exported solution to " + SAVE_SOLUTION)

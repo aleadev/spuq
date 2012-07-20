@@ -230,8 +230,12 @@ for i in range(max_iterations):
 
 # Plot final solution
 #plot(u_h, mode="displacement", mesh=mesh, wireframe=False, rescale=False, axes=True)
-plot(u_h, mode="displacement", mesh=mesh, wireframe=True, rescale=False, axes=True)
-plot(mesh)
+viz_u = plot(u_h, title="displacement", mode="displacement", mesh=mesh, wireframe=True, rescale=False, axes=True)
+viz_mesh = plot(mesh, title=mesh)
+viz_u.write_png("displacement.png")
+viz_u.write_eps("displacement", format='pdf')
+viz_mesh.write_png("displacement.png")
+viz_mesh.write_eps("displacement", format='pdf')
 
 # Hold plots
 interactive()
