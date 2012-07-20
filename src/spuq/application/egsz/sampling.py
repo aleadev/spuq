@@ -1,5 +1,6 @@
 from __future__ import division
 import os
+import logging
 
 try:
     from dolfin import (Function, VectorFunctionSpace, FunctionSpace, Constant, refine,
@@ -12,6 +13,8 @@ except Exception, e:
     print "FEniCS has to be available"
     os.sys.exit(1)
 
+# module logger
+logger = logging.getLogger(__name__)
 
 # create reference mesh and function space
 def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1, sub_spaces=None, family=None):
@@ -50,40 +53,51 @@ def prepare_w_projections(w, proj_basis):
     return {mu:get_projected_solution(w, mu, proj_basis) for mu in w.active_indices()}
 
 
-def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis, proj_cache=None):
+def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis, cache=None):
     Lambda = w.active_indices()
     sample_map, _ = coeff_field.sample_realization(Lambda, RV_samples)
     # sum up (stochastic) solution vector on reference function space wrt samples
-    Lambda = w.active_indices()
-    if proj_cache is None:
+    
+    if cache is None:
         sample_sol = sum(get_projected_solution(w, mu, proj_basis) * sample_map[mu] for mu in Lambda)
     else:
-        sample_sol = sum(proj_cache[mu] * sample_map[mu] for mu in Lambda)
+        try:
+            projected_sol = cache.projected_sol
+        except AttributeError:
+            projected_sol = {mu: get_projected_solution(w, mu, proj_basis) for mu in Lambda}
+            cache.projected_sol = projected_sol
+        sample_sol = sum(projected_sol[mu] * sample_map[mu] for mu in Lambda)
     return sample_sol
 
 
-def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_basis):
+def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_basis, cache=None):
     try:
-        A0 = coeff_field.A
-        A_m = coeff_field.A_m
+        A0 = cache.A
+        A_m = cache.A_m
+        b = cache.b
     except AttributeError:
         a = coeff_field.mean_func
         A0 = pde.assemble_lhs(a, proj_basis, withBC=False)
+        b = pde.assemble_rhs(proj_basis, withBC=False)
         A_m = [None] * maxm
-        coeff_field.A = A0
-        coeff_field.A_m = A_m
+        cache.A = A0
+        cache.A_m = A_m
+        cache.b = b
 
-    A = A0.copy()
-    for m in range(maxm):
-        if A_m[m] is None:
-            a_m = coeff_field[m][0]
-            A_m[m] = pde.assemble_lhs(a_m, proj_basis, withBC=False)
-        A += RV_samples[m] * A_m[m]
+    from spuq.utils.timing import timing
+    with timing(msg="direct AM", logfunc=logger.info):
+        A = A0.copy()
+        for m in range(maxm):
+            if A_m[m] is None:
+                a_m = coeff_field[m][0]
+                A_m[m] = pde.assemble_lhs(a_m, proj_basis, withBC=False)
+            A += RV_samples[m] * A_m[m]
 
-    b = pde.assemble_rhs(proj_basis, withBC=False)
-    A, b = pde.apply_dirichlet_bc(proj_basis, A, b)
-    X = 0 * b
-    solve(A, X, b)
+    with timing(msg="direct BC", logfunc=logger.info):
+        A, b = pde.apply_dirichlet_bc(proj_basis, A, b)
+    with timing(msg="direct Solve", logfunc=logger.info):
+        X = 0 * b
+        solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X))
 
 
