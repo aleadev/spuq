@@ -3,3 +3,5 @@
 *.bak
 doc/build
 .coverage
+*.log
+*.plog
