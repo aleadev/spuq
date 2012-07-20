@@ -64,7 +64,7 @@ class SampleProblem(object):
 
     @classmethod
     #@takes(anything, str, str, optional(dict))
-    def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1):
+    def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1, scale=1):
         if rvtype == "uniform":
             rvs = lambda i: UniformRV(a= -1, b=1)
         elif rvtype == "normal":
@@ -73,11 +73,11 @@ class SampleProblem(object):
             raise ValueError("Unkown RV type %s", rvtype)
 
         if functype == "cos":
-            func = "A*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])"
+            func = "A*B*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])"
         elif functype == "sin":
-            func = "A*sin(freq*pi*(m+1)*x[0])*cos(freq*pi*(n+1)*x[1])"
+            func = "A*B*sin(freq*pi*(m+1)*x[0])*cos(freq*pi*(n+1)*x[1])"
         elif functype == "monomials":
-            func = "A*pow(x[0],freq*m)*pow(x[1],freq*n)"
+            func = "A*B*pow(x[0],freq*m)*pow(x[1],freq*n)"
         else:
             raise ValueError("Unkown func type %s", functype)
             
@@ -106,8 +106,8 @@ class SampleProblem(object):
         for i in range(freqskip + 1):
             mis.next()
 
-        a0 = Expression("1.0", element=element)
-        a = (Expression(func, freq=freqscale, A=ampfunc(i),
+        a0 = Expression("B", element=element, B=scale)
+        a = (Expression(func, freq=freqscale, A=ampfunc(i), B=scale,
                         m=int(mu[0]), n=int(mu[1]),
                         degree=degree, element=element) for i, mu in enumerate(mis))
 
@@ -115,15 +115,15 @@ class SampleProblem(object):
 
     @classmethod
     @takes(anything, str, optional(dict))
-    def setupCF(cls, cftype, decayexp=2, gamma=0.9, freqscale=1, freqskip=0, N=1, rvtype='uniform'):
+    def setupCF(cls, cftype, decayexp=2, gamma=0.9, freqscale=1, freqskip=0, N=1, rvtype='uniform', scale=1):
         if cftype == "EF-square-cos":
-            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
+            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale)
         elif cftype == "EF-square-sin":
-            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
+            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale)
         elif cftype == "monomials":
-            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N)
+            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale)
         elif cftype == "linear":
-            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=gamma, N=2)
+            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale)
         else:
             raise ValueError('Unsupported function type: %s', cftype)
 

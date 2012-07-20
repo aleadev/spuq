@@ -7,6 +7,7 @@ from math import sqrt
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.sample_problems import SampleProblem
+from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
@@ -26,51 +27,60 @@ except:
 # ------------------------------------------------------------
 
 # setup logging
-# log level and format configuration
+def setup_logging(level):
+    # log level and format configuration
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
+                        format=log_format)
+    
+    # FEniCS logging
+    from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
+    set_log_active(True)
+    set_log_level(WARNING)
+    fenics_logger = logging.getLogger("FFC")
+    fenics_logger.setLevel(logging.WARNING)
+    fenics_logger = logging.getLogger("UFL")
+    fenics_logger.setLevel(logging.WARNING)
+    
+    # module logger
+    logger = logging.getLogger(__name__)
+    logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
+    #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
+    # add console logging output
+    ch = logging.StreamHandler()
+    ch.setLevel(LOG_LEVEL)
+    ch.setFormatter(logging.Formatter(log_format))
+    logger.addHandler(ch)
+    logging.getLogger("spuq").addHandler(ch)
+    return logger
 LOG_LEVEL = logging.INFO
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
-                    format=log_format)
-
-# FEniCS logging
-from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
-set_log_active(True)
-set_log_level(WARNING)
-fenics_logger = logging.getLogger("FFC")
-fenics_logger.setLevel(logging.WARNING)
-fenics_logger = logging.getLogger("UFL")
-fenics_logger.setLevel(logging.WARNING)
-
-# module logger
-logger = logging.getLogger(__name__)
-logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
-#logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
-# add console logging output
-ch = logging.StreamHandler()
-ch.setLevel(LOG_LEVEL)
-ch.setFormatter(logging.Formatter(log_format))
-logger.addHandler(ch)
-logging.getLogger("spuq").addHandler(ch)
+logger = setup_logging(LOG_LEVEL)
 
 # determine path of this module
 path = os.path.dirname(__file__)
-lshape_xml = os.path.join(path, 'lshape.xml')
 
 # ============================================================
 # PART A: Simulation Options
 # ============================================================
 
+# set problem (0:Poisson, 1:Navier-Lame)
+pdetype = 1
+domain = 'square'
+
+# decay exponent
+decay_exp = 2
+
 # polynomial degree of FEM approximation
 degree = 1
-
-# flag for L-shaped domain
-lshape = False
 
 # flag for residual graph plotting
 PLOT_RESIDUAL = True
 
-# flag for final solution plotting
+# flag for final mesh plotting
 PLOT_MESHES = False
+
+# flag for (sample) solution plotting
+PLOT_SOLUTION = True
 
 # flag for final solution export
 SAVE_SOLUTION = ''
@@ -83,17 +93,10 @@ UNIFORM_REFINEMENT = False
 # initial mesh elements
 initial_mesh_N = 10
 
-# decay exponent
-decay_exp = 2
-
 # MC error sampling
-MC_RUNS = 3
+MC_RUNS = 1
 MC_N = 1
 MC_HMAX = 1 / 10
-
-# set problem (0:Poisson, 1:Navier-Lame)
-pdetype = 1
-
 
 # ============================================================
 # PART B: Problem Setup
@@ -106,26 +109,10 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 #mis = (Multiindex(),)
 # ---debug
 
-# setup meshes
-if lshape: 
-    mesh0 = Mesh(lshape_xml)
-    maxx, minx, maxy, miny = 1, -1, 1, -1
-else:
-    mesh0 = UnitSquare(initial_mesh_N, initial_mesh_N)
-    maxx, minx, maxy, miny = 1, 0, 1, 0
+# setup domain and meshes
+mesh0, boundaries = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
-
-# setup boundary parts
-top, bottom, left, right = compile_subdomains([  'near(x[1], maxy) && on_boundary',
-                                                 'near(x[1], miny) && on_boundary',
-                                                 'near(x[0], minx) && on_boundary',
-                                                 'near(x[0], maxx) && on_boundary'])
-top.maxy = maxy
-bottom.miny = miny
-left.minx = minx
-right.maxx = maxx
-
 
 # ---debug
 #from spuq.application.egsz.multi_vector import MultiVectorWithProjection
@@ -140,7 +127,7 @@ right.maxx = maxx
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")#, scale=1000)
 a0 = coeff_field.mean_func
 
 if pdetype == 1:
@@ -150,10 +137,10 @@ if pdetype == 1:
     # define Dirichlet bc
     # Dirichlet_boundary = (left, right)
     # uD = (Constant((0.0, 0.0)), Constant((0.0, 1.0)))
-    Dirichlet_boundary = (left)
+    Dirichlet_boundary = (boundaries['left'])
     uD = Constant((0.0, 0.0))
     # homogeneous Neumann does not have to be set explicitly
-    Neumann_boundary = (right)
+    Neumann_boundary = (boundaries['right'])
     g = Constant((0.0, 100.0))
     # create pde instance
     pde = FEMNavierLame(mu=1e4, lmbda0=a0,
@@ -167,7 +154,7 @@ else:
     #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
     f = Constant(1.0)
     # define Dirichlet bc
-    Dirichlet_boundary = (left, right)
+    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
     uD = (Constant(0.0), Constant(0.0))
     # homogeneous Neumann does not have to be set explicitly
     Neumann_boundary = None
@@ -209,9 +196,9 @@ quadrature_degree = 3
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 2e-3
+pcg_eps = 2e-2
 pcg_maxiter = 100
-error_eps = 1e-5
+error_eps = 1e-4
 # refinements
 max_refinements = 2
 
