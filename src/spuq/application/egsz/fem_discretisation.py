@@ -1,11 +1,12 @@
 """FEniCS FEM discretisation implementation for Poisson model problem"""
-
 from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSpace, Identity, Measure, FacetFunction,
                     dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC)
 
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
 from spuq.fem.fem_discretisation import FEMDiscretisation
 from spuq.utils.type_check import takes, anything
+
+import numpy as np
 
 default_Dirichlet_boundary = lambda x, on_boundary: on_boundary
 
@@ -18,10 +19,11 @@ class FEMPoisson(FEMDiscretisation):
         ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
     """
 
-    def __init__(self, f=Constant(1.0),
+    def __init__(self, f=Constant(1.0), a0=1,
                  dirichlet_boundary=default_Dirichlet_boundary, uD=None,
                  neumann_boundary=None, g=None):
         self._f = f
+        self._a0 = a0
         self._dirichlet_boundary = dirichlet_boundary
         self._uD = uD
         self._neumann_boundary = neumann_boundary
@@ -30,6 +32,15 @@ class FEMPoisson(FEMDiscretisation):
     @property
     def f(self):
         return self._f
+
+    @property
+    def norm(self):
+        '''Energy norm wrt operator.'''
+#        from dolfin import Expression
+#        print "XXXXXX", self._a0(0, 0), self._a0(1, 0), self._a0(0, 1), self._a0(1, 1)
+#        print self._a0.cppcode
+#        _a0 = Expression("1.0")
+        return lambda v: np.sqrt(assemble(self._a0 * inner(nabla_grad(v), nabla_grad(v)) * dx))
 
     def function_space(self, mesh, degree=1):
         return FunctionSpace(mesh, "CG", degree=degree)
@@ -94,8 +105,6 @@ class FEMPoisson(FEMDiscretisation):
         f = self._f
         Dirichlet_boundary = self._dirichlet_boundary
         uD = self._uD
-        Neumann_boundary = self._neumann_boundary
-        g = self._g
 
         # get FEniCS function space
         V = basis._fefs
@@ -104,28 +113,34 @@ class FEMPoisson(FEMDiscretisation):
         l = (f * v) * dx
 
         # treat Neumann boundary
-        if Neumann_boundary is not None:
-            assert g is not None
-            # mark boundary
-            if not isinstance(Neumann_boundary, (tuple, list)):
-                Neumann_boundary = [Neumann_boundary]
-            if not isinstance(g, (tuple, list)):
-                g = [g]
-            mesh = V.mesh()
-            Neumann_parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
-            Neumann_parts.set_all(0)
-            for j, bnd in enumerate(Neumann_boundary):
-                bnd.mark(Neumann_parts, j + 1)
-            # evaluate boundary flux terms
-            ds = Measure("ds")[Neumann_parts]
-            for j in range(len(Neumann_boundary)):
-                l -= dot(g[j], v) * ds(j + 1)
+        if self._neumann_boundary is not None:
+            Ng, ds = self._prepareNeumann(V.mesh())
+            for j in range(len(Ng)):
+                l -= dot(Ng[j], v) * ds(j + 1)
+        
         # assemble linear form
         F = assemble(l)
         # apply Dirichlet bc
         if withBC:
             F = self.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
         return F
+            
+    def _prepareNeumann(self, mesh):
+        assert self._g is not None
+        boundary = self._neumann_boundary
+        g = self._g
+        # mark boundary
+        if not isinstance(boundary, (tuple, list)):
+            boundary = [boundary]
+        if not isinstance(g, (tuple, list)):
+            g = [g]
+        parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
+        parts.set_all(0)
+        for j, bnd in enumerate(boundary):
+            bnd.mark(parts, j + 1)
+        # evaluate boundary flux terms
+        ds = Measure("ds")[parts]
+        return g, ds
 
     def sigma(self, a, v):
         """Flux."""
@@ -146,10 +161,17 @@ class FEMPoisson(FEMDiscretisation):
         """Edge residual."""
         return a * dot(nabla_grad(v), nu)
 
-    def r_Nb(self, a, v, nu):
+    def r_Nb(self, a, v, nu, w=1):
         """Neumann boundary residual."""
-        # TODO!
-        pass
+        form = None
+        if self._neumann_boundary is not None:
+            g = self._g
+            if not isinstance(g, (tuple, list)):
+                g = [g]
+            for j in enumerate(self._neumann_boundary):
+                Nberr = g[j] + dot(nabla_grad(v), nu)
+                form += w * a * inner(Nberr, Nberr) * ds(1)
+        return form
 
 
 class FEMNavierLame(FEMDiscretisation):
@@ -161,10 +183,11 @@ class FEMNavierLame(FEMDiscretisation):
         ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
     """
 
-    def __init__(self, mu,
+    def __init__(self, mu, lmbda0,
                  f=Constant(1.0),
                  dirichlet_boundary=default_Dirichlet_boundary, uD=None,
                  neumann_boundary=None, g=None):
+        self.lmbda0 = lmbda0
         self.mu = mu
         self._f = f
         self._dirichlet_boundary = dirichlet_boundary
@@ -175,6 +198,11 @@ class FEMNavierLame(FEMDiscretisation):
     @property
     def f(self):
         return self._f
+
+    @property
+    def norm(self):
+        '''Energy norm wrt operator, i.e. (\sigma(v),\eps(v))=||C^{1/2}\eps(v)||.'''
+        return lambda v: np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu, v), sym(nabla_grad(v))) * dx))
 
     def function_space(self, mesh, degree=1):
         return VectorFunctionSpace(mesh, "CG", degree=degree)
@@ -244,8 +272,6 @@ class FEMNavierLame(FEMDiscretisation):
         f = self._f
         Dirichlet_boundary = self._dirichlet_boundary
         uD = self._uD
-        Neumann_boundary = self._neumann_boundary
-        g = self._g
 
         # get FEniCS function space
         V = basis._fefs
@@ -254,28 +280,34 @@ class FEMNavierLame(FEMDiscretisation):
         l = inner(f, v) * dx
         
         # treat Neumann boundary
-        if Neumann_boundary is not None:
-            assert g is not None
-            # mark boundary
-            if not isinstance(Neumann_boundary, (tuple, list)):
-                Neumann_boundary = [Neumann_boundary]
-            if not isinstance(g, (tuple, list)):
-                g = [g]
-            mesh = V.mesh()
-            Neumann_parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
-            Neumann_parts.set_all(0)
-            for j, bnd in enumerate(Neumann_boundary):
-                bnd.mark(Neumann_parts, j + 1)
-            # evaluate boundary flux terms
-            ds = Measure("ds")[Neumann_parts]
-            for j in range(len(Neumann_boundary)):
-                l -= dot(g[j], v) * ds(j + 1)                
+        if self._neumann_boundary is not None:
+            Ng, ds = self._prepareNeumann(V.mesh())            
+            for j in range(len(Ng)):
+                l -= dot(Ng[j], v) * ds(j + 1)
+                        
         # assemble linear form
         F = assemble(l)
         # apply Dirichlet boundary conditions
         if withBC:
             F = self.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
         return F
+            
+    def _prepareNeumann(self, mesh):
+        assert self._g is not None
+        boundary = self._neumann_boundary
+        g = self._g
+        # mark boundary
+        if not isinstance(boundary, (tuple, list)):
+            boundary = [boundary]
+        if not isinstance(g, (tuple, list)):
+            g = [g]
+        parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
+        parts.set_all(0)
+        for j, bnd in enumerate(boundary):
+            bnd.mark(parts, j + 1)
+        # evaluate boundary flux terms
+        ds = Measure("ds")[parts]
+        return g, ds
 
     def sigma(self, lmbda, mu, v):
         """Flux."""
@@ -294,8 +326,16 @@ class FEMNavierLame(FEMDiscretisation):
 
     def r_E(self, lmbda, v, nu):
         """Edge residual."""
-        return lmbda * dot(self.sigma(lmbda, self.mu, v), nu)
+        return dot(self.sigma(lmbda, self.mu, v), nu)
 
-    def r_Nb(self, lmbda, v, nu):
+    def r_Nb(self, a, v, nu, w=1):
         """Neumann boundary residual."""
-        pass
+        form = None
+        if self._neumann_boundary is not None:
+            g = self._g
+            if not isinstance(g, (tuple, list)):
+                g = [g]
+            for j in enumerate(self._neumann_boundary):
+                Nberr = g[j] + dot(self.sigma(v), nu)
+                form += w * a * inner(Nberr, Nberr) * ds(1)
+        return form

@@ -87,15 +87,27 @@ def assemble_rhs(coeff_func, V, bc=DEFAULT_BC):
     return b
 
 
-@takes(MultiVector, MultiVector, optional(str))
+#@takes(MultiVector, MultiVector, optional(str))
 def error_norm(vec1, vec2, normstr="L2"):
-        assert vec1.active_indices() == vec2.active_indices()
         e = 0.0
-        for mi in vec1.keys():
-            V = vec1[mi]._fefunc.function_space()
-            errfunc = Function(V, vec1[mi]._fefunc.vector() - vec2[mi]._fefunc.vector())
-            e += norm(errfunc, normstr) ** 2
-        return sqrt(e)
+        if isinstance(vec1, MultiVector):
+            assert isinstance(vec2, MultiVector)
+            assert vec1.active_indices() == vec2.active_indices()
+            for mi in vec1.keys():
+                V = vec1[mi]._fefunc.function_space()
+                errfunc = Function(V, vec1[mi]._fefunc.vector() - vec2[mi]._fefunc.vector())
+                if isinstance(normstr, str):
+                    e += norm(errfunc, normstr) ** 2
+                else:
+                    e += normstr(errfunc) ** 2
+            return sqrt(e)
+        else:
+            V = vec1.function_space()
+            errfunc = Function(V, vec1.vector() - vec2.vector())
+            if isinstance(normstr, str):
+                return norm(errfunc, normstr)
+            else:
+                return normstr(errfunc)
 
 
 @takes(anything, FEniCSVector)

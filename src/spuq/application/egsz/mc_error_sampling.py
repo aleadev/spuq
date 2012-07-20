@@ -7,8 +7,12 @@ try:
     from dolfin import (interactive, project, errornorm, norm)
     from spuq.application.egsz.sampling import (get_projection_basis, compute_direct_sample_solution,
                                                 compute_parametric_sample_solution)
+    from spuq.fem.fenics.fenics_utils import error_norm
 except Exception, e:
+    import traceback
+    print traceback.format_exc()
     print "FEniCS has to be available"
+    os.sys.exit(1)
 
 # module logger
 logger = logging.getLogger(__name__)
@@ -41,7 +45,8 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
         with timing(msg="direct", logfunc=logger.info):
             sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis, direct_sol_cache)
         cerr_L2 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
-        cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
+        cerr_H1 = error_norm(sample_sol_param._fefunc, sample_sol_direct._fefunc, pde.norm)
+#        cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
         logger.debug("-- current error L2 = %s    H1 = %s", cerr_L2, cerr_H1)
         err_L2 += 1.0 / MC_N * cerr_L2
         err_H1 += 1.0 / MC_N * cerr_H1
@@ -50,7 +55,8 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
             # deterministic part
             sample_sol_direct_a0 = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, 0, projection_basis, direct_sol_cache)
             L2_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "L2")
-            H1_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "H1")
+            H1_a0 = error_norm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, pde.norm)
+#            H1_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "H1")
             logger.debug("-- DETERMINISTIC error L2 = %s    H1 = %s", L2_a0, H1_a0)
 
             # stochastic part

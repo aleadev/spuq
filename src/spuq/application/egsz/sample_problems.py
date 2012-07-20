@@ -11,7 +11,7 @@ from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import takes, anything, optional
 
-from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement
+from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement, Constant
 import ufl
 
 import logging
@@ -106,7 +106,7 @@ class SampleProblem(object):
         for i in range(freqskip + 1):
             mis.next()
 
-        a0 = Expression("1.0", degree=degree, element=element)
+        a0 = Expression("1.0", element=element)
         a = (Expression(func, freq=freqscale, A=ampfunc(i),
                         m=int(mu[0]), n=int(mu[1]),
                         degree=degree, element=element) for i, mu in enumerate(mis))

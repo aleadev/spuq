@@ -48,7 +48,8 @@ def pcg_solve(A, w, coeff_field, pde, rhs, stats, pcg_eps, pcg_maxiter):
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
     b2 = A * w
     stats["L2"] = error_norm(b, b2, "L2")
-    stats["H1"] = error_norm(b, b2, "H1")
+    stats["H1"] = error_norm(b, b2, pde.norm)
+#    stats["H1"] = error_norm(b, b2, "H1")
     stats["DOFS"] = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
     stats["CELLS"] = sum([b[mu]._fefunc.function_space().mesh().num_cells() for mu in b.keys()])
     logger.info("Residual = [%s (L2)] [%s (H1)] with [%s dofs] and [%s cells]", stats["L2"], stats["H1"], stats["DOFS"], stats["CELLS"])
