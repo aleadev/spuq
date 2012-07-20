@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX):
     # create reference mesh and function space
+    from spuq.utils.timing import timing
     sub_spaces = w[Multiindex()].basis.num_sub_spaces
     degree = w[Multiindex()].basis.degree
     projection_basis = get_projection_basis(mesh0, maxh=min(w[Multiindex()].basis.minh / 4, MC_HMAX), degree=degree, sub_spaces=sub_spaces)
@@ -27,8 +28,11 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX):
         logger.info("---- MC Iteration %i/%i ----", i + 1 , MC_N)
         RV_samples = coeff_field.sample_rvs()
         logger.info("-- RV_samples: %s", [RV_samples[j] for j in range(w.max_order)])
-        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
-        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+        with timing(msg="complete", logfunc=logger.info):
+            with timing(msg="parameteric", logfunc=logger.info):
+                sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+            with timing(msg="direct", logfunc=logger.info):
+                sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
         cerr_L2 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
         logger.debug("-- current error L2 = %s    H1 = %s", cerr_L2, cerr_H1)
