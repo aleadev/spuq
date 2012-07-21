@@ -76,7 +76,7 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 6
+max_refinements = 8
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -92,7 +92,7 @@ PLOT_SOLUTION = True
 
 # flag for final solution export
 #SAVE_SOLUTION = ''
-SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
+SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
@@ -102,9 +102,9 @@ UNIFORM_REFINEMENT = False
 initial_mesh_N = 10
 
 # MC error sampling
-MC_RUNS = 1
+MC_RUNS = 2
 MC_N = 1
-MC_HMAX = 1 / 10
+MC_HMAX = 3 / 10
 
 # ============================================================
 # PART B: Problem Setup
@@ -135,7 +135,7 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")#, scale=1000)
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")#, scale=1e2)
 a0 = coeff_field.mean_func
 
 # setup boundary conditions
@@ -154,9 +154,9 @@ if pdetype == 1:
 #    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
     # homogeneous Neumann does not have to be set explicitly
     Neumann_boundary = (boundaries['right'])
-    g = Constant((0.0, 10.0))
+    g = Constant((0.0, 1.0))
     # create pde instance
-    pde = FEMNavierLame(mu=1e4, lmbda0=a0,
+    pde = FEMNavierLame(mu=1e2, lmbda0=a0,
                         dirichlet_boundary=Dirichlet_boundary, uD=uD,
                         neumann_boundary=Neumann_boundary, g=g,
                         f=f)
@@ -168,14 +168,14 @@ else:
     f = Constant(1.0)
     # define Dirichlet bc
     # 4 Dirichlet
-    Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
-    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
-#    # 2 Dirichlet
+#    Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
+#    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
+    # 2 Dirichlet
 #    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
 #    uD = (Constant(0.0), Constant(0.0))
 #    # 1 Dirichlet
-#    Dirichlet_boundary = (boundaries['left'])
-#    uD = (Constant(0.0))
+    Dirichlet_boundary = (boundaries['left'])
+    uD = (Constant(0.0))
 #    # homogeneous Neumann does not have to be set explicitly
 #    Neumann_boundary = None
 #    g = None
@@ -216,9 +216,9 @@ quadrature_degree = 3
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 2e-2
+pcg_eps = 2e-4
 pcg_maxiter = 100
-error_eps = 1e-4
+error_eps = 1e-5
 
 if MC_RUNS > 0:
     w_history = []
