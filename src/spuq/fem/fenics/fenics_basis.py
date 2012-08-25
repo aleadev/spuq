@@ -69,7 +69,7 @@ class FEniCSBasis(FEMBasis):
         mesh = self.mesh
         if uniform:
             while mesh.hmax() > maxh:
-                mesh = refine(mesh)
+                mesh = refine(mesh)         # NOTE: this global refine results in a red-refinement as opposed to bisection in the adaptive case
         else:
             while mesh.hmax() > maxh:
                 cell_markers = CellFunction("bool", mesh)

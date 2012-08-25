@@ -121,3 +121,27 @@ def weighted_H1_norm(w, vec, piecewise=False):
         ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * dx)
         norm_vec = sqrt(ae)
     return norm_vec
+
+
+@takes(Mesh, anything)
+def create_joint_mesh(destmesh, meshes):
+    for m in meshes:
+        while True:
+            cf = CellFunction("bool", destmesh)
+            cf.set_all(False)
+            rc = 0
+            # get cell sizes
+            h = [c.diameter() for c in cells(destmesh)]
+            # check all cells with destination sizes and mark for refinement
+            for c in cells(mesh):
+                p = c.midpoint()
+                cid = destmesh.closest_cell(p)
+                if h[cid] > c.diameter():
+                    cf[cid] = True
+                    rc += 1
+            if rc:
+                newmesh = refine(destmesh, cf)
+                destmesh = newmesh
+            else:
+                break
+    return destmesh
