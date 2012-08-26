@@ -15,7 +15,7 @@ try:
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 #    from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.application.egsz.sampling import (get_projection_basis, compute_direct_sample_solution,
-                                                compute_parametric_sample_solution, get_coeff_realisation)
+                                                compute_parametric_sample_solution, get_coeff_realisation, compute_solution_variance)
 except Exception, e:
     import traceback
     print traceback.format_exc()
@@ -106,13 +106,13 @@ right.maxx = maxx
 # define coefficient field
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=2, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform")
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=4, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform")
 
 # define RHS
 f = Constant(1.0)
 
 # define Dirichlet and Neumann boundaries
-Dirichlet_boundary = (left, top)
+Dirichlet_boundary = (left, right)
 uD = (Constant(0.0), Constant(0.0))
 # homogeneous Neumann does not have to be set explicitly
 Neumann_boundary = None
@@ -130,10 +130,6 @@ rhs = pde.assemble_rhs
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=2, randref=(0.7, 0.8))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 w0 = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
-print
-print w0, type(w0)
-print
-print
 logger.info("active indices of w after initialisation: %s", w0.active_indices())
 
 
@@ -141,12 +137,16 @@ logger.info("active indices of w after initialisation: %s", w0.active_indices())
 # PART B: Adaptive Algorithm
 # ============================================================
 
+#proj_basis = get_projection_basis(mesh0, maxh=0.5)
+#compute_solution_variance(coeff_field, w0, proj_basis)
+
+
 w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, degree, 
     gamma=gamma,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,
     max_refinements=NUM_REFINE,
-    pcg_eps=1e-1)
+    pcg_eps=1e-4)
 
 logger.debug("active indices of w after solution: %s", w.active_indices())
 
@@ -195,13 +195,22 @@ def run_mc(w, err, pde):
 #            L2_am = errornorm(sample_sol_param._fefunc, sample_sol_direct_am._fefunc, "L2")
 #            H1_am = errornorm(sample_sol_param._fefunc, sample_sol_direct_am._fefunc, "H1")
             logger.info("-- STOCHASTIC norm L2 = %s    H1 = %s", sample_sol_direct_am.norm("L2"), sample_sol_direct_am.norm("H1"))
+
             if MC_PLOT:
                 sample_sol_param.plot(title="param")
                 sample_sol_direct.plot(title="direct")
                 errf.plot(title="|param-direct| error")
                 sample_sol_direct_am.plot(title="direct stochastic part")
                 fc = get_coeff_realisation(RV_samples, coeff_field, w.max_order, projection_basis)
-                fc.plot(title="coeff", interactive=True)
+                fc.plot(title="coeff")
+
+
+                sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
+                sol_variance.plot(title="sol variance")
+                interactive()
+
+                #coeff_variance = compute_solution_variance(coeff_field, w0, proj_basis)
+                #sol_variance.plot(title="variance")
             
         t4 = time.time()
         logger.info("TIMING: param: %s, direct %s, error %s", t2 - t1, t3 - t2, t4 - t3)
