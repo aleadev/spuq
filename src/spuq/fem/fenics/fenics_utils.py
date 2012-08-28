@@ -126,7 +126,10 @@ def weighted_H1_norm(w, vec, piecewise=False):
 @takes((list, tuple), optional(Mesh))
 def create_joint_mesh(meshes, destmesh=None):
     if destmesh is None:
-        destmesh = meshes[0]
+        # start with finest mesh to avoid (most) refinements
+        hmin = [m.hmin() for m in meshes]
+        hi = hmin.index(min(hmin))
+        destmesh = meshes.pop(hi)
     for m in meshes:
         while True:
             cf = CellFunction("bool", destmesh)
