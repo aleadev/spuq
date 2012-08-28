@@ -88,7 +88,7 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flag for (sample) solution plotting
-PLOT_SOLUTION = True
+PLOT_SOLUTION = False
 
 # flag for final solution export
 #SAVE_SOLUTION = ''
