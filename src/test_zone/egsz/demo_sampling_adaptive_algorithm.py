@@ -82,7 +82,7 @@ uniform_refinement = False
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # setup meshes
-lshape = True
+lshape = False
 
 if lshape: 
     mesh0 = Mesh(lshape_xml)
@@ -106,7 +106,7 @@ right.maxx = maxx
 # define coefficient field
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=4, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform")
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=4, gamma=gamma, freqscale=1, freqskip=10, rvtype="uniform", scale=1000)
 
 # define RHS
 f = Constant(1.0)
@@ -123,9 +123,8 @@ pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
                  f=f)
 
 
-# define multioperator and rhs
+# define multioperator
 A = MultiOperator(coeff_field, pde.assemble_operator)
-rhs = pde.assemble_rhs
 
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=2, randref=(0.7, 0.8))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)

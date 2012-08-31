@@ -31,7 +31,9 @@ def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
     for i in xrange(1, maxiter):
         logger.info("pcg iter: %s -> zeta=%s, rho^2=%s" % (i, zeta[i - 1], inner(rho[i - 1], rho[i - 1])))
         if zeta[i - 1] < 0:
-            raise Exception("Preconditioner for PCG is not positive definite")
+            for mu in rho[i-1].active_indices():
+                print i, mu, inner(rho[i-1][mu], s[i-1][mu])
+            raise Exception("Preconditioner for PCG is not positive definite (%s)" % zeta[i - 1])
         if zeta[i - 1] <= eps ** 2:
             return (w[i - 1], zeta[i - 1], i)
         z[i - 1] = A * v[i - 1]
