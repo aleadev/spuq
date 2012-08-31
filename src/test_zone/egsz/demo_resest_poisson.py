@@ -67,7 +67,7 @@ path = os.path.dirname(__file__)
 # ============================================================
 
 # set problem (0:Poisson, 1:Navier-Lame)
-pdetype = 1
+pdetype = 0
 domaintype = 0
 domains = ('square', 'lshape', 'cooks')
 domain = domains[domaintype]
@@ -88,11 +88,11 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flag for (sample) solution plotting
-PLOT_SOLUTION = False
+PLOT_SOLUTION = True
 
 # flag for final solution export
 #SAVE_SOLUTION = ''
-SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
+SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
@@ -102,9 +102,9 @@ UNIFORM_REFINEMENT = True
 initial_mesh_N = 10
 
 # MC error sampling
-MC_RUNS = 2
+MC_RUNS = 1
 MC_N = 1
-MC_HMAX = 3 / 10
+MC_HMAX = 1 / 10
 
 # ============================================================
 # PART B: Problem Setup
@@ -135,7 +135,7 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform", scale=100000)
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
 a0 = coeff_field.mean_func
 
 # setup boundary conditions
@@ -156,7 +156,7 @@ if pdetype == 1:
     Neumann_boundary = None # (boundaries['right'])
     g = None #Constant((0.0, 10.0))
     # create pde instance
-    pde = FEMNavierLame(mu=1e2, lmbda0=a0,
+    pde = FEMNavierLame(mu=1e4, lmbda0=a0,
                         dirichlet_boundary=Dirichlet_boundary, uD=uD,
                         neumann_boundary=Neumann_boundary, g=g,
                         f=f)
@@ -168,8 +168,8 @@ else:
     f = Constant(1.0)
     # define Dirichlet bc
     # 4 Dirichlet
-#    Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
-#    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
+    # Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
+    # uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
     # 2 Dirichlet
     Dirichlet_boundary = (boundaries['left'], boundaries['right'])
     uD = (Constant(0.0), Constant(0.0))
@@ -217,7 +217,7 @@ refine_projection_mesh = 2
 # pcg solver
 pcg_eps = 1e-4
 pcg_maxiter = 100
-error_eps = 1e-5
+error_eps = 1e-4
 
 if MC_RUNS > 0:
     w_history = []
@@ -263,179 +263,3 @@ import resource
 logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 
 
-# ============================================================
-# PART D: Export of Solution
-# ============================================================
-# NOTE: save at this point since MC tends to run out of memory
-if SAVE_SOLUTION != "":
-    # save solution (also creates directory if not existing)
-    w.pickle(SAVE_SOLUTION)
-    # save simulation data
-    import pickle
-    with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
-        pickle.dump(sim_stats, fout)
-
-
-# ============================================================
-# PART E: MC Error Sampling
-# ============================================================
-if MC_RUNS > 0:
-    ref_maxm = w_history[-1].max_order
-    for i, w in enumerate(w_history):
-        if i == 0:
-            continue
-        logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
-        # memory usage info
-        logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
-        L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
-        sim_stats[i - 1]["MC-L2ERR"] = L2err
-        sim_stats[i - 1]["MC-H1ERR"] = H1err
-        sim_stats[i - 1]["MC-L2ERR_a0"] = L2err_a0
-        sim_stats[i - 1]["MC-H1ERR_a0"] = H1err_a0
-
-
-# ============================================================
-# PART F: Export Updated Data and Plotting
-# ============================================================
-# save updated data
-if SAVE_SOLUTION != "":
-    # save updated statistics
-    import pickle
-    with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
-        pickle.dump(sim_stats, fout)
-
-# plot residuals
-if PLOT_RESIDUAL and len(sim_stats) > 1:
-    try:
-        from matplotlib.pyplot import figure, show, legend
-        x = [s["DOFS"] for s in sim_stats]
-        L2 = [s["L2"] for s in sim_stats]
-        H1 = [s["H1"] for s in sim_stats]
-        errest = [sqrt(s["EST"]) for s in sim_stats]
-        reserr = [s["RES"] for s in sim_stats]
-        projerr = [s["PROJ"] for s in sim_stats]
-        if MC_RUNS > 0:
-            mcL2 = [s["MC-L2ERR"] for s in sim_stats]
-            mcH1 = [s["MC-H1ERR"] for s in sim_stats]
-            mcL2_a0 = [s["MC-L2ERR_a0"] for s in sim_stats]
-            mcH1_a0 = [s["MC-H1ERR_a0"] for s in sim_stats]
-            effest = [est / err for est, err in zip(errest, mcH1)]
-        mi = [s["MI"] for s in sim_stats]
-        num_mi = [len(m) for m in mi]
-        print "errest", errest
-        if MC_RUNS > 0:
-            print "mcH1", mcH1
-            print "efficiency", [est / err for est, err in zip(errest, mcH1)]
-        # figure 1
-        # --------
-#        fig = figure()
-#        fig.suptitle("error")
-#        ax = fig.add_subplot(111)
-#        ax.loglog(x, H1, '-g<', label='H1 residual')
-#        ax.loglog(x, L2, '-c+', label='L2 residual')
-#        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-#        ax.loglog(x, mcL2, '-ro', label='MC L2 error')
-#        ax.loglog(x, mcH1_a0, '-.b^', label='MC H1 error a0')
-#        ax.loglog(x, mcL2_a0, '-.ro', label='MC L2 error a0')
-#        legend(loc='upper right')
-#        if SAVE_SOLUTION != "":
-#            fig.savefig(os.path.join(SAVE_SOLUTION, 'RES.png'))
-        # figure 2
-        # --------
-        fig2 = figure()
-        fig2.suptitle("residual estimator")
-        ax = fig2.add_subplot(111)
-        if REFINEMENT["MI"]:
-            ax.loglog(x, num_mi, '--y+', label='active mi')
-        ax.loglog(x, errest, '-g<', label='error estimator')
-        ax.loglog(x, reserr, '-.cx', label='residual part')
-        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
-        if MC_RUNS > 0:
-            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-            ax.loglog(x, mcL2, '-ro', label='MC L2 error')
-#        ax.loglog(x, H1, '-b^', label='H1 residual')
-#        ax.loglog(x, L2, '-ro', label='L2 residual')
-        legend(loc='upper right')
-        if SAVE_SOLUTION != "":
-            fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.png'))
-            fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.eps'))
-        # figure 3
-        # --------
-        fig3 = figure()
-        fig3.suptitle("efficiency residual estimator")
-        ax = fig3.add_subplot(111)
-        ax.loglog(x, errest, '-g<', label='error estimator')
-        if MC_RUNS > 0:
-            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-            ax.loglog(x, effest, '-ro', label='efficiency')        
-        legend(loc='upper right')
-        if SAVE_SOLUTION != "":
-            fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))
-            fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.eps'))
-        show()  # this invalidates the figure instances...
-    except:
-        import traceback
-        print traceback.format_exc()
-        logger.info("skipped plotting since matplotlib is not available...")
-
-# plot final meshes
-if PLOT_MESHES:
-    USE_MAYAVI = Plotter.hasMayavi() and False
-    for mu, vec in w.iteritems():
-        if USE_MAYAVI:
-            # mesh
-#            Plotter.figure(bgcolor=(1, 1, 1))
-#            mesh = vec.basis.mesh
-#            Plotter.plotMesh(mesh.coordinates(), mesh.cells(), representation='mesh')
-#            Plotter.axes()
-#            Plotter.labels()
-#            Plotter.title(str(mu))
-            # function
-            Plotter.figure(bgcolor=(1, 1, 1))
-            mesh = vec.basis.mesh
-            Plotter.plotMesh(mesh.coordinates(), mesh.cells(), vec.coeffs)
-            Plotter.axes()
-            Plotter.labels()
-            Plotter.title(str(mu))
-        else:
-            viz_mesh = plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False, axes=True)
-            if SAVE_SOLUTION != '':
-                viz_mesh.write_png(SAVE_SOLUTION + '/mesh' + str(mu) + '.png')
-                viz_mesh.write_ps(SAVE_SOLUTION + '/mesh' + str(mu), format='pdf')
-#            vec.plot(title=str(mu), interactive=False)
-    if USE_MAYAVI:
-        Plotter.show(stop=True)
-        Plotter.close(allfig=True)
-    else:
-        interactive()
-
-# plot sample solution
-if PLOT_SOLUTION:
-    # get random field sample and evaluate solution (direct and parametric)
-    RV_samples = coeff_field.sample_rvs()
-    ref_maxm = w_history[-1].max_order
-    sub_spaces = w[Multiindex()].basis.num_sub_spaces
-    degree = w[Multiindex()].basis.degree
-    maxh=min(w[Multiindex()].basis.minh / 4, MC_HMAX)
-    maxh=w[Multiindex()].basis.minh
-    projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
-    sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
-    sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
-    sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
-
-    # plot
-    print sub_spaces
-    if sub_spaces == 0:
-        viz_p = plot(sample_sol_param._fefunc, "parametric solution", axes=True)
-        viz_d = plot(sample_sol_direct._fefunc, "direct solution", axes=True)
-        viz_v = plot(sol_variance._fefunc, "solution variance", axes=True)
-        interactive()
-    else:
-        mesh_param = sample_sol_param._fefunc.function_space().mesh()
-        mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
-        wireframe = True
-        viz_p = plot(sample_sol_param._fefunc, "parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
-        viz_d = plot(sample_sol_direct._fefunc, "direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe, interactive=True)#, rescale=False)
-
-if SAVE_SOLUTION != '':
-    logger.info("exported solution to " + SAVE_SOLUTION)

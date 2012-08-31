@@ -90,9 +90,18 @@ class Multiindex(object):
         newval = value + by
         if newval < 0:
             return None
-        arr = self._arr.copy()
-        if pos >= len(arr):
-            arr.resize(pos + 1)
+        if True:
+            arr = self._arr.copy()
+            if pos >= len(arr):
+                if len(arr):
+                    arr.resize(pos + 1)
+                else:
+                    arr = np.array([0]*(pos+1))
+        if False:
+            arr = np.array([0]*(pos+1))
+            l = len(self._arr)
+            if l:
+                arr[:l] = self._arr[:l]
         arr[pos] = newval
         return self.__class__(arr)
 

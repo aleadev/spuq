@@ -1,6 +1,6 @@
 """FEniCS FEM discretisation implementation for Poisson model problem"""
 from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSpace, Identity, Measure, FacetFunction,
-                    dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC)
+                    dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC, assemble_system)
 
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
 from spuq.fem.fem_discretisation import FEMDiscretisation
@@ -10,7 +10,47 @@ import numpy as np
 
 default_Dirichlet_boundary = lambda x, on_boundary: on_boundary
 
-class FEMPoisson(FEMDiscretisation):
+class FEMDiscretisationBase(FEMDiscretisation):
+
+    def create_dirichlet_bcs(self, V, uD, boundary):
+        """Apply Dirichlet boundary conditions."""
+        if uD is None:
+            uD = self._uD
+            if self._dirichlet_boundary is not None:
+                boundary = self._dirichlet_boundary
+        try:
+            V = V._fefs
+        except:
+            pass
+        
+        if not isinstance(boundary, (tuple, list)):
+            boundary = [boundary]
+        if not isinstance(uD, (tuple, list)):
+            uD = [uD]
+        if len(uD) == 1:
+            uD *= len(boundary)
+        
+        bcs = [DirichletBC(V, cuD, cDb) for cuD, cDb in zip(uD, boundary)]
+        return bcs
+
+    def apply_dirichlet_bc(self, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
+        """Apply Dirichlet boundary conditions."""
+        bcs = self.create_dirichlet_bcs(V, uD, Dirichlet_boundary)
+        val = []
+        if not A is None:
+            for bc in bcs:
+                bc.apply(A)
+            val.append(A)
+        if not b is None:
+            for bc in bcs:
+                bc.apply(b)
+            val.append(b)
+        if len(val) == 1:
+            val = val[0]
+        return val
+
+    
+class FEMPoisson(FEMDiscretisationBase):
     """FEM discrete Laplace operator with coefficient :math:`a` on domain :math:`\Omega:=[0,1]^2` with homogeneous Dirichlet boundary conditions.
 
         ..math:: -\mathrm{div}a \nabla u = 0 \qquad\textrm{in }\Omega
@@ -50,37 +90,6 @@ class FEMPoisson(FEMDiscretisation):
         matrix = self.assemble_lhs(coeff, basis, withBC=withBC)
         return FEniCSSolveOperator(matrix, basis)
 
-    def apply_dirichlet_bc(self, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
-        """Apply Dirichlet boundary conditions."""
-        if uD is None:
-            uD = self._uD
-            if self._dirichlet_boundary is not None:
-                Dirichlet_boundary = self._dirichlet_boundary
-        try:
-            V = V._fefs
-        except:
-            pass
-        
-        if not isinstance(Dirichlet_boundary, (tuple, list)):
-            Dirichlet_boundary = [Dirichlet_boundary]
-        if not isinstance(uD, (tuple, list)):
-            uD = [uD]
-        if len(uD) == 1:
-            uD *= len(Dirichlet_boundary)
-        
-        bcs = [DirichletBC(V, cuD, cDb) for cuD, cDb in zip(uD, Dirichlet_boundary)]
-        val = []
-        if not A is None:
-            for bc in bcs:
-                bc.apply(A)
-            val.append(A)
-        if not b is None:
-            for bc in bcs:
-                bc.apply(b)
-            val.append(b)
-        if len(val) == 1:
-            val = val[0]
-        return val
 
     def assemble_lhs(self, coeff, basis, withBC=True):
         """Assemble the discrete problem (i.e. the stiffness matrix)."""
@@ -90,13 +99,14 @@ class FEMPoisson(FEMDiscretisation):
         u = TrialFunction(V)
         v = TestFunction(V)
         a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
-        A = assemble(a)
-        # apply Dirichlet bc
         if withBC:
-            A = self.apply_dirichlet_bc(V, A=A, uD=self._uD, Dirichlet_boundary=self._dirichlet_boundary)
+            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
+        else:
+            bcs = []
+        A, _ = assemble_system(a, v * dx, bcs )
         return A
 
-    def assemble_rhs(self, basis, withBC=True):
+    def assemble_rhs(self, coeff, basis, withBC=True):
         """Assemble the discrete right-hand side."""
         f = self._f
         Dirichlet_boundary = self._dirichlet_boundary
@@ -105,8 +115,11 @@ class FEMPoisson(FEMDiscretisation):
         # get FEniCS function space
         V = basis._fefs
         # assemble and apply boundary conditions
+        u = TrialFunction(V)
         v = TestFunction(V)
+
         l = (f * v) * dx
+        a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
 
         # treat Neumann boundary
         if self._neumann_boundary is not None:
@@ -114,11 +127,13 @@ class FEMPoisson(FEMDiscretisation):
             for j in range(len(Ng)):
                 l -= dot(Ng[j], v) * ds(j + 1)
         
-        # assemble linear form
-        F = assemble(l)
-        # apply Dirichlet bc
         if withBC:
-            F = self.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
+            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
+        else:
+            bcs = []
+
+        # assemble linear form
+        _, F = assemble_system(a, l, bcs )
         return F
             
     def _prepareNeumann(self, mesh):
@@ -171,8 +186,50 @@ class FEMPoisson(FEMDiscretisation):
                 form.append((a * inner(Nbres, Nbres), ds(j + 1)))
         return form
 
+class FEMPoissonOld(FEMPoisson):
 
-class FEMNavierLame(FEMDiscretisation):
+    def assemble_lhs(self, coeff, basis, withBC=True):
+        """Assemble the discrete problem (i.e. the stiffness matrix)."""
+        # get FEniCS function space
+        V = basis._fefs
+        # setup problem, assemble and apply boundary conditions
+        u = TrialFunction(V)
+        v = TestFunction(V)
+        a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
+        A = assemble(a)
+        # apply Dirichlet bc
+        if withBC:
+            A = self.apply_dirichlet_bc(V, A=A, uD=self._uD, Dirichlet_boundary=self._dirichlet_boundary)
+        return A
+
+    def assemble_rhs(self, basis, withBC=True):
+        """Assemble the discrete right-hand side."""
+        f = self._f
+        Dirichlet_boundary = self._dirichlet_boundary
+        uD = self._uD
+
+        # get FEniCS function space
+        V = basis._fefs
+        # assemble and apply boundary conditions
+        v = TestFunction(V)
+        l = (f * v) * dx
+
+        # treat Neumann boundary
+        if self._neumann_boundary is not None:
+            Ng, ds = self._prepareNeumann(V.mesh())
+            for j in range(len(Ng)):
+                l -= dot(Ng[j], v) * ds(j + 1)
+        
+        # assemble linear form
+        F = assemble(l)
+        # apply Dirichlet bc
+        if withBC:
+            F = self.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
+        return F
+            
+
+
+class FEMNavierLame(FEMDiscretisationBase):
     """FEM discrete Navier-Lame equation (linearised elasticity) with parameters :math:`E` and :math:`\nu` with provided boundary conditions.
 
         ..math:: -\mathrm{div}a \nabla u = 0 \qquad\textrm{in }\Omega
@@ -214,58 +271,28 @@ class FEMNavierLame(FEMDiscretisation):
         matrix = self.assemble_lhs(lmbda, basis, withBC=withBC)
         return FEniCSSolveOperator(matrix, basis)
 
-    def apply_dirichlet_bc(self, V, A=None, b=None, uD=None, Dirichlet_boundary=None):
-        """Apply Dirichlet boundary conditions."""
-        if uD is None:
-            uD = self._uD
-            if self._dirichlet_boundary is not None:
-                Dirichlet_boundary = self._dirichlet_boundary
-        try:
-            V = V._fefs
-        except:
-            pass
-            
-        if not isinstance(Dirichlet_boundary, (tuple, list)):
-            Dirichlet_boundary = [Dirichlet_boundary]
-        if not isinstance(uD, (tuple, list)):
-            uD = [uD]
-        if len(uD) == 1:
-            uD *= len(Dirichlet_boundary)
-        
-        bcs = [DirichletBC(V, cuD, cDb) for cuD, cDb in zip(uD, Dirichlet_boundary)]
-        val = []
-        if not A is None:
-            for i, bc in enumerate(bcs):
-#                print '#######LHS BC', i, "START"
-                bc.apply(A)
-#                print '#######LHS BC', i, "END"
-            val.append(A)
-        if not b is None:
-            for i, bc in enumerate(bcs):
-#                print '#######RHS BC', i, "START"
-                bc.apply(b)
-#                print '#######RHS BC', i, "END"
-            val.append(b)
-            
-        if len(val) == 1:
-            val = val[0]
-        return val
 
     def assemble_lhs(self, lmbda, basis, withBC=True):
         """Assemble the discrete operator."""
+        f = self._f
         # get FEniCS function space
         V = basis._fefs
         # setup problem, assemble and apply boundary conditions
         u = TrialFunction(V)
         v = TestFunction(V)
+
         a = inner(self.sigma(lmbda, self.mu, u), sym(nabla_grad(v))) * dx
-        A = assemble(a)
-        # apply Dirichlet bc
+        l = inner(f, v) * dx
+
         if withBC:
-            A = self.apply_dirichlet_bc(V, A=A, uD=self._uD, Dirichlet_boundary=self._dirichlet_boundary)
+            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
+        else:
+            bcs = []
+        A, _ = assemble_system(a, l, bcs )
         return A
 
-    def assemble_rhs(self, basis, withBC=True):
+
+    def assemble_rhs(self, lmbda, basis, withBC=True):
         """Assemble the discrete right-hand side."""
         f = self._f
         Dirichlet_boundary = self._dirichlet_boundary
@@ -274,7 +301,10 @@ class FEMNavierLame(FEMDiscretisation):
         # get FEniCS function space
         V = basis._fefs
         # define linear form
+        u = TrialFunction(V)
         v = TestFunction(V)
+
+        a = inner(self.sigma(lmbda, self.mu, u), sym(nabla_grad(v))) * dx
         l = inner(f, v) * dx
         
         # treat Neumann boundary
@@ -283,11 +313,13 @@ class FEMNavierLame(FEMDiscretisation):
             for j in range(len(Ng)):
                 l -= dot(Ng[j], v) * ds(j + 1)
                         
-        # assemble linear form
-        F = assemble(l)
-        # apply Dirichlet boundary conditions
         if withBC:
-            F = self.apply_dirichlet_bc(V, b=F, uD=uD, Dirichlet_boundary=Dirichlet_boundary)
+            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
+        else:
+            bcs = []
+
+        # assemble linear form
+        _, F = assemble_system(a, l, bcs )
         return F
             
     def _prepareNeumann(self, mesh):
