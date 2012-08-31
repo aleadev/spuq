@@ -88,11 +88,11 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flag for (sample) solution plotting
-PLOT_SOLUTION = True
+PLOT_SOLUTION = False
 
 # flag for final solution export
 #SAVE_SOLUTION = ''
-SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
+SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
@@ -102,9 +102,9 @@ UNIFORM_REFINEMENT = True
 initial_mesh_N = 10
 
 # MC error sampling
-MC_RUNS = 1
+MC_RUNS = 2
 MC_N = 1
-MC_HMAX = 1 / 10
+MC_HMAX = 3 / 10
 
 # ============================================================
 # PART B: Problem Setup
@@ -156,7 +156,7 @@ if pdetype == 1:
     Neumann_boundary = None # (boundaries['right'])
     g = None #Constant((0.0, 10.0))
     # create pde instance
-    pde = FEMNavierLame(mu=1e4, lmbda0=a0,
+    pde = FEMNavierLame(mu=1e2, lmbda0=a0,
                         dirichlet_boundary=Dirichlet_boundary, uD=uD,
                         neumann_boundary=Neumann_boundary, g=g,
                         f=f)
@@ -168,8 +168,8 @@ else:
     f = Constant(1.0)
     # define Dirichlet bc
     # 4 Dirichlet
-    # Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
-    # uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
+#    Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
+#    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
     # 2 Dirichlet
     Dirichlet_boundary = (boundaries['left'], boundaries['right'])
     uD = (Constant(0.0), Constant(0.0))
@@ -217,7 +217,7 @@ refine_projection_mesh = 2
 # pcg solver
 pcg_eps = 1e-4
 pcg_maxiter = 100
-error_eps = 1e-4
+error_eps = 1e-5
 
 if MC_RUNS > 0:
     w_history = []

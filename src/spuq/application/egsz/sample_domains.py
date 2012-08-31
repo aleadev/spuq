@@ -17,11 +17,10 @@ class SampleDomain(object):
         top, bottom, left, right = compile_subdomains([  'near(x[1], maxy) && on_boundary',
                                                          'near(x[1], miny) && on_boundary',
                                                          'near(x[0], minx) && on_boundary',
-                                                         'near(x[0], maxx) && on_boundary'])
+                                                         'x[0]>=0. && x[1]<1. && x[1]>=-1. && on_boundary'])
         top.maxy = maxy
         bottom.miny = miny
         left.minx = minx
-        right.maxx = maxx
         return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right}
 
     @classmethod

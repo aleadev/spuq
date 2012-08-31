@@ -15,6 +15,7 @@ where the coefficients :math:`(\alpha^m_{n-1},\alpha^m_n,\alpha^m_{n+1})` are ob
 from spuq.linalg.basis import Basis
 from spuq.linalg.operator import Operator
 from spuq.utils.type_check import takes, anything, optional
+from spuq.fem.fenics.fenics_utils import create_joint_mesh
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 
@@ -34,8 +35,70 @@ class MultiOperator(Operator):
         self._domain = domain
         self._codomain = codomain
 
-    @takes(any, MultiVectorWithProjection)
+    @takes(any, MultiVector)
     def apply(self, w):
+        """Apply operator to vector which has to live in the same domain."""
+
+        v = 0 * w
+        Lambda = w.active_indices()
+        maxm = w.max_order
+        if len(self._coeff_field) < maxm:
+            logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i",
+                len(self._coeff_field), maxm)
+            maxm = len(self._coeff_field)
+            #        assert self._coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
+        
+        for mu in Lambda:
+            # identify active multi indices
+            mus = [mu]
+            for m in range(maxm):
+                mu1 = mu.inc(m)
+                if mu1 in Lambda:
+                    mus.append(mu1)
+                mu2 = mu.dec(m)
+                if mu2 in Lambda:
+                    mus.append(mu2)
+            
+            
+            logger.debug("apply on mu = %s with joint mesh for %s", str(mu), str(mus))
+            # deterministic part
+            a0_f = self._coeff_field.mean_func
+            A0 = self._assemble(a0_f, w[mu].basis)
+            v[mu] = A0 * w[mu]
+            # create joint mesh and basis
+            meshes = [w[m].basis.mesh for m in mus]
+            mesh = create_joint_mesh(meshes)
+            Vfine = w[mu].basis.copy(mesh=mesh)
+            # iterate related multiindices
+            for m in range(maxm):
+                logger.debug("with m = %i", m)
+                # assemble A for \mu and a_m
+                am_f, am_rv = self._coeff_field[m]
+                Am = self._assemble(am_f, Vfine)
+
+                # prepare polynom coefficients
+                beta = am_rv.orth_polys.get_beta(mu[m])
+
+                # mu
+                cur_w = -beta[0] * Vfine.project_onto(w[mu])
+
+                # mu+1
+                mu1 = mu.inc(m)
+                if mu1 in Lambda:
+                    cur_w += beta[1] * Vfine.project_onto(w[mu1])
+
+                # mu-1
+                mu2 = mu.dec(m)
+                if mu2 in Lambda:
+                    cur_w += beta[-1] * Vfine.project_onto(w[mu2])
+
+                # apply discrete operator
+                vv = Am * cur_w
+                v[mu] += w[mu].basis.project_onto(vv)
+        return v
+
+    @takes(any, MultiVectorWithProjection)
+    def apply_A(self, w):
         """Apply operator to vector which has to live in the same domain."""
 
         v = 0 * w

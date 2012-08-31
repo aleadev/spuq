@@ -18,16 +18,19 @@ class FEniCSBasis(FEMBasis):
         self._fefs = fefs
         self._ptype = ptype
 
-    def copy(self, degree=None):
+    def copy(self, degree=None, mesh=None):
         """Make a copy of self. The degree may be overriden optionally."""
-        if degree is None or self._fefs.ufl_element().degree() == degree:
+        if (degree is None or self._fefs.ufl_element().degree() == degree) and mesh is None:
             return FEniCSBasis(self._fefs, self._ptype)
         else:
-#            if isinstance(self._fefs, VectorFunctionSpace):
+            if mesh is None:
+                mesh = self._fefs.mesh()
+            if degree is None:
+                degree = self._fefs.ufl_element().degree()
             if self._fefs.num_sub_spaces() > 1:
-                newfs = VectorFunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
+                newfs = VectorFunctionSpace(mesh, self._fefs.ufl_element().family(), degree)
             else:
-                newfs = FunctionSpace(self._fefs.mesh(), self._fefs.ufl_element().family(), degree)
+                newfs = FunctionSpace(mesh, self._fefs.ufl_element().family(), degree)
             return FEniCSBasis(newfs, self._ptype) 
 
     def new_vector(self, sub_spaces=None):
@@ -69,7 +72,7 @@ class FEniCSBasis(FEMBasis):
         mesh = self.mesh
         if uniform:
             while mesh.hmax() > maxh:
-                mesh = refine(mesh)
+                mesh = refine(mesh)         # NOTE: this global refine results in a red-refinement as opposed to bisection in the adaptive case
         else:
             while mesh.hmax() > maxh:
                 cell_markers = CellFunction("bool", mesh)

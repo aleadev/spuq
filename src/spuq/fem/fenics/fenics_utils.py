@@ -2,8 +2,8 @@ from types import NoneType
 from spuq.utils.type_check import takes, anything, optional
 from dolfin import (FunctionSpace, Expression, dx, inner,
                     nabla_grad, TrialFunction, TestFunction,
-                    assemble, Constant, DirichletBC,
-                    Function, norm)
+                    assemble, Constant, DirichletBC, refine,
+                    Function, norm, Mesh, CellFunction, cells)
 from dolfin.cpp import BoundaryCondition
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -121,3 +121,29 @@ def weighted_H1_norm(w, vec, piecewise=False):
         ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * dx)
         norm_vec = sqrt(ae)
     return norm_vec
+
+
+@takes((list, tuple), optional(Mesh))
+def create_joint_mesh(meshes, destmesh=None):
+    if destmesh is None:
+        destmesh = meshes[0]
+    for m in meshes:
+        while True:
+            cf = CellFunction("bool", destmesh)
+            cf.set_all(False)
+            rc = 0
+            # get cell sizes
+            h = [c.diameter() for c in cells(destmesh)]
+            # check all cells with destination sizes and mark for refinement
+            for c in cells(m):
+                p = c.midpoint()
+                cid = destmesh.closest_cell(p)
+                if h[cid] > c.diameter():
+                    cf[cid] = True
+                    rc += 1
+            if rc:
+                newmesh = refine(destmesh, cf)
+                destmesh = newmesh
+            else:
+                break
+    return destmesh
