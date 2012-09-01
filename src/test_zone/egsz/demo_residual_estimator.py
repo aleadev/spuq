@@ -67,7 +67,7 @@ path = os.path.dirname(__file__)
 # ============================================================
 
 # set problem (0:Poisson, 1:Navier-Lame)
-pdetype = 1
+pdetype = 0
 domaintype = 0
 domains = ('square', 'lshape', 'cooks')
 domain = domains[domaintype]
@@ -76,7 +76,7 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 1
+max_refinements = 2
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -88,21 +88,21 @@ PLOT_RESIDUAL = True
 PLOT_MESHES = False
 
 # flag for (sample) solution plotting
-PLOT_SOLUTION = False
+PLOT_SOLUTION = True
 
 # flag for final solution export
 #SAVE_SOLUTION = ''
 SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
+REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
 UNIFORM_REFINEMENT = True
 
 # initial mesh elements
 initial_mesh_N = 10
 
 # MC error sampling
-MC_RUNS = 2
+MC_RUNS = 1
 MC_N = 1
 MC_HMAX = 3 / 10
 
@@ -217,7 +217,7 @@ refine_projection_mesh = 2
 # pcg solver
 pcg_eps = 1e-4
 pcg_maxiter = 100
-error_eps = 1e-5
+error_eps = 1e-10
 
 if MC_RUNS > 0:
     w_history = []
@@ -416,8 +416,8 @@ if PLOT_SOLUTION:
     ref_maxm = w_history[-1].max_order
     sub_spaces = w[Multiindex()].basis.num_sub_spaces
     degree = w[Multiindex()].basis.degree
-    maxh=min(w[Multiindex()].basis.minh / 4, MC_HMAX)
-    maxh=w[Multiindex()].basis.minh
+    maxh = min(w[Multiindex()].basis.minh / 4, MC_HMAX)
+    maxh = w[Multiindex()].basis.minh
     projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
     sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
     sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)

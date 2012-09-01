@@ -49,7 +49,6 @@ class CoefficientField(object):
         return sample_map, RV_samples
 
 
-
 class ListCoefficientField(CoefficientField):
     """Expansion of a coefficient field according to EGSZ (1.2)."""
 

@@ -40,7 +40,7 @@ def setup_vector(mesh, pde, degree=1):
 
 
 def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
-    P = PreconditioningOperator(coeff_field.mean_func, 
+    P = PreconditioningOperator(coeff_field.mean_func,
                                 pde.assemble_solve_operator)
     b = 0 * w
     b0 = b[Multiindex()]
@@ -103,7 +103,7 @@ def AdaptiveSolver(A, coeff_field, pde,
     # data collection
     sim_stats = []                  # mis, residual, estimator and dof progress
     for refinement in range(max_refinements + 1):
-        logger.info("************* REFINEMENT LOOP iteration %i *************", refinement)
+        logger.info("************* REFINEMENT LOOP iteration %i (of %i) *************", refinement, max_refinements)
         # memory usage info
         import resource
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")

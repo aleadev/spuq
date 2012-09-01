@@ -140,7 +140,7 @@ logger.info("active indices of w after initialisation: %s", w0.active_indices())
 #compute_solution_variance(coeff_field, w0, proj_basis)
 
 
-w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, degree, 
+w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, degree,
     gamma=gamma,
     do_refinement=refinement,
     do_uniform_refinement=uniform_refinement,

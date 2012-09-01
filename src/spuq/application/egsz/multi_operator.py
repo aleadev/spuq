@@ -173,12 +173,12 @@ class PreconditioningOperator(Operator):
         for mu in Delta:
             a0_f = self._mean_func
             A0 = self._assemble_solver(a0_f, w[mu].basis)
-            if True:
+            if False:
                 mat = A0._matrix
                 M = mat.array()
                 M2 = 0.5 * (M + M.T)
                 import scipy.linalg as la
-                print 'prec min ev: %s (%s)' % (min(la.eigvals(M2)), la.norm(M-M.T))
+                print 'prec min ev: %s (%s)' % (min(la.eigvals(M2)), la.norm(M - M.T))
             v[mu] = A0 * w[mu]
         return v
 

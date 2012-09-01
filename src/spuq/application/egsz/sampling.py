@@ -81,7 +81,7 @@ def compute_solution_variance(coeff_field, w, proj_basis):
         w_mu = get_projected_solution(w, mu, proj_basis)
         f = w_mu._fefunc
         #print "1>" + str(list(f.vector().array()))
-        f.vector()[:] = (f.vector().array())**2
+        f.vector()[:] = (f.vector().array()) ** 2
         #print "2>" + str(list(f.vector().array()))
         #f2 = project(f*f, w_mu.basis._fefs)
         #sample_sol += FEniCSVector(f2)
@@ -97,7 +97,7 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
     except AttributeError:
         a = coeff_field.mean_func
         A0 = pde.assemble_lhs(a, proj_basis, withBC=False)
-        b = pde.assemble_rhs(proj_basis, withBC=False)
+        b = pde.assemble_rhs(a, proj_basis, withBC=False)
         A_m = [None] * maxm
         if cache is not None:
             cache.A = A0
@@ -128,7 +128,7 @@ def compute_direct_sample_solution_old(pde, RV_samples, coeff_field, A, maxm, pr
         a = a + a_m
 
     A = pde.assemble_lhs(a, proj_basis)
-    b = pde.assemble_rhs(proj_basis)
+    b = pde.assemble_rhs(a, proj_basis)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), a
