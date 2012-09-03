@@ -76,19 +76,10 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 1
+max_refinements = 5
 
 # polynomial degree of FEM approximation
 degree = 1
-
-# flag for residual graph plotting
-PLOT_RESIDUAL = True
-
-# flag for final mesh plotting
-PLOT_MESHES = False
-
-# flag for (sample) solution plotting
-PLOT_SOLUTION = True
 
 # flag for final solution export
 #SAVE_SOLUTION = ''
@@ -101,11 +92,6 @@ UNIFORM_REFINEMENT = True
 # initial mesh elements
 initial_mesh_N = 10
 
-# MC error sampling
-MC_RUNS = 1
-MC_N = 1
-MC_HMAX = 1 / 10
-
 # ============================================================
 # PART B: Problem Setup
 # ============================================================
@@ -114,22 +100,13 @@ MC_HMAX = 1 / 10
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # debug---
-#mis = [Multiindex(),]
+mis = [Multiindex(), ]
 # ---debug
 
 # setup domain and meshes
 mesh0, boundaries = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
-
-# ---debug
-#from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-#if SAVE_SOLUTION != "":
-#    w.pickle(SAVE_SOLUTION)
-#u = MultiVectorWithProjection.from_pickle(SAVE_SOLUTION, FEniCSVector)
-#import sys
-#sys.exit()
-# ---debug
 
 # define coefficient field
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
@@ -219,15 +196,7 @@ pcg_eps = 1e-4
 pcg_maxiter = 100
 error_eps = 1e-4
 
-if MC_RUNS > 0:
-    w_history = []
-else:
-    w_history = None
-
-# NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
-if domaintype == 2:
-    maxh = 0.0
-    MC_HMAX = 0
+w_history = []
 
 # refinement loop
 # ===============
@@ -263,3 +232,39 @@ import resource
 logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 
 
+if len(sim_stats) > 1:
+    try:
+        from matplotlib.pyplot import figure, show, legend
+        x = [s["DOFS"] for s in sim_stats]
+        L2 = [s["L2"] for s in sim_stats]
+        H1 = [s["H1"] for s in sim_stats]
+        errest = [sqrt(s["EST"]) for s in sim_stats]
+        reserr = [s["RES"] for s in sim_stats]
+        projerr = [s["PROJ"] for s in sim_stats]
+        mi = [s["MI"] for s in sim_stats]
+        num_mi = [len(m) for m in mi]
+        print "errest", errest
+        
+        # figure 1
+        # --------
+        fig2 = figure()
+        fig2.suptitle("residual estimator")
+        ax = fig2.add_subplot(111)
+        if REFINEMENT["MI"]:
+            ax.loglog(x, num_mi, '--y+', label='active mi')
+        ax.loglog(x, errest, '-g<', label='error estimator')
+        ax.loglog(x, reserr, '-.cx', label='residual part')
+        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+        legend(loc='upper right')
+            
+        # figure 2
+        # --------
+        fig3 = figure()
+        ax = fig3.add_subplot(111)
+        ax.loglog(x, errest, '-g<', label='error estimator')
+        legend(loc='upper right')
+        show()  # this invalidates the figure instances...
+    except:
+        import traceback
+        print traceback.format_exc()
+        logger.info("skipped plotting since matplotlib is not available...")

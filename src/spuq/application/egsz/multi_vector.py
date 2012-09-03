@@ -123,14 +123,14 @@ class MultiVector(Vector):
             self[mu].pickle(outdir, str(mu))
     
     @classmethod
-    def from_pickle(cls, indir, veccls):
+    def from_pickle(cls, indir, veccls, sub_spaces=1):
         """unpickle object"""
         with open(os.path.join(indir, 'MI.pkl'), "rb") as f:
             Lambda = pickle.load(f)
             print "from_pickle Lambda:", Lambda
             w = cls()
             for mu in Lambda:
-                w[mu] = veccls.from_pickle(indir, str(mu))
+                w[mu] = veccls.from_pickle(indir, str(mu), sub_spaces)
             return w
     
 

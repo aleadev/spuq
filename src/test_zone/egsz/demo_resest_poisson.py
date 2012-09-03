@@ -76,35 +76,22 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 1
+max_refinements = 5
 
 # polynomial degree of FEM approximation
 degree = 1
-
-# flag for residual graph plotting
-PLOT_RESIDUAL = True
-
-# flag for final mesh plotting
-PLOT_MESHES = False
-
-# flag for (sample) solution plotting
-PLOT_SOLUTION = True
 
 # flag for final solution export
 #SAVE_SOLUTION = ''
 SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
-UNIFORM_REFINEMENT = True
+REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
+UNIFORM_REFINEMENT = False
 
 # initial mesh elements
 initial_mesh_N = 10
 
-# MC error sampling
-MC_RUNS = 1
-MC_N = 1
-MC_HMAX = 1 / 10
 
 # ============================================================
 # PART B: Problem Setup
@@ -219,10 +206,7 @@ pcg_eps = 1e-4
 pcg_maxiter = 100
 error_eps = 1e-4
 
-if MC_RUNS > 0:
-    w_history = []
-else:
-    w_history = None
+w_history = []
 
 # NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
 if domaintype == 2:
@@ -263,3 +247,39 @@ import resource
 logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 
 
+if len(sim_stats) > 1:
+    try:
+        from matplotlib.pyplot import figure, show, legend
+        x = [s["DOFS"] for s in sim_stats]
+        L2 = [s["L2"] for s in sim_stats]
+        H1 = [s["H1"] for s in sim_stats]
+        errest = [sqrt(s["EST"]) for s in sim_stats]
+        reserr = [s["RES"] for s in sim_stats]
+        projerr = [s["PROJ"] for s in sim_stats]
+        mi = [s["MI"] for s in sim_stats]
+        num_mi = [len(m) for m in mi]
+        print "errest", errest
+        
+        # figure 1
+        # --------
+        fig2 = figure()
+        fig2.suptitle("residual estimator")
+        ax = fig2.add_subplot(111)
+        if REFINEMENT["MI"]:
+            ax.loglog(x, num_mi, '--y+', label='active mi')
+        ax.loglog(x, errest, '-g<', label='error estimator')
+        ax.loglog(x, reserr, '-.cx', label='residual part')
+        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+        legend(loc='upper right')
+            
+        # figure 2
+        # --------
+        fig3 = figure()
+        ax = fig3.add_subplot(111)
+        ax.loglog(x, errest, '-g<', label='error estimator')
+        legend(loc='upper right')
+        show()  # this invalidates the figure instances...
+    except:
+        import traceback
+        print traceback.format_exc()
+        logger.info("skipped plotting since matplotlib is not available...")
