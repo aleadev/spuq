@@ -125,12 +125,16 @@ def AdaptiveSolver(A, coeff_field, pde,
         # residual and projection errors
         logger.debug("evaluating ResidualEstimator.evaluateError")
         xi, resind, projind = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh, quadrature_degree, projection_degree_increase, refine_projection_mesh)
+        reserrmu = [(mu, sqrt(sum(resind[mu].coeffs ** 2))) for mu in resind.keys()]
         reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
+        projerrmu = [(mu, sqrt(sum(projind[mu].coeffs ** 2))) for mu in projind.keys()]
         projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
         logger.info("Overall Estimator Error xi = %s while residual error is %s and projection error is %s", xi, reserr, projerr)
         stats["EST"] = xi
         stats["RES"] = reserr
         stats["PROJ"] = projerr
+        stats["RES-mu"] = reserrmu
+        stats["PROJ-mu"] = projerrmu
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
         sim_stats.append(stats)
         # inactice mi projection error

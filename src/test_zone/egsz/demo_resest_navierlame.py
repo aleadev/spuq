@@ -100,7 +100,7 @@ initial_mesh_N = 10
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # debug---
-mis = [Multiindex(), ]
+#mis = [Multiindex(), ]
 # ---debug
 
 # setup domain and meshes

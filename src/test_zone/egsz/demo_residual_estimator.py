@@ -3,6 +3,7 @@ import logging
 import os
 import functools
 from math import sqrt
+from collections import defaultdict
 
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator
@@ -76,7 +77,7 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 2
+max_refinements = 1
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -91,8 +92,8 @@ PLOT_MESHES = False
 PLOT_SOLUTION = True
 
 # flag for final solution export
-#SAVE_SOLUTION = ''
-SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
+SAVE_SOLUTION = ''
+#SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
@@ -138,7 +139,7 @@ gamma = 0.9
 if pdetype == 0:
     coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
 else:
-    coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform", scale=1e5)
+    coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=1e5)
 a0 = coeff_field.mean_func
 
 # setup boundary conditions
@@ -317,6 +318,8 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         errest = [sqrt(s["EST"]) for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
+        _reserrmu = [s["RES-mu"] for s in sim_stats]
+        _projerrmu = [s["PROJ-mu"] for s in sim_stats]
         if MC_RUNS > 0:
             mcL2 = [s["MC-L2ERR"] for s in sim_stats]
             mcH1 = [s["MC-H1ERR"] for s in sim_stats]
@@ -325,10 +328,15 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
             effest = [est / err for est, err in zip(errest, mcH1)]
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
+        reserrmu = defaultdict(list)
+        for rem in _reserrmu:
+            for mu, v in rem:
+                reserrmu[mu].append(v)
         print "errest", errest
         if MC_RUNS > 0:
             print "mcH1", mcH1
             print "efficiency", [est / err for est, err in zip(errest, mcH1)]
+            
         # figure 1
         # --------
 #        fig = figure()
@@ -343,6 +351,8 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
 #        legend(loc='upper right')
 #        if SAVE_SOLUTION != "":
 #            fig.savefig(os.path.join(SAVE_SOLUTION, 'RES.png'))
+
+        # --------
         # figure 2
         # --------
         fig2 = figure()
@@ -362,6 +372,8 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         if SAVE_SOLUTION != "":
             fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.png'))
             fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.eps'))
+
+        # --------
         # figure 3
         # --------
         fig3 = figure()
@@ -375,6 +387,22 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         if SAVE_SOLUTION != "":
             fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))
             fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.eps'))
+
+        # --------
+        # figure 4
+        # --------
+        fig4 = figure()
+        fig4.suptitle("residual contributions")
+        ax = fig4.add_subplot(111)
+        for mu, v in reserrmu.iteritems():
+            ms = str(mu)
+            ms = ms[ms.find('=') + 1:-1]
+            ax.loglog(x[-(len(v) + 1):], v, '-g<', label=ms)
+        legend(loc='upper right')
+#        if SAVE_SOLUTION != "":
+#            fig4.savefig(os.path.join(SAVE_SOLUTION, 'RESCONTRIB.png'))
+#            fig4.savefig(os.path.join(SAVE_SOLUTION, 'RESCONTRIB.eps'))
+        
         show()  # this invalidates the figure instances...
     except:
         import traceback
