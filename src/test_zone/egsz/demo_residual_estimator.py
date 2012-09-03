@@ -67,7 +67,7 @@ path = os.path.dirname(__file__)
 # ============================================================
 
 # set problem (0:Poisson, 1:Navier-Lame)
-pdetype = 0
+pdetype = 1
 domaintype = 0
 domains = ('square', 'lshape', 'cooks')
 domain = domains[domaintype]
@@ -95,7 +95,7 @@ PLOT_SOLUTION = True
 SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
+REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
 UNIFORM_REFINEMENT = True
 
 # initial mesh elements
@@ -135,7 +135,10 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform", scale=100000)
+if pdetype == 0:
+    coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
+else:
+    coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform", scale=1e5)
 a0 = coeff_field.mean_func
 
 # setup boundary conditions
@@ -217,7 +220,7 @@ refine_projection_mesh = 2
 # pcg solver
 pcg_eps = 1e-4
 pcg_maxiter = 100
-error_eps = 1e-10
+error_eps = 1e-5
 
 if MC_RUNS > 0:
     w_history = []
