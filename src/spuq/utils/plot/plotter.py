@@ -11,9 +11,16 @@ except Exception, e:
     HAS_PYLAB = False
 
 try:
+    print "A"*80
     from mayavi import mlab
+    print "B"*80
     HAS_MAYAVI = True
 except Exception, e:
+#    import traceback
+#    print traceback.format_exc()
+    print "mayavi is not available"
+    HAS_MAYAVI = False
+except (Exception, SystemExit) as e:
 #    import traceback
 #    print traceback.format_exc()
     print "mayavi is not available"
