@@ -14,7 +14,7 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything
 
 try:
-    from dolfin import (Function, FunctionSpace, cells)
+    from dolfin import (Function, FunctionSpace, cells, Constant)
     from spuq.application.egsz.marking import Marking
     from spuq.application.egsz.residual_estimator import ResidualEstimator
     from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -39,15 +39,28 @@ def setup_vector(mesh, pde, degree=1):
     return vec
 
 
+
 def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
     P = PreconditioningOperator(coeff_field.mean_func,
                                 pde.assemble_solve_operator)
     b = 0 * w
-    b0 = b[Multiindex()]
-    b0.coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b0.basis)
+    mu  = Multiindex()
+    b[mu].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[mu].basis)
+    for m in range(w.max_order):
+        eps_m = mu.inc(m)
+        _, am_rv = coeff_field[m]
+        beta = am_rv.orth_polys.get_beta(1)
+        b[eps_m].coeffs += beta[1] * pde.assemble_rhs(Constant(0.0), basis=b[eps_m].basis)
+        b[mu].coeffs += beta[0] * pde.assemble_rhs(Constant(0.0), basis=b[mu].basis)
+
+    pde.set_dirichlet_bc_entries(w[mu], homogeneous=False)
+    for m in range(w.max_order):
+        eps_m = mu.inc(m)
+        pde.set_dirichlet_bc_entries(w[eps_m], homogeneous=True)
 
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
+
     b2 = A * w
     stats["L2"] = error_norm(b, b2, "L2")
     stats["H1"] = error_norm(b, b2, pde.norm)

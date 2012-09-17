@@ -189,7 +189,7 @@ else:
                      f=f)
 
 # define multioperator
-A = MultiOperator(coeff_field, pde.assemble_operator)
+A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs)
 
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
 logger.info("active indices of w after initialisation: %s", w.active_indices())

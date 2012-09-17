@@ -1,10 +1,11 @@
 from types import NoneType
-from spuq.utils.type_check import takes, anything, optional
+from spuq.utils.type_check import takes, anything, optional, sequence_of
 from dolfin import (FunctionSpace, Expression, dx, inner,
                     nabla_grad, TrialFunction, TestFunction,
                     assemble, Constant, DirichletBC, refine,
-                    Function, norm, Mesh, CellFunction, cells)
-from dolfin.cpp import BoundaryCondition
+                    Function, norm, Mesh, CellFunction, cells, 
+                    GenericMatrix, GenericVector)
+from dolfin.cpp import BoundaryCondition, _set_matrix_single_item
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 
@@ -50,6 +51,31 @@ def apply_bc(fenics_obj, bc=DEFAULT_BC, V=None):
             bc = homogeneous_dirichlet_bc(V)
         bc.apply(fenics_obj)
     return fenics_obj
+
+@takes(GenericMatrix, (BoundaryCondition, sequence_of(BoundaryCondition)))
+def remove_boundary_entries(A, bcs):
+    if not isinstance(bcs, BoundaryCondition):
+        for bc in bcs:
+            remove_boundary_entries(A, bc)
+    else:
+        dofs = bcs.get_boundary_values().keys()
+        for i in dofs:
+            _set_matrix_single_item(A, i, i, 0.0)
+
+
+@takes(GenericVector, (BoundaryCondition, sequence_of(BoundaryCondition)), bool)
+def set_dirichlet_bc_entries(u, bcs, homogeneous):
+    if not isinstance(bcs, BoundaryCondition):
+        for bc in bcs:
+            set_dirichlet_bc_entries(u, bc, homogeneous)
+    else:
+        dof2val = bcs.get_boundary_values()
+        dofs = dof2val.keys()
+        if homogeneous:
+            u[dofs] = 0.0
+        else:
+            vals = dof2val.values()
+            u[dofs] = np.array(vals)
 
 
 @takes((Expression, Function), FunctionSpace, (BoundaryCondition, NoneType, object))

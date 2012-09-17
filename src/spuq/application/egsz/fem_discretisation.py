@@ -3,6 +3,7 @@ from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSp
                     dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC, assemble_system)
 
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
+from spuq.fem.fenics.fenics_utils import remove_boundary_entries, set_dirichlet_bc_entries
 from spuq.fem.fem_discretisation import FEMDiscretisation
 from spuq.utils.type_check import takes, anything
 
@@ -49,6 +50,18 @@ class FEMDiscretisationBase(FEMDiscretisation):
         if len(val) == 1:
             val = val[0]
         return val
+
+
+    def assemble_operator_inner_dofs(self, coeff, basis):
+        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
+        matrix = self.assemble_lhs(coeff, basis)
+        bcs = self.create_dirichlet_bcs(basis, self._uD, self._dirichlet_boundary)
+        remove_boundary_entries(matrix, bcs)
+        return FEniCSOperator(matrix, basis)
+
+    def set_dirichlet_bc_entries(self, u, homogeneous=False):
+        bcs = self.create_dirichlet_bcs(u.basis, self._uD, self._dirichlet_boundary)
+        set_dirichlet_bc_entries(u.coeffs, bcs, homogeneous)
 
     
 class FEMPoisson(FEMDiscretisationBase):

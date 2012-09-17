@@ -26,11 +26,12 @@ logger = logging.getLogger(__name__)
 class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials."""
 
-    @takes(anything, CoefficientField, callable, optional(Basis), optional(Basis))
-    def __init__(self, coeff_field, assemble, domain=None, codomain=None):
+    @takes(anything, CoefficientField, callable, callable, optional(Basis), optional(Basis))
+    def __init__(self, coeff_field, assemble_0, assemble_m, domain=None, codomain=None):
         """Initialise discrete operator with FEM discretisation and
         coefficient field of the diffusion coefficient"""
-        self._assemble = assemble
+        self._assemble_0 = assemble_0
+        self._assemble_m = assemble_m
         self._coeff_field = coeff_field
         self._domain = domain
         self._codomain = codomain
@@ -63,8 +64,9 @@ class MultiOperator(Operator):
             logger.debug("apply on mu = %s with joint mesh for %s", str(mu), str(mus))
             # deterministic part
             a0_f = self._coeff_field.mean_func
-            A0 = self._assemble(a0_f, w[mu].basis)
+            A0 = self._assemble_0(a0_f, w[mu].basis)
             v[mu] = A0 * w[mu]
+
             # create joint mesh and basis
             meshes = [w[m].basis.mesh for m in mus]
             mesh = create_joint_mesh(meshes)
@@ -74,7 +76,7 @@ class MultiOperator(Operator):
                 logger.debug("with m = %i", m)
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._coeff_field[m]
-                Am = self._assemble(am_f, Vfine)
+                Am = self._assemble_m(am_f, Vfine)
 
                 # prepare polynom coefficients
                 beta = am_rv.orth_polys.get_beta(mu[m])
@@ -113,13 +115,13 @@ class MultiOperator(Operator):
             logger.debug("apply on mu = %s", str(mu))
             # deterministic part
             a0_f = self._coeff_field.mean_func
-            A0 = self._assemble(a0_f, w[mu].basis)
+            A0 = self._assemble_0(a0_f, w[mu].basis)
             v[mu] = A0 * w[mu]
             for m in range(maxm):
                 logger.debug("with m = %i", m)
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._coeff_field[m]
-                Am = self._assemble(am_f, w[mu].basis)
+                Am = self._assemble_m(am_f, w[mu].basis)
 
                 # prepare polynom coefficients
                 beta = am_rv.orth_polys.get_beta(mu[m])
@@ -177,8 +179,6 @@ class PreconditioningOperator(Operator):
                 mat = A0._matrix
                 M = mat.array()
                 M2 = 0.5 * (M + M.T)
-                import scipy.linalg as la
-                print 'prec min ev: %s (%s)' % (min(la.eigvals(M2)), la.norm(M - M.T))
             v[mu] = A0 * w[mu]
         return v
 
