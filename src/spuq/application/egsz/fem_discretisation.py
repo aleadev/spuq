@@ -63,6 +63,14 @@ class FEMDiscretisationBase(FEMDiscretisation):
         bcs = self.create_dirichlet_bcs(u.basis, self._uD, self._dirichlet_boundary)
         set_dirichlet_bc_entries(u.coeffs, bcs, homogeneous)
 
+    def copy_dirichlet_bc(self, d, b):
+        for mu in d.active_indices():
+            bcs = self.create_dirichlet_bcs(d[mu].basis, self._uD, self._dirichlet_boundary)
+            for bc in bcs:
+                dofs = bc.get_boundary_values().keys()
+                print b[mu], d[mu]
+                b[mu].coeffs[dofs] = d[mu].coeffs[dofs]
+
     
 class FEMPoisson(FEMDiscretisationBase):
     """FEM discrete Laplace operator with coefficient :math:`a` on domain :math:`\Omega:=[0,1]^2` with homogeneous Dirichlet boundary conditions.
@@ -119,9 +127,10 @@ class FEMPoisson(FEMDiscretisationBase):
         A, _ = assemble_system(a, v * dx, bcs)
         return A
 
-    def assemble_rhs(self, coeff, basis, withBC=True):
+    def assemble_rhs(self, coeff, basis, withBC=True, f=None):
         """Assemble the discrete right-hand side."""
-        f = self._f
+        if f is None:
+            f = self._f
         Dirichlet_boundary = self._dirichlet_boundary
         uD = self._uD
 

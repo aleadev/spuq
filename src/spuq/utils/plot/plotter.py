@@ -11,9 +11,7 @@ except Exception, e:
     HAS_PYLAB = False
 
 try:
-    print "A"*80
     from mayavi import mlab
-    print "B"*80
     HAS_MAYAVI = True
 except Exception, e:
 #    import traceback
