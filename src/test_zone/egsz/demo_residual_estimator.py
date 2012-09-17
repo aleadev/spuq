@@ -153,7 +153,7 @@ if pdetype == 1:
     f = Constant((0.0, 0.0))
     # define Dirichlet bc
     Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-    uD = (Constant((0.0, 0.0)), Constant((-0.3, 0.0)))
+    uD = (Constant((0.0, 0.0)), Constant((-3.0, 0.0)))
 #    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
 #    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
     # homogeneous Neumann does not have to be set explicitly

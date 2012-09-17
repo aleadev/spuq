@@ -50,13 +50,24 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
         eps_m = mu.inc(m)
         _, am_rv = coeff_field[m]
         beta = am_rv.orth_polys.get_beta(1)
-        b[eps_m].coeffs += beta[1] * pde.assemble_rhs(Constant(0.0), basis=b[eps_m].basis)
-        b[mu].coeffs += beta[0] * pde.assemble_rhs(Constant(0.0), basis=b[mu].basis)
 
-    pde.set_dirichlet_bc_entries(w[mu], homogeneous=False)
-    for m in range(w.max_order):
-        eps_m = mu.inc(m)
-        pde.set_dirichlet_bc_entries(w[eps_m], homogeneous=True)
+        
+        g0 = b[eps_m].copy()
+        g0.coeffs = pde.assemble_rhs(Constant(0.0), basis=b[eps_m].basis)
+        pde.set_dirichlet_bc_entries(g0, homogeneous=True)
+        b[eps_m] += beta[1] * g0
+
+        g0 = b[mu].copy()
+        g0.coeffs = pde.assemble_rhs(Constant(0.0), basis=b[mu].basis)
+        pde.set_dirichlet_bc_entries(g0, homogeneous=True)
+        b[mu] += beta[0] * g0
+
+    if False:
+        pde.set_dirichlet_bc_entries(w[mu], homogeneous=False)
+        for m in range(w.max_order):
+            eps_m = mu.inc(m)
+            pde.set_dirichlet_bc_entries(w[eps_m], homogeneous=True)
+        pde.copy_dirichlet_bc(A * w, b)
 
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)

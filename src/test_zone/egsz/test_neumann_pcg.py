@@ -2,6 +2,7 @@ from __future__ import division
 import logging
 import os
 import functools
+import numpy as np
 from math import sqrt
 
 from spuq.application.egsz.pcg import pcg
@@ -75,6 +76,7 @@ domain = 'square'
 
 # initial mesh elements
 initial_mesh_N = 40
+initial_mesh_N = 3
 
 # decay exponent
 decay_exp = 2
@@ -86,7 +88,7 @@ decay_exp = 2
 
 
 # define initial multiindices
-mis = list(Multiindex.createCompleteOrderSet(2, 1))
+mis = list(Multiindex.createCompleteOrderSet(3, 1))
 #mis = list(Multiindex.createCompleteOrderSet(0, 1))
 #print mis
 #os.sys.exit()
@@ -155,8 +157,9 @@ if True:
         eps_m = mu.inc(m)
         am_f, am_rv = coeff_field[m]
         beta = am_rv.orth_polys.get_beta(1)
-        b[eps_m].coeffs += beta[1] * pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=Constant(1.0))
+        b[eps_m].coeffs += beta[1] * pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=Constant(0.0))
         b[mu].coeffs += beta[0] * pde.assemble_rhs(am_f, basis=b[mu].basis, f=Constant(0.0))
+    b0 = 1 * b
 
 if True:
     pde.set_dirichlet_bc_entries(w[mu], homogeneous=False)
@@ -168,11 +171,29 @@ if True:
     pde.copy_dirichlet_bc(d, b)
 
 
+dofs = []
+bcs = pde.create_dirichlet_bcs(w[Multiindex()].basis, None, None)
+for bc in bcs:
+    dofs += bc.get_boundary_values().keys()
+print dofs
+b2 = 0 * b
+
+
+for mu in w.active_indices():
+    b2[mu].coeffs[dofs]=1
+    if False and mu.order:
+        b0[mu].coeffs[dofs]=0
+    print
+    print "="*80
+    print mu
+    print np.array([b[mu].coeffs.array(),b0[mu].coeffs.array(),b2[mu].coeffs.array()]).T
+
+b=b0
+
 P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
 w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
 logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
-plot(w[Multiindex()]._fefunc)
-plot(w[Multiindex([1])]._fefunc)
-plot(w[Multiindex([0,1])]._fefunc)
+for mu in w.active_indices():
+    plot(w[mu]._fefunc)
 interactive()
