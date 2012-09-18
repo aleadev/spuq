@@ -113,6 +113,7 @@ MC_HMAX = 3 / 10
 
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
+mis = [mis[0]]
 
 # debug---
 #mis = [Multiindex(),]
@@ -153,7 +154,7 @@ if pdetype == 1:
     f = Constant((0.0, 0.0))
     # define Dirichlet bc
     Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-    uD = (Constant((0.0, 0.0)), Constant((-3.0, 0.0)))
+    uD = (Constant((0.0, 0.0)), Constant((3.0, 0.0)))
 #    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
 #    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
     # homogeneous Neumann does not have to be set explicitly
@@ -457,16 +458,22 @@ if PLOT_SOLUTION:
     # plot
     print sub_spaces
     if sub_spaces == 0:
-        viz_p = plot(sample_sol_param._fefunc, "parametric solution", axes=True)
-        viz_d = plot(sample_sol_direct._fefunc, "direct solution", axes=True)
-        viz_v = plot(sol_variance._fefunc, "solution variance", axes=True)
-        interactive()
+        viz_p = plot(sample_sol_param._fefunc, title="parametric solution", axes=True)
+        viz_d = plot(sample_sol_direct._fefunc, title="direct solution", axes=True)
+        viz_v = plot(sol_variance._fefunc, title="solution variance", axes=True)
     else:
         mesh_param = sample_sol_param._fefunc.function_space().mesh()
         mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
         wireframe = True
-        viz_p = plot(sample_sol_param._fefunc, "parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
-        viz_d = plot(sample_sol_direct._fefunc, "direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe, interactive=True)#, rescale=False)
+        viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+        viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
+        
+        for mu in w.active_indices():
+            viz_p = plot(w[mu]._fefunc, title="parametric solution: "+str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
+    interactive()
+
+
+
 
 if SAVE_SOLUTION != '':
     logger.info("exported solution to " + SAVE_SOLUTION)
