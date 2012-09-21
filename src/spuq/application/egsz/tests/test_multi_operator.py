@@ -49,7 +49,7 @@ def test_init():
 
     domain = CanonicalBasis(3)
     codomain = CanonicalBasis(5)
-    A = MultiOperator(coeff_field, diag_assemble, domain, codomain)
+    A = MultiOperator(coeff_field, diag_assemble, None, domain, codomain)
     assert_equal(A.domain, domain)
     assert_equal(A.codomain, codomain)
 

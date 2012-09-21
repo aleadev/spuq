@@ -26,12 +26,12 @@ logger = logging.getLogger(__name__)
 class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials."""
 
-    @takes(anything, CoefficientField, callable, callable, optional(Basis), optional(Basis))
-    def __init__(self, coeff_field, assemble_0, assemble_m, domain=None, codomain=None):
+    @takes(anything, CoefficientField, callable, optional(callable), optional(Basis), optional(Basis))
+    def __init__(self, coeff_field, assemble_0, assemble_m=None, domain=None, codomain=None):
         """Initialise discrete operator with FEM discretisation and
         coefficient field of the diffusion coefficient"""
         self._assemble_0 = assemble_0
-        self._assemble_m = assemble_m
+        self._assemble_m = assemble_m or assemble_0
         self._coeff_field = coeff_field
         self._domain = domain
         self._codomain = codomain
@@ -68,9 +68,12 @@ class MultiOperator(Operator):
             v[mu] = A0 * w[mu]
 
             # create joint mesh and basis
-            meshes = [w[m].basis.mesh for m in mus]
-            mesh = create_joint_mesh(meshes)
-            Vfine = w[mu].basis.copy(mesh=mesh)
+            if hasattr(w[mu].basis, "mesh"):
+                meshes = [w[m].basis.mesh for m in mus]
+                mesh = create_joint_mesh(meshes)
+                Vfine = w[mu].basis.copy(mesh=mesh)
+            else:
+                Vfine = w[mu].basis
             # iterate related multiindices
             for m in range(maxm):
                 logger.debug("with m = %i", m)

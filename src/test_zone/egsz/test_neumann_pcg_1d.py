@@ -1,6 +1,6 @@
 from __future__ import division
 import logging
-import os
+import os, sys
 import functools
 import numpy as np
 from math import sqrt
@@ -8,14 +8,15 @@ from math import sqrt
 from spuq.application.egsz.pcg import pcg
 from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator
 from spuq.application.egsz.sample_problems import SampleProblem
-from spuq.application.egsz.sample_domains import SampleDomain
+from spuq.application.egsz.coefficient_field import ParametricCoefficientField
 from spuq.application.egsz.adaptive_solver import prepare_rhs, prepare_rhs_copy, pcg_solve
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.plot.plotter import Plotter
+from spuq.stochastics.random_variable import UniformRV
 try:
-    from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
-                        plot, interactive, set_log_level, set_log_active)
+    from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitInterval, compile_subdomains,
+                        plot, interactive, set_log_level, set_log_active, DirichletBC, Expression)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
@@ -76,8 +77,7 @@ def setup_vec(mesh):
 domain = 'square'
 
 # initial mesh elements
-initial_mesh_N = 3
-initial_mesh_N = 40
+initial_mesh_N = 5*8
 
 # decay exponent
 decay_exp = 2
@@ -89,42 +89,33 @@ decay_exp = 2
 
 
 # define initial multiindices
-mis = list(Multiindex.createCompleteOrderSet(4, 1))
+mis = list(Multiindex.createCompleteOrderSet(1, 1))
 #mis = list(Multiindex.createCompleteOrderSet(0, 1))
 #print mis
 #os.sys.exit()
 
 # setup meshes
-mesh0, boundaries = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
+mesh0 = UnitInterval(initial_mesh_N)
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
-
-# debug---
-#from dolfin import refine
-#meshes[1] = refine(meshes[1])
-# ---debug
-
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
-logger.info("active indices of w after initialisation: %s", w.active_indices())
-
-# ---debug
-#from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-#if SAVE_SOLUTION != "":
-#    w.pickle(SAVE_SOLUTION)
-#u = MultiVectorWithProjection.from_pickle(SAVE_SOLUTION, FEniCSVector)
-#import sys
-#sys.exit()
-# ---debug
 
 # define coefficient field
-coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
-gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[0], decayexp=decay_exp, 
-                                    gamma=gamma, freqscale=1, freqskip=20,
-                                    rvtype="uniform")
+rvs = lambda i: UniformRV(a= -1, b=1)
+a0 = Constant(1.0)
+a = lambda i: Expression("B", B=1.0/(4.0+i*i))
+coeff_field = ParametricCoefficientField(a0, a, rvs)
+
+
+
+
 # define Dirichlet boundary
-Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-uD = (Constant(-2.0), Constant(3.0))
+def u0_boundary(x, on_boundary):
+    return on_boundary
+
+Dirichlet_boundary = (u0_boundary,)
+#uD = (Constant(-2.0), )
+uD = (Constant(-2.0), )
 
 Neumann_boundary = None
 g = None
@@ -145,7 +136,7 @@ A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inne
 pcg_eps = 1e-6
 pcg_maxiter = 100
 
-#np.set_printoptions(
+np.set_printoptions(linewidth=1000, precision=3, suppress=True)
 
 # get boundary dofs
 dofs = []
@@ -163,9 +154,16 @@ if True:
         eps_m = zero.inc(m)
         am_f, am_rv = coeff_field[m]
         beta = am_rv.orth_polys.get_beta(1)
-        b[eps_m].coeffs += beta[-1] * pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=Constant(0.0))
-        b[zero].coeffs += beta[0] * pde.assemble_rhs(am_f, basis=b[zero].basis, f=Constant(0.0))
-        b[eps_m].coeffs[dofs]=0
+
+        g0 = pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=Constant(0.0))
+        g0[dofs]=0
+        b[eps_m].coeffs += beta[1] * g0
+
+        g0 = pde.assemble_rhs(am_f, basis=b[zero].basis, f=Constant(0.0))
+        g0[dofs]=0
+        b[zero].coeffs += beta[0] * g0
+        #b[eps_m].coeffs[dofs] += beta[1] * pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=Constant(0.0))[dofs]
+        #b[zero].coeffs[dofs] += beta[0] * pde.assemble_rhs(am_f, basis=b[zero].basis, f=Constant(0.0))[dofs]
     b0 = 1 * b
 
 if True:
@@ -192,7 +190,6 @@ for mu in w.active_indices():
     bl[mu].coeffs[dofs]=1
 
 
-np.set_printoptions(linewidth=1000)
 for mu in w.active_indices():
     print
     print "="*80
@@ -201,10 +198,22 @@ for mu in w.active_indices():
 
 
 b = b2
+B = []
+for mu in b.active_indices():
+    B += [b[mu].array()]
+print np.array(B)
+print pde.assemble_operator(coeff_field.mean_func, w[Multiindex()].basis)._matrix.array()
+print pde.assemble_operator_inner_dofs(coeff_field[0][0], w[Multiindex()].basis)._matrix.array()
+#sys.exit(0)
+
 
 P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
 w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
 
+#for mu in w.active_indices():
+#    pde.set_dirichlet_bc_entries(w[mu], homogeneous=bool(mu.order!=0))
+#w, zeta = pcg_solve(A, w, coeff_field, pde, {}, pcg_eps, pcg_maxiter)
+#numit = -1
 
 logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 

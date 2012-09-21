@@ -81,7 +81,7 @@ class FEMPoisson(FEMDiscretisationBase):
     """
 
     def __init__(self, f=Constant(1.0), a0=1,
-                 dirichlet_boundary=default_Dirichlet_boundary, uD=None,
+                 dirichlet_boundary=default_Dirichlet_boundary, uD=Constant(0.0),
                  neumann_boundary=None, g=None):
         self._f = f
         self._a0 = a0
@@ -118,6 +118,7 @@ class FEMPoisson(FEMDiscretisationBase):
         # setup problem, assemble and apply boundary conditions
         u = TrialFunction(V)
         v = TestFunction(V)
+
         a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
         if withBC:
             bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
