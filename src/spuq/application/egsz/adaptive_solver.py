@@ -43,18 +43,25 @@ def prepare_rhs(A, w, coeff_field, pde):
     b = 0 * w
     zero = Multiindex()
     b[zero].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[zero].basis)
+    
+    f = pde._f
+    if f.value_rank()==0:
+        zero_func = Constant(0.0)
+    else:
+        zero_func = Constant((0.0,) * f.value_size())
+
     for m in range(w.max_order):
         eps_m = zero.inc(m)
         am_f, am_rv = coeff_field[m]
         beta = am_rv.orth_polys.get_beta(1)
 
         g0 = b[eps_m].copy()
-        g0.coeffs = pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=Constant(0.0))
+        g0.coeffs = pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=zero_func)
         pde.set_dirichlet_bc_entries(g0, homogeneous=True)
         b[eps_m] += beta[1] * g0
 
         g0 = b[zero].copy()
-        g0.coeffs = pde.assemble_rhs(am_f, basis=b[zero].basis, f=Constant(0.0))
+        g0.coeffs = pde.assemble_rhs(am_f, basis=b[zero].basis, f=zero_func)
         pde.set_dirichlet_bc_entries(g0, homogeneous=True)
         b[zero] += beta[0] * g0
     return b
@@ -75,9 +82,6 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
 
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
-
-    for mu in w.active_indices():
-        pde.set_dirichlet_bc_entries(w[mu], homogeneous=bool(mu.order!=0))
 
     b2 = A * w
     stats["L2"] = error_norm(b, b2, "L2")
