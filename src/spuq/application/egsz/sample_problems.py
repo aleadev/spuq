@@ -78,6 +78,9 @@ class SampleProblem(object):
             func = "A*B*sin(freq*pi*(m+1)*x[0])*cos(freq*pi*(n+1)*x[1])"
         elif functype == "monomials":
             func = "A*B*pow(x[0],freq*m)*pow(x[1],freq*n)"
+        elif functype == "constant":
+#            func = "A*B*1.0"
+            func = "(A/A)*(B/B)*1.0"
         else:
             raise ValueError("Unkown func type %s", functype)
             
@@ -124,6 +127,8 @@ class SampleProblem(object):
             return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale)
         elif cftype == "linear":
             return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale)
+        elif cftype == "constant":
+            return cls.setupCF2("constant", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale)
         else:
             raise ValueError('Unsupported function type: %s', cftype)
 

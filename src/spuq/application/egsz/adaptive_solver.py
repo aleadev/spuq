@@ -44,7 +44,7 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
     P = PreconditioningOperator(coeff_field.mean_func,
                                 pde.assemble_solve_operator)
     b = 0 * w
-    mu  = Multiindex()
+    mu = Multiindex()
     b[mu].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[mu].basis)
     for m in range(w.max_order):
         eps_m = mu.inc(m)
@@ -209,6 +209,19 @@ def AdaptiveSolver(A, coeff_field, pde,
         
         # carry out refinement of meshes
         Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
+
+
+        # debug---
+        # TODO!!!
+        if do_uniform_refinement and False:        
+            mesh_markers = {}
+            for mu, vec in w.iteritems():
+                from dolfin import cells
+                mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
+            new_multiindices = {}
+            Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
+        # ---debug
+
 
     logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
                 refinement, max_refinements, sim_stats[refinement]["DOFS"], len(sim_stats[refinement]["MI"]))

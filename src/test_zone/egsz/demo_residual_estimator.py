@@ -68,7 +68,7 @@ path = os.path.dirname(__file__)
 # ============================================================
 
 # set problem (0:Poisson, 1:Navier-Lame)
-pdetype = 1
+pdetype = 0
 domaintype = 0
 domains = ('square', 'lshape', 'cooks')
 domain = domains[domaintype]
@@ -77,13 +77,13 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 1
+max_refinements = 3 
 
 # polynomial degree of FEM approximation
 degree = 1
 
 # flag for residual graph plotting
-PLOT_RESIDUAL = True
+PLOT_RESIDUAL = False
 
 # flag for final mesh plotting
 PLOT_MESHES = False
@@ -96,14 +96,14 @@ SAVE_SOLUTION = ''
 #SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
+REFINEMENT = {"RES":True, "PROJ":False, "MI":False}
 UNIFORM_REFINEMENT = True
 
 # initial mesh elements
-initial_mesh_N = 10
+initial_mesh_N = 5
 
 # MC error sampling
-MC_RUNS = 1
+MC_RUNS = 0
 MC_N = 1
 MC_HMAX = 3 / 10
 
@@ -115,7 +115,8 @@ MC_HMAX = 3 / 10
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # debug---
-#mis = [Multiindex(),]
+#mis = [Multiindex(), ]
+mis = [Multiindex(), Multiindex([1])]
 # ---debug
 
 # setup domain and meshes
@@ -134,10 +135,10 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
 # define coefficient field
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
-coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
+coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
 gamma = 0.9
 if pdetype == 0:
-    coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
+    coeff_field = SampleProblem.setupCF(coeff_types[3], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
 else:
     coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=1e5)
 a0 = coeff_field.mean_func
@@ -176,7 +177,7 @@ else:
 #    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
     # 2 Dirichlet
     Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-    uD = (Constant(0.0), Constant(0.0))
+    uD = (Constant(0.0), Constant(3.0))
 #    # 1 Dirichlet
 #    Dirichlet_boundary = (boundaries['left'])
 #    uD = (Constant(0.0))
@@ -214,16 +215,16 @@ newmi_add_maxm = 10     # maximal search length for new new multiindices (to be 
 theta_delta = 0.95       # number new multiindex activation bound
 max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
 # residual error evaluation
-quadrature_degree = 3
+quadrature_degree = 2
 # projection error evaluation
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 1e-4
+pcg_eps = 1e-8
 pcg_maxiter = 100
 error_eps = 1e-5
 
-if MC_RUNS > 0:
+if MC_RUNS > 0 or True:
     w_history = []
 else:
     w_history = None
@@ -457,16 +458,26 @@ if PLOT_SOLUTION:
     # plot
     print sub_spaces
     if sub_spaces == 0:
-        viz_p = plot(sample_sol_param._fefunc, "parametric solution", axes=True)
-        viz_d = plot(sample_sol_direct._fefunc, "direct solution", axes=True)
-        viz_v = plot(sol_variance._fefunc, "solution variance", axes=True)
+        viz_p = plot(sample_sol_param._fefunc, title="parametric solution", axes=True)
+        viz_d = plot(sample_sol_direct._fefunc, title="direct solution", axes=True)
+        if ref_maxm > 0:
+            viz_v = plot(sol_variance._fefunc, title="solution variance", axes=True)
         interactive()
+
+        # debug---
+        if True:        
+            for mu in w.active_indices():
+                for i, wi in enumerate(w_history):
+                    plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+#                    plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+                interactive()
+        # ---debug                
     else:
         mesh_param = sample_sol_param._fefunc.function_space().mesh()
         mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
         wireframe = True
-        viz_p = plot(sample_sol_param._fefunc, "parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
-        viz_d = plot(sample_sol_direct._fefunc, "direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe, interactive=True)#, rescale=False)
+        viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+        viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe, interactive=True)#, rescale=False)
 
 if SAVE_SOLUTION != '':
     logger.info("exported solution to " + SAVE_SOLUTION)

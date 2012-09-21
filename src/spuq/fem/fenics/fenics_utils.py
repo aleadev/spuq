@@ -3,7 +3,7 @@ from spuq.utils.type_check import takes, anything, optional, sequence_of
 from dolfin import (FunctionSpace, Expression, dx, inner,
                     nabla_grad, TrialFunction, TestFunction,
                     assemble, Constant, DirichletBC, refine,
-                    Function, norm, Mesh, CellFunction, cells, 
+                    Function, norm, Mesh, CellFunction, cells,
                     GenericMatrix, GenericVector)
 from dolfin.cpp import BoundaryCondition, _set_matrix_single_item
 from spuq.application.egsz.multi_vector import MultiVector
@@ -59,6 +59,7 @@ def remove_boundary_entries(A, bcs):
             remove_boundary_entries(A, bc)
     else:
         dofs = bcs.get_boundary_values().keys()
+        print "REMOVING", len(dofs), "BOUNDARY ENTRIES!!!", A.size(0), A.size(1)
         for i in dofs:
             _set_matrix_single_item(A, i, i, 0.0)
 
@@ -71,6 +72,7 @@ def set_dirichlet_bc_entries(u, bcs, homogeneous):
     else:
         dof2val = bcs.get_boundary_values()
         dofs = dof2val.keys()
+        print "SETTING", len(dofs), "BOUNDARY ENTRIES!!!", u.size()
         if homogeneous:
             u[dofs] = 0.0
         else:
