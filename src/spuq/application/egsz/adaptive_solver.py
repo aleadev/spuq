@@ -39,38 +39,45 @@ def setup_vector(mesh, pde, degree=1):
     return vec
 
 
-
-def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
-    P = PreconditioningOperator(coeff_field.mean_func,
-                                pde.assemble_solve_operator)
+def prepare_rhs(A, w, coeff_field, pde):
     b = 0 * w
-    mu = Multiindex()
-    b[mu].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[mu].basis)
+    zero = Multiindex()
+    b[zero].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[zero].basis)
     for m in range(w.max_order):
-        eps_m = mu.inc(m)
-        _, am_rv = coeff_field[m]
+        eps_m = zero.inc(m)
+        am_f, am_rv = coeff_field[m]
         beta = am_rv.orth_polys.get_beta(1)
 
-        
         g0 = b[eps_m].copy()
-        g0.coeffs = pde.assemble_rhs(Constant(0.0), basis=b[eps_m].basis)
+        g0.coeffs = pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=Constant(0.0))
         pde.set_dirichlet_bc_entries(g0, homogeneous=True)
         b[eps_m] += beta[1] * g0
 
-        g0 = b[mu].copy()
-        g0.coeffs = pde.assemble_rhs(Constant(0.0), basis=b[mu].basis)
+        g0 = b[zero].copy()
+        g0.coeffs = pde.assemble_rhs(am_f, basis=b[zero].basis, f=Constant(0.0))
         pde.set_dirichlet_bc_entries(g0, homogeneous=True)
-        b[mu] += beta[0] * g0
+        b[zero] += beta[0] * g0
+    return b
 
-    if False:
-        pde.set_dirichlet_bc_entries(w[mu], homogeneous=False)
-        for m in range(w.max_order):
-            eps_m = mu.inc(m)
-            pde.set_dirichlet_bc_entries(w[eps_m], homogeneous=True)
-        pde.copy_dirichlet_bc(A * w, b)
+def prepare_rhs_copy(A, w, coeff_field, pde):
+    b = prepare_rhs(A, w, coeff_field, pde)
+    zero  = Multiindex()
+    for mu in w.active_indices():
+        pde.set_dirichlet_bc_entries(w[mu], homogeneous=bool(mu.order!=0))
+    pde.copy_dirichlet_bc(A * w, b)
+    return b
+
+def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
+    b = prepare_rhs(A, w, coeff_field, pde)
+    P = PreconditioningOperator(coeff_field.mean_func,
+                                pde.assemble_solve_operator)
+
 
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
+
+    for mu in w.active_indices():
+        pde.set_dirichlet_bc_entries(w[mu], homogeneous=bool(mu.order!=0))
 
     b2 = A * w
     stats["L2"] = error_norm(b, b2, "L2")

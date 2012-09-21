@@ -77,7 +77,7 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 3 
+max_refinements = 0*3 
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -100,7 +100,7 @@ REFINEMENT = {"RES":True, "PROJ":False, "MI":False}
 UNIFORM_REFINEMENT = True
 
 # initial mesh elements
-initial_mesh_N = 5
+initial_mesh_N = 40
 
 # MC error sampling
 MC_RUNS = 0
@@ -139,7 +139,7 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
 gamma = 0.9
 if pdetype == 0:
-    coeff_field = SampleProblem.setupCF(coeff_types[3], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
+    coeff_field = SampleProblem.setupCF(coeff_types[0], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
 else:
     coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=1e5)
 a0 = coeff_field.mean_func

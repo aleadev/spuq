@@ -269,9 +269,11 @@ class FEMNavierLame(FEMDiscretisationBase):
         A, _ = assemble_system(a, l, bcs)
         return A
 
-    def assemble_rhs(self, lmbda, basis, withBC=True):
+
+    def assemble_rhs(self, lmbda, basis, withBC=True, f=None):
         """Assemble the discrete right-hand side."""
-        f = self._f
+        if f is None:
+            f = self._f
         Dirichlet_boundary = self._dirichlet_boundary
         uD = self._uD
 

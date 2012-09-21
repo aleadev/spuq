@@ -24,6 +24,7 @@ bc = DirichletBC(V, u0, u0_boundary)
 dofs = bc.get_boundary_values().keys()
 vals = bc.get_boundary_values().values()
 print dofs
+
 A0 = assemble(a).array()
 b0 = assemble(L).array()
 g0 = b0 * 0
@@ -51,7 +52,6 @@ b=b.array()
 print np.array([b, b0, b2]).T
 
 print la.norm(A-A2), la.norm(b-b2)
-print A2
 
 
 if False:
@@ -69,4 +69,7 @@ def remove_boundary_entries(A, bc):
         _set_matrix_single_item(A, i, i, 0.0)
         
 
+A, b = assemble_system(a, L, bc)
+#remove_boundary_entries(A, bc)
+print A.array()
 

@@ -75,7 +75,7 @@ class SampleProblem(object):
         if functype == "cos":
             func = "A*B*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])"
         elif functype == "sin":
-            func = "A*B*sin(freq*pi*(m+1)*x[0])*cos(freq*pi*(n+1)*x[1])"
+            func = "A*B*sin(freq*pi*(m+1)*x[0])*sin(freq*pi*(n+1)*x[1])"
         elif functype == "monomials":
             func = "A*B*pow(x[0],freq*m)*pow(x[1],freq*n)"
         elif functype == "constant":
