@@ -26,7 +26,7 @@ class Multiindex(object):
         nz = np.nonzero(self._arr)[0]
         if len(nz):
             l = np.max(nz)
-            self._arr = self._arr[:l + 1]
+            self._arr = self._arr[:l + 1].copy()
         else:
             self._arr = np.resize(self._arr, 0)
 
@@ -90,16 +90,18 @@ class Multiindex(object):
         newval = value + by
         if newval < 0:
             return None
-        if True:    # TODO: debugging work-around, clean up
+        if False:    # TODO: debugging work-around, clean up
             arr = self._arr.copy()
             if pos >= len(arr):
-                if len(arr):
+                if True or len(arr):
+                    print arr, type(arr), repr(arr)
+                    arr = arr.copy()
                     arr.resize(pos + 1)
                 else:
                     arr = np.array([0] * (pos + 1))
-        if False:   # TODO: dito
-            arr = np.array([0] * (pos + 1))
+        if True:   # TODO: dito
             l = len(self._arr)
+            arr = np.array([0] * max(l, (pos + 1)))
             if l:
                 arr[:l] = self._arr[:l]
         arr[pos] = newval

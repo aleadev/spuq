@@ -112,7 +112,7 @@ MC_HMAX = 3 / 10
 # ============================================================
 
 # define initial multiindices
-mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
+mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(3, 1)]
 
 # debug---
 #mis = [mis[0]]
@@ -155,7 +155,7 @@ if pdetype == 1:
     f = Constant((0.0, 0.0))
     # define Dirichlet bc
     Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-    uD = (Constant((0.0, 0.0)), Constant((3.0, 0.0)))
+    uD = (Constant((0.0, 0.0)), Constant((0.3, 0.0)))
 #    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
 #    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
     # homogeneous Neumann does not have to be set explicitly
@@ -221,7 +221,7 @@ quadrature_degree = 2
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 1e-8
+pcg_eps = 1e-6
 pcg_maxiter = 100
 error_eps = 1e-5
 
@@ -229,6 +229,28 @@ if MC_RUNS > 0 or True:
     w_history = []
 else:
     w_history = None
+
+
+
+
+
+
+def traceit(frame, event, arg):
+    filename = frame.f_code.co_filename
+    funcname = frame.f_code.co_name
+    lineno = frame.f_lineno
+
+    if event == "return" and funcname == "pcg":
+        w = arg[0]
+        plot( w[Multiindex()]._fefunc, title="Foo", interactive=False, wireframe=True)
+        #plot( w[Multiindex()]._fefunc, title="Foo", mode="displacement", interactive=False, wireframe=True)
+
+
+    return traceit
+
+import sys
+print sys.settrace(traceit)
+
 
 # NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
 if domaintype == 2:
@@ -463,7 +485,6 @@ if PLOT_SOLUTION:
         viz_d = plot(sample_sol_direct._fefunc, title="direct solution", axes=True)
         if ref_maxm > 0:
             viz_v = plot(sol_variance._fefunc, title="solution variance", axes=True)
-        interactive()
 
         # debug---
         if not True:        
@@ -473,9 +494,10 @@ if PLOT_SOLUTION:
                         plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
 #                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
                 interactive()
-#            interactive()
         # ---debug
         
+        for mu in w.active_indices():
+            plot(w[mu]._fefunc, title="parametric solution " + str(mu), axes=True)
     else:
         mesh_param = sample_sol_param._fefunc.function_space().mesh()
         mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
