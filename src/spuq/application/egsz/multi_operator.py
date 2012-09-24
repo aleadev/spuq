@@ -62,18 +62,20 @@ class MultiOperator(Operator):
             
             
             logger.debug("apply on mu = %s with joint mesh for %s", str(mu), str(mus))
-            # deterministic part
-            a0_f = self._coeff_field.mean_func
-            A0 = self._assemble_0(a0_f, w[mu].basis)
-            v[mu] = A0 * w[mu]
 
             # create joint mesh and basis
-            if hasattr(w[mu].basis, "mesh"):
+            if False and hasattr(w[mu].basis, "mesh"):
                 meshes = [w[m].basis.mesh for m in mus]
                 mesh = create_joint_mesh(meshes)
                 Vfine = w[mu].basis.copy(mesh=mesh)
             else:
                 Vfine = w[mu].basis
+
+            # deterministic part
+            a0_f = self._coeff_field.mean_func
+            A0 = self._assemble_0(a0_f, Vfine)
+            cur_v = A0 * Vfine.project_onto(w[mu])
+
             # iterate related multiindices
             for m in range(maxm):
                 logger.debug("with m = %i", m)
@@ -98,8 +100,8 @@ class MultiOperator(Operator):
                     cur_w += beta[-1] * Vfine.project_onto(w[mu2])
 
                 # apply discrete operator
-                vv = Am * cur_w
-                v[mu] += w[mu].basis.project_onto(vv)
+                cur_v += Am * cur_w
+                v[mu] = w[mu].basis.project_onto(cur_v)
         return v
 
     @takes(any, MultiVectorWithProjection)
