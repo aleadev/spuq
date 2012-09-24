@@ -6,7 +6,7 @@ from math import sqrt
 from collections import defaultdict
 
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
-from spuq.application.egsz.multi_operator import MultiOperator
+from spuq.application.egsz.multi_operator import MultiOperator, ASSEMBLY_TYPE
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
@@ -81,6 +81,9 @@ max_refinements = 3
 
 # polynomial degree of FEM approximation
 degree = 1
+
+# multioperator assembly type
+assembly_type = ASSEMBLY_TYPE.MU #JOINT_GLOBAL #JOINT_MU
 
 # flag for residual graph plotting
 PLOT_RESIDUAL = True
@@ -191,7 +194,7 @@ else:
                      f=f)
 
 # define multioperator
-A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs)
+A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=assembly_type)
 
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
 logger.info("active indices of w after initialisation: %s", w.active_indices())
@@ -232,9 +235,6 @@ else:
 
 
 
-
-
-
 def traceit(frame, event, arg):
     filename = frame.f_code.co_filename
     funcname = frame.f_code.co_name
@@ -242,7 +242,7 @@ def traceit(frame, event, arg):
 
     if event == "return" and funcname == "pcg":
         w = arg[0]
-        plot( w[Multiindex()]._fefunc, title="Foo", interactive=False, wireframe=True)
+        plot(w[Multiindex()]._fefunc, title="Foo", interactive=False, wireframe=True)
         #plot( w[Multiindex()]._fefunc, title="Foo", mode="displacement", interactive=False, wireframe=True)
 
 
@@ -250,6 +250,7 @@ def traceit(frame, event, arg):
 
 import sys
 print sys.settrace(traceit)
+
 
 
 # NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...

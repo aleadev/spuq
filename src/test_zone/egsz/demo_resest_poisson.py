@@ -76,7 +76,7 @@ domain = domains[domaintype]
 decay_exp = 4
 
 # refinements
-max_refinements = 7
+max_refinements = 4
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -191,20 +191,20 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.7         # residual marking bulk parameter 0.5
-theta_zeta = 0.2        # projection marking threshold factor 0.05
+theta_eta = 0.7         # residual marking bulk parameter 0.5, 0.7
+theta_zeta = 0.5        # projection marking threshold factor 0.05, 0.2
 min_zeta = 1e-10        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 newmi_add_maxm = 10     # maximal search length for new new multiindices (to be added to max order of solution)
-theta_delta = 0.95       # number new multiindex activation bound
-max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
+theta_delta = 0.95      # number new multiindex activation bound
+max_Lambda_frac = 1 / 2 # fraction of |Lambda| for max number of new multiindices
 # residual error evaluation
 quadrature_degree = 3
 # projection error evaluation
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 1e-2
+pcg_eps = 1e-4
 pcg_maxiter = 100
 error_eps = 1e-4
 

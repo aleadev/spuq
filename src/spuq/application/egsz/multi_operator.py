@@ -18,16 +18,19 @@ from spuq.utils.type_check import takes, anything, optional
 from spuq.fem.fenics.fenics_utils import create_joint_mesh
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
+from spuq.utils.enum import Enum
 
 import logging
 
 logger = logging.getLogger(__name__)
 
+ASSEMBLY_TYPE = Enum('MU', 'JOINT_MU', 'JOINT_GLOBAL')
+
 class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials."""
 
     @takes(anything, CoefficientField, callable, optional(callable), optional(Basis), optional(Basis))
-    def __init__(self, coeff_field, assemble_0, assemble_m=None, domain=None, codomain=None):
+    def __init__(self, coeff_field, assemble_0, assemble_m=None, domain=None, codomain=None, assembly_type=ASSEMBLY_TYPE.JOINT_MU):
         """Initialise discrete operator with FEM discretisation and
         coefficient field of the diffusion coefficient"""
         self._assemble_0 = assemble_0
@@ -35,6 +38,7 @@ class MultiOperator(Operator):
         self._coeff_field = coeff_field
         self._domain = domain
         self._codomain = codomain
+        self._assembly_type = assembly_type
 
     @takes(any, MultiVector)
     def apply(self, w):
@@ -48,6 +52,12 @@ class MultiOperator(Operator):
                 len(self._coeff_field), maxm)
             maxm = len(self._coeff_field)
             #        assert self._coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
+        
+        # construct global joint mesh
+        if self._assembly_type == ASSEMBLY_TYPE.JOINT_GLOBAL:
+            meshes = [w[m].basis.mesh for m in Lambda]
+            mesh = create_joint_mesh(meshes)
+            Vfine = w[Lambda[0]].basis.copy(mesh=mesh)
         
         for mu in Lambda:
             # identify active multi indices
@@ -63,13 +73,14 @@ class MultiOperator(Operator):
             
             logger.debug("apply on mu = %s with joint mesh for %s", str(mu), str(mus))
 
-            # create joint mesh and basis
-            if False and hasattr(w[mu].basis, "mesh"):
-                meshes = [w[m].basis.mesh for m in mus]
-                mesh = create_joint_mesh(meshes)
-                Vfine = w[mu].basis.copy(mesh=mesh)
-            else:
-                Vfine = w[mu].basis
+            if self._assembly_type != ASSEMBLY_TYPE.JOINT_GLOBAL:
+                # create joint mesh and basis
+                if self._assembly_type == ASSEMBLY_TYPE.JOINT_MU and hasattr(w[mu].basis, "mesh"):
+                    meshes = [w[m].basis.mesh for m in mus]
+                    mesh = create_joint_mesh(meshes)
+                    Vfine = w[mu].basis.copy(mesh=mesh)
+                else:
+                    Vfine = w[mu].basis
 
             # deterministic part
             a0_f = self._coeff_field.mean_func
