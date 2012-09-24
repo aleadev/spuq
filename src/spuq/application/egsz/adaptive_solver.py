@@ -53,25 +53,17 @@ def prepare_rhs(A, w, coeff_field, pde):
     for m in range(w.max_order):
         eps_m = zero.inc(m)
         am_f, am_rv = coeff_field[m]
-        beta = am_rv.orth_polys.get_beta(1)
+        beta = am_rv.orth_polys.get_beta(0)
 
         g0 = b[eps_m].copy()
         g0.coeffs = pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=zero_func)
         pde.set_dirichlet_bc_entries(g0, homogeneous=True)
-        b[eps_m] += beta[-1] * g0
+        b[eps_m] += beta[1] * g0
 
         g0 = b[zero].copy()
         g0.coeffs = pde.assemble_rhs(am_f, basis=b[zero].basis, f=zero_func)
         pde.set_dirichlet_bc_entries(g0, homogeneous=True)
         b[zero] += beta[0] * g0
-    return b
-
-def prepare_rhs_copy(A, w, coeff_field, pde):
-    b = prepare_rhs(A, w, coeff_field, pde)
-    zero = Multiindex()
-    for mu in w.active_indices():
-        pde.set_dirichlet_bc_entries(w[mu], homogeneous=bool(mu.order != 0))
-    pde.copy_dirichlet_bc(A * w, b)
     return b
 
 def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
