@@ -74,19 +74,19 @@ domains = ('square', 'lshape', 'cooks')
 domain = domains[domaintype]
 
 # decay exponent
-decay_exp = 2
+decay_exp = 4
 
 # refinements
-max_refinements = 0*3 
+max_refinements = 3
 
 # polynomial degree of FEM approximation
 degree = 1
 
 # flag for residual graph plotting
-PLOT_RESIDUAL = False
+PLOT_RESIDUAL = True
 
 # flag for final mesh plotting
-PLOT_MESHES = False
+PLOT_MESHES = True
 
 # flag for (sample) solution plotting
 PLOT_SOLUTION = True
@@ -96,15 +96,15 @@ SAVE_SOLUTION = ''
 #SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":False, "MI":False}
-UNIFORM_REFINEMENT = True
+REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
+UNIFORM_REFINEMENT = False
 
 # initial mesh elements
-initial_mesh_N = 40
+initial_mesh_N = 10
 
 # MC error sampling
 MC_RUNS = 0
-MC_N = 1
+MC_N = 3
 MC_HMAX = 3 / 10
 
 # ============================================================
@@ -113,15 +113,15 @@ MC_HMAX = 3 / 10
 
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
-mis = [mis[0]]
 
 # debug---
+#mis = [mis[0]]
 #mis = [Multiindex(), ]
-mis = [Multiindex(), Multiindex([1])]
+#mis = [Multiindex(), Multiindex([1])]
 # ---debug
 
 # setup domain and meshes
-mesh0, boundaries = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
+mesh0, boundaries, dim = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
@@ -139,7 +139,7 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
 gamma = 0.9
 if pdetype == 0:
-    coeff_field = SampleProblem.setupCF(coeff_types[0], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
+    coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform")
 else:
     coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=1e5)
 a0 = coeff_field.mean_func
@@ -208,12 +208,12 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.5         # residual marking bulk parameter
-theta_zeta = 0.1        # projection marking threshold factor
+theta_eta = 0.4         # residual marking bulk parameter
+theta_zeta = 0.01        # projection marking threshold factor
 min_zeta = 1e-10        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 newmi_add_maxm = 10     # maximal search length for new new multiindices (to be added to max order of solution)
-theta_delta = 0.95       # number new multiindex activation bound
+theta_delta = 0.95      # number new multiindex activation bound
 max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
 # residual error evaluation
 quadrature_degree = 2
@@ -399,7 +399,7 @@ if PLOT_RESIDUAL and len(sim_stats) > 1:
         for mu, v in reserrmu.iteritems():
             ms = str(mu)
             ms = ms[ms.find('=') + 1:-1]
-            ax.loglog(x[-(len(v) + 1):], v, '-g<', label=ms)
+            ax.loglog(x[-len(v):], v, '-g<', label=ms)
         legend(loc='upper right')
 #        if SAVE_SOLUTION != "":
 #            fig4.savefig(os.path.join(SAVE_SOLUTION, 'RESCONTRIB.png'))
@@ -466,13 +466,16 @@ if PLOT_SOLUTION:
         interactive()
 
         # debug---
-        if True:        
+        if not True:        
             for mu in w.active_indices():
                 for i, wi in enumerate(w_history):
-                    plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
-#                    plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+                    if i == len(w_history) - 1 or True:
+                        plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+#                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
                 interactive()
-        # ---debug                
+#            interactive()
+        # ---debug
+        
     else:
         mesh_param = sample_sol_param._fefunc.function_space().mesh()
         mesh_direct = sample_sol_direct._fefunc.function_space().mesh()

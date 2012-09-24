@@ -76,11 +76,11 @@ def setup_vec(mesh):
 domain = 'square'
 
 # initial mesh elements
-initial_mesh_N = 3
-initial_mesh_N = 40
+#initial_mesh_N = 3
+initial_mesh_N = 5
 
 # decay exponent
-decay_exp = 2
+decay_exp = 3
 
 
 # ============================================================
@@ -95,9 +95,9 @@ mis = list(Multiindex.createCompleteOrderSet(4, 1))
 #os.sys.exit()
 
 # setup meshes
-mesh0, boundaries = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
-meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
-
+mesh0, boundaries, dim = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
+#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
+meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=5, randref=(0.6, 0.5))
 
 # debug---
 #from dolfin import refine
@@ -119,7 +119,7 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # define coefficient field
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[0], decayexp=decay_exp, 
+coeff_field = SampleProblem.setupCF(coeff_types[0], decayexp=decay_exp,
                                     gamma=gamma, freqscale=1, freqskip=20,
                                     rvtype="uniform")
 # define Dirichlet boundary
@@ -133,7 +133,7 @@ g = None
 # define source term
 f = Constant(1.0)
 
-pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD, 
+pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
                  neumann_boundary=Neumann_boundary, g=g,
                  f=f)
 
@@ -157,7 +157,7 @@ print dofs
 
 if True:
     b = 0 * w
-    zero  = Multiindex()
+    zero = Multiindex()
     b[zero].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[zero].basis)
     for m in range(w.max_order):
         eps_m = zero.inc(m)
@@ -165,18 +165,18 @@ if True:
         beta = am_rv.orth_polys.get_beta(1)
         b[eps_m].coeffs += beta[-1] * pde.assemble_rhs(am_f, basis=b[eps_m].basis, f=Constant(0.0))
         b[zero].coeffs += beta[0] * pde.assemble_rhs(am_f, basis=b[zero].basis, f=Constant(0.0))
-        b[eps_m].coeffs[dofs]=0
+        b[eps_m].coeffs[dofs] = 0
     b0 = 1 * b
 
 if True:
     b = 0 * w
     w0 = 1 * w
-    b = 1*b0
-    zero  = Multiindex()
+    b = 1 * b0
+    zero = Multiindex()
     b[zero].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[zero].basis)
     pde.set_dirichlet_bc_entries(w0[mu], homogeneous=False)
     for mu in w0.active_indices():
-        pde.set_dirichlet_bc_entries(w0[mu], homogeneous=bool(mu.order!=0))
+        pde.set_dirichlet_bc_entries(w0[mu], homogeneous=bool(mu.order != 0))
 
     d = A * w0
     pde.copy_dirichlet_bc(d, b)
@@ -189,7 +189,7 @@ b3 = prepare_rhs_copy(A, w, coeff_field, pde)
 
 bl = 0 * b
 for mu in w.active_indices():
-    bl[mu].coeffs[dofs]=1
+    bl[mu].coeffs[dofs] = 1
 
 
 np.set_printoptions(linewidth=1000)
@@ -197,7 +197,7 @@ for mu in w.active_indices():
     print
     print "="*80
     print mu
-    print np.array([b0[mu].coeffs.array(),b1[mu].coeffs.array(),b2[mu].coeffs.array(),b3[mu].coeffs.array(),bl[mu].coeffs.array()]).T
+    print np.array([b0[mu].coeffs.array(), b1[mu].coeffs.array(), b2[mu].coeffs.array(), b3[mu].coeffs.array(), bl[mu].coeffs.array()]).T
 
 
 b = b2
@@ -210,5 +210,10 @@ logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
 if True:
     for mu in w.active_indices():
-        plot(w[mu]._fefunc, title="Parametric solution for mu=%s"%mu)
+        plot(w[mu]._fefunc, title="Parametric solution for mu=%s" % mu)
+#    interactive()
+
+if True:
+    for i, mesh in enumerate(meshes):
+        plot(mesh, title="mesh %i" % i)
     interactive()

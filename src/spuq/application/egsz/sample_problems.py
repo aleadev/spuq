@@ -64,7 +64,7 @@ class SampleProblem(object):
 
     @classmethod
     #@takes(anything, str, str, optional(dict))
-    def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1, scale=1):
+    def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1, scale=1, dim=2):
         if rvtype == "uniform":
             rvs = lambda i: UniformRV(a= -1, b=1)
         elif rvtype == "normal":
@@ -73,14 +73,24 @@ class SampleProblem(object):
             raise ValueError("Unkown RV type %s", rvtype)
 
         if functype == "cos":
-            func = "A*B*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])"
+            if dim == 1:
+                func = "A*B*cos(freq*pi*m*x[0])"
+            else:
+                func = "A*B*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])"
         elif functype == "sin":
-            func = "A*B*sin(freq*pi*(m+1)*x[0])*sin(freq*pi*(n+1)*x[1])"
+            if dim == 1:
+                func = "A*B*sin(freq*pi*(m+1)*x[0])"
+            else:
+                func = "A*B*sin(freq*pi*(m+1)*x[0])*sin(freq*pi*(n+1)*x[1])"
         elif functype == "monomials":
-            func = "A*B*pow(x[0],freq*m)*pow(x[1],freq*n)"
+            if dim == 1:
+                func = "A*B*pow(x[0],freq*m)"
+            else:
+                func = "A*B*pow(x[0],freq*m)*pow(x[1],freq*n)"
         elif functype == "constant":
 #            func = "A*B*1.0"
-            func = "(A/A)*(B/B)*1.0"
+#            func = "(A/A)*(B/B)*1.0"
+            func = "1.0+A+B-A-B"
         else:
             raise ValueError("Unkown func type %s", functype)
             
@@ -105,30 +115,34 @@ class SampleProblem(object):
         # NOTE: the explicit degree of the expression should influence the quadrature order during assembly
         degree = 3
 
-        mis = MultiindexSet.createCompleteOrderSet(2)
+        mis = MultiindexSet.createCompleteOrderSet(dim)
         for i in range(freqskip + 1):
             mis.next()
 
         a0 = Expression("B", element=element, B=scale)
-        a = (Expression(func, freq=freqscale, A=ampfunc(i), B=scale,
-                        m=int(mu[0]), n=int(mu[1]),
-                        degree=degree, element=element) for i, mu in enumerate(mis))
+        if dim == 1:
+            a = (Expression(func, freq=freqscale, A=ampfunc(i), B=scale,
+                            m=int(mu[0]), degree=degree, element=element) for i, mu in enumerate(mis))
+        else:
+            a = (Expression(func, freq=freqscale, A=ampfunc(i), B=scale,
+                            m=int(mu[0]), n=int(mu[1]),
+                            degree=degree, element=element) for i, mu in enumerate(mis))
 
         return ParametricCoefficientField(a0, a, rvs)
 
     @classmethod
     @takes(anything, str, optional(dict))
-    def setupCF(cls, cftype, decayexp=2, gamma=0.9, freqscale=1, freqskip=0, N=1, rvtype='uniform', scale=1):
+    def setupCF(cls, cftype, decayexp=2, gamma=0.9, freqscale=1, freqskip=0, N=1, rvtype='uniform', scale=1, dim=2):
         if cftype == "EF-square-cos":
-            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale)
+            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim)
         elif cftype == "EF-square-sin":
-            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale)
+            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim)
         elif cftype == "monomials":
-            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale)
+            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim)
         elif cftype == "linear":
-            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale)
+            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale, dim=dim)
         elif cftype == "constant":
-            return cls.setupCF2("constant", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale)
+            return cls.setupCF2("constant", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale, dim=dim)
         else:
             raise ValueError('Unsupported function type: %s', cftype)
 

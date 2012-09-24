@@ -68,22 +68,22 @@ path = os.path.dirname(__file__)
 
 # set problem (0:Poisson, 1:Navier-Lame)
 pdetype = 0
-domaintype = 0
-domains = ('square', 'lshape', 'cooks')
+domaintype = 1
+domains = ('interval', 'square', 'lshape', 'cooks')
 domain = domains[domaintype]
 
 # decay exponent
-decay_exp = 2
+decay_exp = 4
 
 # refinements
-max_refinements = 5
+max_refinements = 7
 
 # polynomial degree of FEM approximation
 degree = 1
 
 # flag for final solution export
-#SAVE_SOLUTION = ''
-SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
+SAVE_SOLUTION = ''
+#SAVE_SOLUTION = 'os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")'
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
@@ -105,7 +105,7 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 # ---debug
 
 # setup domain and meshes
-mesh0, boundaries = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
+mesh0, boundaries, dim = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
@@ -122,7 +122,8 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform")
+freqskip = 10 * 0
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=freqskip, rvtype="uniform", dim=dim)
 a0 = coeff_field.mean_func
 
 # setup boundary conditions
@@ -132,6 +133,7 @@ Neumann_boundary = None
 g = None
 if pdetype == 1:
     # ========== Navier-Lame ===========
+    assert dim == 2
     # define source term
     f = Constant((0.0, 0.0))
     # define Dirichlet bc
@@ -172,7 +174,7 @@ else:
                      f=f)
 
 # define multioperator
-A = MultiOperator(coeff_field, pde.assemble_operator)
+A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs)
 
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
 logger.info("active indices of w after initialisation: %s", w.active_indices())
@@ -189,8 +191,8 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 cQ = 1.0
 ceta = 1.0
 # marking parameters
-theta_eta = 0.5         # residual marking bulk parameter
-theta_zeta = 0.1        # projection marking threshold factor
+theta_eta = 0.7         # residual marking bulk parameter 0.5
+theta_zeta = 0.2        # projection marking threshold factor 0.05
 min_zeta = 1e-10        # minimal projection error considered
 maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
 newmi_add_maxm = 10     # maximal search length for new new multiindices (to be added to max order of solution)
@@ -202,7 +204,7 @@ quadrature_degree = 3
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 1e-4
+pcg_eps = 1e-2
 pcg_maxiter = 100
 error_eps = 1e-4
 

@@ -45,7 +45,7 @@ def prepare_rhs(A, w, coeff_field, pde):
     b[zero].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[zero].basis)
     
     f = pde._f
-    if f.value_rank()==0:
+    if f.value_rank() == 0:
         zero_func = Constant(0.0)
     else:
         zero_func = Constant((0.0,) * f.value_size())
@@ -68,9 +68,9 @@ def prepare_rhs(A, w, coeff_field, pde):
 
 def prepare_rhs_copy(A, w, coeff_field, pde):
     b = prepare_rhs(A, w, coeff_field, pde)
-    zero  = Multiindex()
+    zero = Multiindex()
     for mu in w.active_indices():
-        pde.set_dirichlet_bc_entries(w[mu], homogeneous=bool(mu.order!=0))
+        pde.set_dirichlet_bc_entries(w[mu], homogeneous=bool(mu.order != 0))
     pde.copy_dirichlet_bc(A * w, b)
     return b
 
@@ -220,19 +220,6 @@ def AdaptiveSolver(A, coeff_field, pde,
         
         # carry out refinement of meshes
         Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
-
-
-        # debug---
-        # TODO!!!
-        if do_uniform_refinement and False:        
-            mesh_markers = {}
-            for mu, vec in w.iteritems():
-                from dolfin import cells
-                mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
-            new_multiindices = {}
-            Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
-        # ---debug
-
 
     logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
                 refinement, max_refinements, sim_stats[refinement]["DOFS"], len(sim_stats[refinement]["MI"]))

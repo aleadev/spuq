@@ -1,12 +1,24 @@
-from dolfin import Mesh, UnitSquare, compile_subdomains
+from dolfin import Mesh, UnitSquare, UnitInterval, compile_subdomains
 import os
 import numpy as np
 
 class SampleDomain(object):
     @classmethod
     def setupDomain(cls, name, **kwargs):
-        _domains = {'lshape':cls._lshape, 'square':cls._square, 'cooks':cls._cooks}
+        _domains = {'interval':cls._interval, 'lshape':cls._lshape, 'square':cls._square, 'cooks':cls._cooks}
         return _domains[name](**kwargs)
+
+    @classmethod
+    def _interval(cls, **kwargs):
+        N = kwargs['initial_mesh_N']
+        mesh0 = UnitInterval(N)
+        maxx, minx = 1, 0
+        # setup boundary parts
+        left, right = compile_subdomains(['near(x[0], minx) && on_boundary',
+                                          'near(x[0], maxx) && on_boundary'])
+        left.minx = minx
+        right.maxx = maxx
+        return mesh0, {'left':left, 'right':right}, 1
     
     @classmethod
     def _lshape(cls, **kwargs):
@@ -21,7 +33,7 @@ class SampleDomain(object):
         top.maxy = maxy
         bottom.miny = miny
         left.minx = minx
-        return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right}
+        return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right}, 2
 
     @classmethod
     def _square(cls, **kwargs):
@@ -37,7 +49,7 @@ class SampleDomain(object):
         bottom.miny = miny
         left.minx = minx
         right.maxx = maxx
-        return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right}
+        return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right}, 2
 
     @classmethod
     def _cooks(cls, **kwargs):
@@ -72,4 +84,4 @@ class SampleDomain(object):
         bottom.maxx = maxx
         left.minx = minx
         right.maxx = maxx
-        return mesh, {'top':top, 'bottom':bottom, 'left':left, 'right':right, 'llc':llc, 'lrc':lrc, 'tlc':tlc, 'trc':trc}
+        return mesh, {'top':top, 'bottom':bottom, 'left':left, 'right':right, 'llc':llc, 'lrc':lrc, 'tlc':tlc, 'trc':trc}, 2
