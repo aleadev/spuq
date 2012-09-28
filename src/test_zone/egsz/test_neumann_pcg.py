@@ -91,13 +91,12 @@ decay_exp = 3
 # define initial multiindices
 mis = list(Multiindex.createCompleteOrderSet(4, 1))
 #mis = list(Multiindex.createCompleteOrderSet(0, 1))
-#print mis
-#os.sys.exit()
+mis = [mis[0]]
 
 # setup meshes
 mesh0, boundaries, dim = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
-#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
-meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=5, randref=(0.6, 0.5))
+meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
+#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=5, randref=(0.6, 0.5))
 
 # debug---
 #from dolfin import refine
@@ -136,6 +135,40 @@ f = Constant(1.0)
 pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
                  neumann_boundary=Neumann_boundary, g=g,
                  f=f)
+
+
+
+
+
+
+
+
+
+
+
+def traceit(frame, event, arg):
+    filename = frame.f_code.co_filename
+    funcname = frame.f_code.co_name
+    lineno = frame.f_lineno
+
+    if event == "line" and lineno==33 and funcname == "pcg":
+        locals = frame.f_locals
+        globals = frame.f_globals
+        print eval("(i-1, norm(rho[i-1]), norm(s[i-1]), norm(v[i-1]))", globals, locals)
+
+    return traceit
+
+import sys
+print sys.settrace(traceit)
+
+
+
+
+
+
+
+
+
 
 
 # define multioperator

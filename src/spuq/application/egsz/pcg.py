@@ -48,3 +48,6 @@ def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
 
 
 
+import math
+def norm(v):
+    return math.sqrt(inner(v,v))
