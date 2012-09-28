@@ -47,7 +47,3 @@ def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
     raise Exception("PCG did not converge")
 
 
-
-import math
-def norm(v):
-    return math.sqrt(inner(v,v))
