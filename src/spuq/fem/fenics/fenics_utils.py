@@ -148,7 +148,7 @@ def weighted_H1_norm(w, vec, piecewise=False):
         norm_vec = sqrt(ae)
     return norm_vec
 
-
+# TODO: make this function readable (variable names, comments)
 @takes((list, tuple), optional(Mesh))
 def create_joint_mesh(meshes, destmesh=None):
     if destmesh is None:
