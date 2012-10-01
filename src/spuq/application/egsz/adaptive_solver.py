@@ -66,11 +66,11 @@ def prepare_rhs(A, w, coeff_field, pde):
         b[zero] += beta[0] * g0
     return b
 
+
 def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
     b = prepare_rhs(A, w, coeff_field, pde)
     P = PreconditioningOperator(coeff_field.mean_func,
                                 pde.assemble_solve_operator)
-
 
     w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)

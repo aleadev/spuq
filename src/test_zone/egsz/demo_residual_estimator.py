@@ -74,10 +74,10 @@ domains = ('square', 'lshape', 'cooks')
 domain = domains[domaintype]
 
 # decay exponent
-decay_exp = 4
+decay_exp = 2
 
 # refinements
-max_refinements = 3
+max_refinements = 1
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -89,7 +89,7 @@ assembly_type = ASSEMBLY_TYPE.MU #JOINT_GLOBAL #JOINT_MU
 PLOT_RESIDUAL = True
 
 # flag for final mesh plotting
-PLOT_MESHES = True
+PLOT_MESHES = False
 
 # flag for (sample) solution plotting
 PLOT_SOLUTION = True
@@ -99,7 +99,7 @@ SAVE_SOLUTION = ''
 #SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
+REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
 UNIFORM_REFINEMENT = False
 
 # initial mesh elements
@@ -118,7 +118,7 @@ MC_HMAX = 3 / 10
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(3, 1)]
 
 # debug---
-#mis = [mis[0]]
+mis = [mis[0]]
 #mis = [Multiindex(), ]
 #mis = [Multiindex(), Multiindex([1])]
 # ---debug
@@ -235,21 +235,19 @@ else:
 
 
 
-def traceit(frame, event, arg):
-    filename = frame.f_code.co_filename
-    funcname = frame.f_code.co_name
-    lineno = frame.f_lineno
-
-    if event == "return" and funcname == "pcg":
-        w = arg[0]
-        plot(w[Multiindex()]._fefunc, title="Foo", interactive=False, wireframe=True)
-        #plot( w[Multiindex()]._fefunc, title="Foo", mode="displacement", interactive=False, wireframe=True)
-
-
-    return traceit
-
-import sys
-print sys.settrace(traceit)
+#def traceit(frame, event, arg):
+#    filename = frame.f_code.co_filename
+#    funcname = frame.f_code.co_name
+#    lineno = frame.f_lineno
+#
+#    if event == "return" and funcname == "pcg":
+#        w = arg[0]
+#        plot(w[Multiindex()]._fefunc, title="Foo", interactive=False, wireframe=True)
+#        #plot( w[Multiindex()]._fefunc, title="Foo", mode="displacement", interactive=False, wireframe=True)
+#    return traceit
+#
+#import sys
+#print sys.settrace(traceit)
 
 
 
