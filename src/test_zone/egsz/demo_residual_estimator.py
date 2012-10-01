@@ -233,24 +233,6 @@ if MC_RUNS > 0 or True:
 else:
     w_history = None
 
-
-
-#def traceit(frame, event, arg):
-#    filename = frame.f_code.co_filename
-#    funcname = frame.f_code.co_name
-#    lineno = frame.f_lineno
-#
-#    if event == "return" and funcname == "pcg":
-#        w = arg[0]
-#        plot(w[Multiindex()]._fefunc, title="Foo", interactive=False, wireframe=True)
-#        #plot( w[Multiindex()]._fefunc, title="Foo", mode="displacement", interactive=False, wireframe=True)
-#    return traceit
-#
-#import sys
-#print sys.settrace(traceit)
-
-
-
 # NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
 if domaintype == 2:
     maxh = 0.0

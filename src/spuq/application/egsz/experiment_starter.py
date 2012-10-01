@@ -22,6 +22,8 @@ class ExperimentStarter(object):
                              dest='plotSolution', help='')
         optparser.add_option('--plotEstimator', action='store_false', default=False,
                              dest='plotEstimator', help='')
+        optparser.add_option('--plotError', action='store_false', default=False,
+                             dest='plotError', help='')
         optparser.add_option('--plotMesh', action='store_false', default=False,
                              dest='plotMesh', help='')
         
@@ -53,12 +55,13 @@ class ExperimentStarter(object):
         getter = ("get", "getint", "getfloat", "getboolean")
         option_defs = (("SFEM",
                         {"problem_type":1,
-                            "domain_type":1,
+                            "domain":0,
                             "boundary_type":1,
                             "assemble_type":0,
                             "FEM_degree":1,
                             "decay_exp":1,
                             "coeff_type":1,
+                            "coeff_scale":2,
                             "freq_scale":2,
                             "freq_skip":1,
                             "gamma":2}),
@@ -84,6 +87,8 @@ class ExperimentStarter(object):
                             "pcg_eps":2,
                             "pcg_maxiter":1,
                             "error_eps":2}),
+                   ("LOGGING",
+                        {"level":0}),
                    ("MC",
                         {"runs":1,
                             "N":1,
@@ -116,13 +121,17 @@ class ExperimentStarter(object):
 
         # start SFEM
         if self.opts.runSFEM:
+            print "="*60
             print "starting SFEM"
-#            run_SFEM(self.opts, self.conf)
+            print "="*60
+            run_SFEM(self.opts, self.conf)
         
         # start MC
         if self.opts.runMC:
+            print "="*60
             print "starting MC"
-#            run_MC(self.opts, self.conf)
+            print "="*60
+            run_MC(self.opts, self.conf)
 
 # -----------------------------------------------------------------------------
 
