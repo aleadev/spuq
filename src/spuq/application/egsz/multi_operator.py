@@ -94,6 +94,7 @@ class MultiOperator(Operator):
                 am_f, am_rv = self._coeff_field[m]
                 Am = self._assemble_m(am_f, Vfine)
 
+
                 # prepare polynom coefficients
                 beta = am_rv.orth_polys.get_beta(mu[m])
 
@@ -112,7 +113,7 @@ class MultiOperator(Operator):
 
                 # apply discrete operator
                 cur_v += Am * cur_w
-                v[mu] = w[mu].basis.project_onto(cur_v)
+            v[mu] = w[mu].basis.project_onto(cur_v)
         return v
 
     @takes(any, MultiVectorWithProjection)

@@ -36,8 +36,14 @@ def pcg(A, f, P, w0, eps=1e-4, maxiter=100):
             raise Exception("Preconditioner for PCG is not positive definite (%s)" % zeta[i - 1])
         if zeta[i - 1] <= eps ** 2:
             return (w[i - 1], zeta[i - 1], i)
+
         z[i - 1] = A * v[i - 1]
         alpha[i - 1] = inner(z[i - 1], v[i - 1])
+        if alpha[i - 1] == 0:
+            raise Exception("Matrix for PCG is singular (%s)" % alpha[i - 1])
+        elif alpha[i - 1] < 0:
+            raise Exception("Matrix for PCG is not positive definite (%s)" % alpha[i - 1])
+
         w[i] = w[i - 1] + zeta[i - 1] / alpha[i - 1] * v[i - 1]
         rho[i] = rho[i - 1] - zeta[i - 1] / alpha[i - 1] * z[i - 1]
         s[i] = P * rho[i]
