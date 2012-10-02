@@ -109,29 +109,40 @@ class MultiVector(Vector):
     def __repr__(self):
         return "<%s keys=%s>" % (strclass(self.__class__), self.mi2vec.keys())
 
-    def pickle(self, outdir):
-        """pickle object"""
-#        outdir = os.path.abspath(os.path.abspath(outdir))
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
-        Lambda = self.active_indices()
-        # save active multiindex set
-        with open(os.path.join(outdir, 'MI.pkl'), 'wb') as f:
-            pickle.dump(Lambda, f)
-        # iteratively pickle multiindex data/mesh
-        for mu in Lambda:
-            self[mu].pickle(outdir, str(mu))
+    def __getstate__(self):
+        # pickling preparation
+        odict = self.__dict__.copy() # copy the dict since we change it
+        del odict['on_modify']
+        return odict
     
-    @classmethod
-    def from_pickle(cls, indir, veccls, sub_spaces=1):
-        """unpickle object"""
-        with open(os.path.join(indir, 'MI.pkl'), "rb") as f:
-            Lambda = pickle.load(f)
-            print "from_pickle Lambda:", Lambda
-            w = cls()
-            for mu in Lambda:
-                w[mu] = veccls.from_pickle(indir, str(mu), sub_spaces)
-            return w
+    def __setstate__(self, d):
+        # pickling restore
+        self.__dict__.update(d)
+
+
+#    def pickle(self, outdir):
+#        """pickle object"""
+##        outdir = os.path.abspath(os.path.abspath(outdir))
+#        if not os.path.exists(outdir):
+#            os.makedirs(outdir)
+#        Lambda = self.active_indices()
+#        # save active multiindex set
+#        with open(os.path.join(outdir, 'MI.pkl'), 'wb') as f:
+#            pickle.dump(Lambda, f)
+#        # iteratively pickle multiindex data/mesh
+#        for mu in Lambda:
+#            self[mu].pickle(outdir, str(mu))
+#    
+#    @classmethod
+#    def from_pickle(cls, indir, veccls, sub_spaces=1):
+#        """unpickle object"""
+#        with open(os.path.join(indir, 'MI.pkl'), "rb") as f:
+#            Lambda = pickle.load(f)
+#            print "from_pickle Lambda:", Lambda
+#            w = cls()
+#            for mu in Lambda:
+#                w[mu] = veccls.from_pickle(indir, str(mu), sub_spaces)
+#            return w
     
 
 class MultiVectorWithProjection(MultiVector):
@@ -293,3 +304,18 @@ class MultiVectorWithProjection(MultiVector):
         self._cache_active = val
         if not val:
             self.clear_cache()
+
+    def __getstate__(self):
+        # pickling preparation
+        odict = self.__dict__.copy() # copy the dict since we change it
+        odict['_proj_cache'] = defaultdict(dict)
+        odict['_back_cache'] = {}
+        del odict['on_modify']
+        del odict['project']
+        return odict
+    
+    def __setstate__(self, d):
+        # pickling restore
+        self.__dict__.update(d)
+        # NOTE: this sets default projection and does not restore any other projection type! 
+        self.project = MultiVectorWithProjection.default_project

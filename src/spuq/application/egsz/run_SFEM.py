@@ -33,7 +33,7 @@ except:
 def setup_logging(level):
     # log level and format configuration
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
+    logging.basicConfig(filename=__file__[:-2] + 'log', level=level,
                         format=log_format)
     
     # FEniCS logging
@@ -51,7 +51,7 @@ def setup_logging(level):
     #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
     # add console logging output
     ch = logging.StreamHandler()
-    ch.setLevel(LOG_LEVEL)
+    ch.setLevel(level)
     ch.setFormatter(logging.Formatter(log_format))
     logger.addHandler(ch)
     logging.getLogger("spuq").addHandler(ch)
@@ -63,7 +63,7 @@ def run_SFEM(opts, conf):
 #                     {"problem_type":1,
 #                         "domain":0,
 #                         "boundary_type":1,
-#                         "assemble_type":0,
+#                         "assembly_type":0,
 #                         "FEM_degree":1,
 #                         "decay_exp":1,
 #                         "coeff_type":1,
@@ -100,10 +100,11 @@ def run_SFEM(opts, conf):
             continue
         secconf = conf[sec]
         for key, val in secconf.iteritems():
-            print "CONF_" + key + "= secconf['" + key + "']"
+            print "CONF_" + key + "= secconf['" + key + "'] =", secconf[key]
             exec "CONF_" + key + "= secconf['" + key + "']"
 
     # setup logging
+    print "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
     exec "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
     logger = setup_logging(LOG_LEVEL)
     
@@ -119,9 +120,10 @@ def run_SFEM(opts, conf):
         SAVE_SOLUTION = ''
     else:
         SAVE_SOLUTION = os.path.join(opts.basedir, "SFEM-results")
+        logger.info("DATA EXPORT DESTINATION IS %s" % SAVE_SOLUTION)
     
     # flags for residual, projection, new mi refinement 
-    REFINEMENT = {"RES":CONF_refine_residual, "PROJ":CONF_refine_project, "MI":CONF_refine_Lambda}
+    REFINEMENT = {"RES":CONF_refine_residual, "PROJ":CONF_refine_projection, "MI":CONF_refine_Lambda}
     
     # initial mesh elements
     initial_mesh_N = 10
@@ -196,9 +198,9 @@ def run_SFEM(opts, conf):
                          f=f)
     
     # define multioperator
-    A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=assembly_type)
+    A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
     
-    w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
+    w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=CONF_FEM_degree))
     logger.info("active indices of w after initialisation: %s", w.active_indices())
     
     
@@ -229,21 +231,12 @@ def run_SFEM(opts, conf):
     pcg_eps = 1e-6
     pcg_maxiter = 100
     error_eps = 1e-5
-    
-    if MC_RUNS > 0 or True:
-        w_history = []
-    else:
-        w_history = None
-    
-    # NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
-    if domaintype == 2:
-        maxh = 0.0
-        MC_HMAX = 0
+    w_history = []
     
     # refinement loop
     # ===============
     w0 = w
-    w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, degree, gamma=CONF_gamma, cQ=CONF_cQ, ceta=CONF_ceta,
+    w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, CONF_FEM_degree, gamma=CONF_gamma, cQ=CONF_cQ, ceta=CONF_ceta,
                         # marking parameters
                         theta_eta=CONF_theta_eta, theta_zeta=CONF_theta_zeta, min_zeta=CONF_min_zeta,
                         maxh=CONF_maxh, newmi_add_maxm=CONF_newmi_add_maxm, theta_delta=CONF_theta_delta,
@@ -257,7 +250,7 @@ def run_SFEM(opts, conf):
                         # adaptive algorithm threshold
                         error_eps=CONF_error_eps,
                         # refinements
-                        max_refinements=CONF_max_refinements, do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
+                        max_refinements=CONF_iterations, do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
                         w_history=w_history)
     
     from operator import itemgetter
@@ -277,12 +270,12 @@ def run_SFEM(opts, conf):
     # ============================================================
     # PART D: Export of Solution
     # ============================================================
-    # NOTE: save at this point since MC tends to run out of memory
     if SAVE_SOLUTION != "":
         # save solution (also creates directory if not existing)
         w.pickle(SAVE_SOLUTION)
         # save simulation data
         import pickle
+        logger.info("saving statistics into %s" % os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'))
         with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
             pickle.dump(sim_stats, fout)
     
@@ -352,7 +345,7 @@ def run_SFEM(opts, conf):
             logger.info("skipped plotting since matplotlib is not available...")
     
     # plot final meshes
-    if PLOT_MESHES:
+    if opts.plotMesh:
         USE_MAYAVI = Plotter.hasMayavi() and False
         for mu, vec in w.iteritems():
             if USE_MAYAVI:

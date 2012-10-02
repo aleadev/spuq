@@ -1,4 +1,4 @@
-from dolfin import Function, FunctionSpace, plot, File, Mesh, norm
+from dolfin import Function, FunctionSpace, plot, File, Mesh, MeshEditor, norm
 
 from spuq.utils.type_check import takes, anything, sequence_of, set_of
 from spuq.linalg.vector import Scalar
@@ -150,29 +150,70 @@ class FEniCSVector(FEMVector):
     def degree(self):
         return self.basis.degree
 
-    def pickle(self, outdir, filename):
-        """construct representation suitable for pickling"""
-        logger.info("pickling data (and mesh) to file %s", os.path.join(outdir, 'DATA_' + filename + '.pkl'))
-        basis = self.basis._fefs
-        ufl = basis.ufl_element()
-        mesh = basis.mesh()
-        meshfile = File(os.path.join(outdir, 'MESH_' + filename + '.xml'))
-        meshfile << mesh
-        data = (self.array(), (ufl.family(), ufl.degree()))
-        with open(os.path.join(outdir, 'DATA_' + filename + '.pkl'), 'wb') as f:
-            pickle.dump(data, f)
-    
-    @classmethod
-    def from_pickle(cls, indir, filename, sub_spaces=1):
-        """unpickle object"""
-        logger.info("unpickling data (and mesh) from file %s", os.path.join(indir, 'DATA_' + filename + '.pkl'))
-        mesh = Mesh(os.path.join(indir, 'MESH_' + filename + '.xml'))
-        with open(os.path.join(indir, 'DATA_' + filename + '.pkl'), "rb") as f:
-            data = pickle.load(f)
-        if sub_spaces > 1:
-            fs = VectorFunctionSpace(mesh, data[1][0], data[1][1])
+    def __getstate__(self):
+        # pickling preparation
+        d = {}
+        d['array'] = self.array()
+        # function space
+        V = self.basis
+        d['num_subspaces'] = self.basis.num_sub_spaces
+        d['degree'] = V.degree
+        d['family'] = V.family
+        # mesh
+        mesh = V.mesh
+        d['coordinates'] = mesh.coordinates()
+        d['cells'] = mesh.cells()
+        return d
+
+    def __setstate__(self, d):
+        # pickling restore
+        # mesh
+        verts = d['coordinates']
+        elems = d['cells']
+        dim = verts.shape[1]
+        mesh = Mesh()
+        ME = MeshEditor()
+        ME.open(mesh, dim, dim)
+        ME.init_vertices(verts.shape[0])
+        ME.init_cells(elems.shape[0])
+        for i, v in enumerate(verts):
+            ME.add_vertex(i, v[0], v[1])
+        for i, c in enumerate(elems):
+            ME.add_cell(i, c[0], c[1], c[2])
+        ME.close()
+        # function space
+        if d['num_subspaces'] > 1:
+            V = VectorFunctionSpace(mesh, d['family'], d['degree'])
         else:
-            fs = FunctionSpace(mesh, data[1][0], data[1][1])
-        f = Function(fs)
-        f.coeffs = data[0]
-        return cls(f)
+            V = FunctionSpace(mesh, d['family'], d['degree'])
+        # vector
+        v = Function(V)
+        v.vector()[:] = d['array']
+        self._fefunc = v
+
+#    def pickle(self, outdir, filename):
+#        """construct representation suitable for pickling"""
+#        logger.info("pickling data (and mesh) to file %s", os.path.join(outdir, 'DATA_' + filename + '.pkl'))
+#        basis = self.basis._fefs
+#        ufl = basis.ufl_element()
+#        mesh = basis.mesh()
+#        meshfile = File(os.path.join(outdir, 'MESH_' + filename + '.xml'))
+#        meshfile << mesh
+#        data = (self.array(), (ufl.family(), ufl.degree()))
+#        with open(os.path.join(outdir, 'DATA_' + filename + '.pkl'), 'wb') as f:
+#            pickle.dump(data, f)
+#    
+#    @classmethod
+#    def from_pickle(cls, indir, filename, sub_spaces=1):
+#        """unpickle object"""
+#        logger.info("unpickling data (and mesh) from file %s", os.path.join(indir, 'DATA_' + filename + '.pkl'))
+#        mesh = Mesh(os.path.join(indir, 'MESH_' + filename + '.xml'))
+#        with open(os.path.join(indir, 'DATA_' + filename + '.pkl'), "rb") as f:
+#            data = pickle.load(f)
+#        if sub_spaces > 1:
+#            fs = VectorFunctionSpace(mesh, data[1][0], data[1][1])
+#        else:
+#            fs = FunctionSpace(mesh, data[1][0], data[1][1])
+#        f = Function(fs)
+#        f.coeffs = data[0]
+#        return cls(f)

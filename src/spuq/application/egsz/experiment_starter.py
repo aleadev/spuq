@@ -1,5 +1,8 @@
 import optparse
 import ConfigParser
+from run_SFEM import run_SFEM
+from run_MC import run_MC
+
 
 class ExperimentStarter(object):
     def __init__(self):
@@ -11,20 +14,20 @@ class ExperimentStarter(object):
         
         optparser.add_option('-f', '--conffile', dest='conffile', default='test.conf')
         
-        optparser.add_option('--runSFEM', action='store_false', default=False,
+        optparser.add_option('--runSFEM', action='store_true', default=False,
                              dest='runSFEM', help='')
-        optparser.add_option('--runMC', action='store_false', default=False,
+        optparser.add_option('--runMC', action='store_true', default=False,
                              dest='runMC', help='')
-        optparser.add_option('--saveData', action='store_true', default=True,
+        optparser.add_option('--noSaveData', action='store_false', default=True,
                              dest='saveData', help='')
         
-        optparser.add_option('--plotSolution', action='store_false', default=False,
+        optparser.add_option('--plotSolution', action='store_true', default=False,
                              dest='plotSolution', help='')
-        optparser.add_option('--plotEstimator', action='store_false', default=False,
+        optparser.add_option('--plotEstimator', action='store_true', default=False,
                              dest='plotEstimator', help='')
-        optparser.add_option('--plotError', action='store_false', default=False,
+        optparser.add_option('--plotError', action='store_true', default=False,
                              dest='plotError', help='')
-        optparser.add_option('--plotMesh', action='store_false', default=False,
+        optparser.add_option('--plotMesh', action='store_true', default=False,
                              dest='plotMesh', help='')
         
         optparser.add_option('--clear', type='choice', choices=['none', 'all', 'SFEM', 'MC'], dest='clear', default='none')
@@ -57,7 +60,7 @@ class ExperimentStarter(object):
                         {"problem_type":1,
                             "domain":0,
                             "boundary_type":1,
-                            "assemble_type":0,
+                            "assembly_type":0,
                             "FEM_degree":1,
                             "decay_exp":1,
                             "coeff_type":1,

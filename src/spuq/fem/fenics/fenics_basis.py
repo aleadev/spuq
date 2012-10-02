@@ -129,6 +129,10 @@ class FEniCSBasis(FEMBasis):
     def degree(self):        
         return self._fefs.ufl_element().degree()
 
+    @property
+    def family(self):        
+        return self._fefs.ufl_element().family()
+
     def eval(self, x):  # pragma: no coverage
         """Evaluate the basis functions at point x where x has length domain_dim."""
         raise NotImplementedError

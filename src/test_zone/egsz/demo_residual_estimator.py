@@ -32,7 +32,7 @@ except:
 def setup_logging(level):
     # log level and format configuration
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
+    logging.basicConfig(filename=__file__[:-2] + 'log', level=level,
                         format=log_format)
     
     # FEniCS logging
@@ -50,7 +50,7 @@ def setup_logging(level):
     #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
     # add console logging output
     ch = logging.StreamHandler()
-    ch.setLevel(LOG_LEVEL)
+    ch.setLevel(level)
     ch.setFormatter(logging.Formatter(log_format))
     logger.addHandler(ch)
     logging.getLogger("spuq").addHandler(ch)
@@ -68,7 +68,7 @@ path = os.path.dirname(__file__)
 # ============================================================
 
 # set problem (0:Poisson, 1:Navier-Lame)
-pdetype = 0
+pdetype = 1
 domaintype = 0
 domains = ('square', 'lshape', 'cooks')
 domain = domains[domaintype]
@@ -99,7 +99,7 @@ SAVE_SOLUTION = ''
 #SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2-neumann")
 
 # flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
+REFINEMENT = {"RES":True, "PROJ":True, "MI":True}
 UNIFORM_REFINEMENT = False
 
 # initial mesh elements
@@ -118,7 +118,7 @@ MC_HMAX = 3 / 10
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(3, 1)]
 
 # debug---
-mis = [mis[0]]
+#mis = [mis[0]]
 #mis = [Multiindex(), ]
 #mis = [Multiindex(), Multiindex([1])]
 # ---debug
@@ -224,7 +224,7 @@ quadrature_degree = 2
 projection_degree_increase = 2
 refine_projection_mesh = 2
 # pcg solver
-pcg_eps = 1e-6
+pcg_eps = 1e-3
 pcg_maxiter = 100
 error_eps = 1e-5
 

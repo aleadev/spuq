@@ -33,7 +33,7 @@ except:
 def setup_logging(level):
     # log level and format configuration
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
+    logging.basicConfig(filename=__file__[:-2] + 'log', level=level,
                         format=log_format)
     
     # FEniCS logging
@@ -51,7 +51,7 @@ def setup_logging(level):
     #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
     # add console logging output
     ch = logging.StreamHandler()
-    ch.setLevel(LOG_LEVEL)
+    ch.setLevel(level)
     ch.setFormatter(logging.Formatter(log_format))
     logger.addHandler(ch)
     logging.getLogger("spuq").addHandler(ch)
@@ -80,6 +80,12 @@ def run_MC(opts, conf):
         SAVE_SOLUTION = ''
     else:
         SAVE_SOLUTION = os.path.join(opts.basedir, "MC-results")
+
+    
+#    # NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
+#    if domaintype == 2:
+#        maxh = 0.0
+#        MC_HMAX = 0
 
     
     # ============================================================

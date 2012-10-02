@@ -31,7 +31,7 @@ except:
 def setup_logging(level):
     # log level and format configuration
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
+    logging.basicConfig(filename=__file__[:-2] + 'log', level=level,
                         format=log_format)
     
     # FEniCS logging
