@@ -104,7 +104,7 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 # ---debug
 
 # setup domain and meshes
-mesh0, boundaries = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
+mesh0, boundaries, dim = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 

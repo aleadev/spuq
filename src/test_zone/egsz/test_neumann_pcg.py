@@ -148,19 +148,19 @@ pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
 import math
 from spuq.linalg.vector import inner
 def norm(v):
-    return math.sqrt(inner(v,v))
+    return math.sqrt(inner(v, v))
 
 def traceit(frame, event, arg):
     filename = frame.f_code.co_filename
     funcname = frame.f_code.co_name
     lineno = frame.f_lineno
 
-    if event == "line" and lineno==33 and funcname == "pcg":
+    if event == "line" and lineno == 33 and funcname == "pcg":
         locals = frame.f_locals
         locals["norm"] = norm
         globals = frame.f_globals
         print "Iter %s -> %s, %s, %s" % eval(
-            "(i-1, norm(rho[i-1]), norm(s[i-1]), norm(v[i-1]))", 
+            "(i-1, norm(rho[i-1]), norm(s[i-1]), norm(v[i-1]))",
             globals, locals)
 
     return traceit
