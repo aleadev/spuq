@@ -115,13 +115,6 @@ def run_SFEM(opts, conf):
     # PART A: Simulation Options
     # ============================================================
     
-    # flag for final solution export
-    if not opts.saveData:
-        SAVE_SOLUTION = ''
-    else:
-        SAVE_SOLUTION = os.path.join(opts.basedir, "SFEM-results")
-        logger.info("DATA EXPORT DESTINATION IS %s" % SAVE_SOLUTION)
-    
     # flags for residual, projection, new mi refinement 
     REFINEMENT = {"RES":CONF_refine_residual, "PROJ":CONF_refine_projection, "MI":CONF_refine_Lambda}
     
@@ -211,30 +204,10 @@ def run_SFEM(opts, conf):
     # -------------------------------------------------------------
     # -------------- ADAPTIVE ALGORITHM OPTIONS -------------------
     # -------------------------------------------------------------
-    # error constants
-    cQ = 1.0
-    ceta = 1.0
-    # marking parameters
-    theta_eta = 0.4         # residual marking bulk parameter
-    theta_zeta = 0.01        # projection marking threshold factor
-    min_zeta = 1e-10        # minimal projection error considered
-    maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
-    newmi_add_maxm = 10     # maximal search length for new new multiindices (to be added to max order of solution)
-    theta_delta = 0.95      # number new multiindex activation bound
-    max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
-    # residual error evaluation
-    quadrature_degree = 2
-    # projection error evaluation
-    projection_degree_increase = 2
-    refine_projection_mesh = 2
-    # pcg solver
-    pcg_eps = 1e-6
-    pcg_maxiter = 100
-    error_eps = 1e-5
-    w_history = []
     
     # refinement loop
     # ===============
+    w_history = []
     w0 = w
     w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, CONF_FEM_degree, gamma=CONF_gamma, cQ=CONF_cQ, ceta=CONF_ceta,
                         # marking parameters
@@ -268,13 +241,22 @@ def run_SFEM(opts, conf):
     
     
     # ============================================================
-    # PART D: Export of Solution
+    # PART D: Export of Solutions and Simulation Data
     # ============================================================
-    if SAVE_SOLUTION != "":
-        # save solution (also creates directory if not existing)
-        w.pickle(SAVE_SOLUTION)
-        # save simulation data
+        
+    # flag for final solution export
+    if opts.saveData:
         import pickle
+        SAVE_SOLUTION = os.path.join(opts.basedir, "SFEM-results")
+        try:
+            os.makedirs(SAVE_SOLUTION)
+        except:
+            pass
+        logger.info("saving solutions into %s" % os.path.join(SAVE_SOLUTION, 'SFEM-SOLUTIONS.pkl'))
+        # save solutions
+        with open(os.path.join(SAVE_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'wb') as fout:
+            pickle.dump(w_history, fout)
+        # save simulation data
         logger.info("saving statistics into %s" % os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'))
         with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
             pickle.dump(sim_stats, fout)
@@ -365,9 +347,9 @@ def run_SFEM(opts, conf):
                 Plotter.title(str(mu))
             else:
                 viz_mesh = plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False, axes=True)
-                if SAVE_SOLUTION != '':
-                    viz_mesh.write_png(SAVE_SOLUTION + '/mesh' + str(mu) + '.png')
-                    viz_mesh.write_ps(SAVE_SOLUTION + '/mesh' + str(mu), format='pdf')
+#                if SAVE_SOLUTION != '':
+#                    viz_mesh.write_png(SAVE_SOLUTION + '/mesh' + str(mu) + '.png')
+#                    viz_mesh.write_ps(SAVE_SOLUTION + '/mesh' + str(mu), format='pdf')
     #            vec.plot(title=str(mu), interactive=False)
         if USE_MAYAVI:
             Plotter.show(stop=True)
@@ -419,6 +401,3 @@ def run_SFEM(opts, conf):
             for mu in w.active_indices():
                 viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
         interactive()
-    
-    if SAVE_SOLUTION != '':
-        logger.info("exported solution to " + SAVE_SOLUTION)

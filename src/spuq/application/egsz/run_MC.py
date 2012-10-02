@@ -65,21 +65,16 @@ def run_MC(opts, conf):
             continue
         secconf = conf[sec]
         for key, val in secconf.iteritems():
-            print "CONF_" + key + "= secconf['" + key + "']"
+            print "CONF_" + key + "= secconf['" + key + "'] =", secconf[key]
             exec "CONF_" + key + "= secconf['" + key + "']"
 
     # setup logging
+    print "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
     exec "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
     logger = setup_logging(LOG_LEVEL)
     
     # determine path of this module
     path = os.path.dirname(__file__)
-
-    # flag for final solution export
-    if not opts.saveData:
-        SAVE_SOLUTION = ''
-    else:
-        SAVE_SOLUTION = os.path.join(opts.basedir, "MC-results")
 
     
 #    # NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
@@ -87,30 +82,101 @@ def run_MC(opts, conf):
 #        maxh = 0.0
 #        MC_HMAX = 0
 
+    # ============================================================
+    # PART A: Setup Problem
+    # ============================================================
+
+    # define coefficient field
+    # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
+    coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
+    coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
+                                        freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
+    a0 = coeff_field.mean_func
+    
+    # setup boundary conditions
+    initial_mesh_N = 10
+    mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=initial_mesh_N)
+    Dirichlet_boundary = None
+    uD = None
+    Neumann_boundary = None
+    g = None
+    if CONF_problem_type == 1:
+        # ========== Navier-Lame ===========
+        # define source term
+        f = Constant((0.0, 0.0))
+        # define Dirichlet bc
+        Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+        uD = (Constant((0.0, 0.0)), Constant((0.3, 0.0)))
+    #    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+    #    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
+        # homogeneous Neumann does not have to be set explicitly
+        Neumann_boundary = None # (boundaries['right'])
+        g = None #Constant((0.0, 10.0))
+        # create pde instance
+        pde = FEMNavierLame(mu=1e2, lmbda0=a0,
+                            dirichlet_boundary=Dirichlet_boundary, uD=uD,
+                            neumann_boundary=Neumann_boundary, g=g,
+                            f=f)
+    else:
+        assert CONF_problem_type == 0
+        # ========== Poisson ===========
+        # define source term
+        #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
+        f = Constant(1.0)
+        # define Dirichlet bc
+        # 4 Dirichlet
+    #    Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
+    #    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
+        # 2 Dirichlet
+        Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+        uD = (Constant(0.0), Constant(3.0))
+    #    # 1 Dirichlet
+    #    Dirichlet_boundary = (boundaries['left'])
+    #    uD = (Constant(0.0))
+    #    # homogeneous Neumann does not have to be set explicitly
+    #    Neumann_boundary = None
+    #    g = None
+        # create pde instance
+        pde = FEMPoisson(a0=a0, dirichlet_boundary=Dirichlet_boundary, uD=uD,
+                         neumann_boundary=Neumann_boundary, g=g,
+                         f=f)
+    
+    # define multioperator
+    A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
+
     
     # ============================================================
-    # PART A: Import Solution
+    # PART B: Import Solution
     # ============================================================
-    # NOTE: save at this point since MC tends to run out of memory
-    if SAVE_SOLUTION != "":
-        # save solution (also creates directory if not existing)
-        w.pickle(SAVE_SOLUTION)
-        # save simulation data
-        import pickle
-        with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
-            pickle.dump(sim_stats, fout)
+    import pickle
+    LOAD_SOLUTION = os.path.join(opts.basedir, "SFEM-results")
+    logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'))
+    # load solutions
+    with open(os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'rb') as fin:
+        w_history = pickle.load(fin)
+    # load simulation data
+    logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'))
+    with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
+        sim_stats = pickle.load(fin)
+
+    logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
+
     
+    # ============================================================
+    # PART C: MC Error Sampling
+    # ============================================================
     
-    # ============================================================
-    # PART B: MC Error Sampling
-    # ============================================================
-    if CONF_runs > 0:
+    MC_RUNS = CONF_runs
+    MC_N = CONF_N
+    MC_HMAX = CONF_max_h
+    if MC_RUNS > 0:
         ref_maxm = w_history[-1].max_order
         for i, w in enumerate(w_history):
             if i == 0:
                 continue
             logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
             # memory usage info
+            import resource
             logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
             L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
             sim_stats[i - 1]["MC-L2ERR"] = L2err
@@ -120,12 +186,18 @@ def run_MC(opts, conf):
     
     
     # ============================================================
-    # PART C: Export Updated Data and Plotting
+    # PART D: Export Updated Data and Plotting
     # ============================================================
     # save updated data
-    if SAVE_SOLUTION != "":
+    if opts.saveData:
         # save updated statistics
         import pickle
+        SAVE_SOLUTION = os.path.join(opts.basedir, "MC-results")
+        try:
+            os.makedirs(SAVE_SOLUTION)
+        except:
+            pass
+        logger.info("saving statistics into %s" % os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'))
         with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
             pickle.dump(sim_stats, fout)
     
@@ -157,21 +229,6 @@ def run_MC(opts, conf):
             if CONF_runs > 0:
                 print "mcH1", mcH1
                 print "efficiency", [est / err for est, err in zip(errest, mcH1)]
-                
-            # figure 1
-            # --------
-    #        fig = figure()
-    #        fig.suptitle("error")
-    #        ax = fig.add_subplot(111)
-    #        ax.loglog(x, H1, '-g<', label='H1 residual')
-    #        ax.loglog(x, L2, '-c+', label='L2 residual')
-    #        ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-    #        ax.loglog(x, mcL2, '-ro', label='MC L2 error')
-    #        ax.loglog(x, mcH1_a0, '-.b^', label='MC H1 error a0')
-    #        ax.loglog(x, mcL2_a0, '-.ro', label='MC L2 error a0')
-    #        legend(loc='upper right')
-    #        if SAVE_SOLUTION != "":
-    #            fig.savefig(os.path.join(SAVE_SOLUTION, 'RES.png'))
     
             # --------
             # figure 2
@@ -190,9 +247,9 @@ def run_MC(opts, conf):
     #        ax.loglog(x, H1, '-b^', label='H1 residual')
     #        ax.loglog(x, L2, '-ro', label='L2 residual')
             legend(loc='upper right')
-            if SAVE_SOLUTION != "":
-                fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.png'))
-                fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.eps'))
+#            if SAVE_SOLUTION != "":
+#                fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.png'))
+#                fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.eps'))
     
             # --------
             # figure 3
@@ -205,9 +262,9 @@ def run_MC(opts, conf):
                 ax.loglog(x, mcH1, '-b^', label='MC H1 error')
                 ax.loglog(x, effest, '-ro', label='efficiency')        
             legend(loc='upper right')
-            if SAVE_SOLUTION != "":
-                fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))
-                fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.eps'))
+#            if SAVE_SOLUTION != "":
+#                fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))
+#                fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.eps'))
     
             # --------
             # figure 4
@@ -229,4 +286,3 @@ def run_MC(opts, conf):
             import traceback
             print traceback.format_exc()
             logger.info("skipped plotting since matplotlib is not available...")
-    
