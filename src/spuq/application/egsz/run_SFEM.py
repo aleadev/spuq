@@ -18,8 +18,6 @@ from spuq.utils.plot.plotter import Plotter
 try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
                         plot, interactive, set_log_level, set_log_active)
-    from spuq.application.egsz.fem_discretisation import FEMPoisson
-    from spuq.application.egsz.fem_discretisation import FEMNavierLame
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
     import traceback
@@ -120,6 +118,7 @@ def run_SFEM(opts, conf):
     
     # initial mesh elements
     initial_mesh_N = 10
+
     
     # ============================================================
     # PART B: Problem Setup
@@ -138,61 +137,14 @@ def run_SFEM(opts, conf):
     coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
     coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
                                         freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
-    a0 = coeff_field.mean_func
-
-
-    # TODO: define bc in sample problem class!
-    
     
     # setup boundary conditions
-    Dirichlet_boundary = None
-    uD = None
-    Neumann_boundary = None
-    g = None
-    if CONF_problem_type == 1:
-        # ========== Navier-Lame ===========
-        # define source term
-        f = Constant((0.0, 0.0))
-        # define Dirichlet bc
-        Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-        uD = (Constant((0.0, 0.0)), Constant((0.3, 0.0)))
-    #    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-    #    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
-        # homogeneous Neumann does not have to be set explicitly
-        Neumann_boundary = None # (boundaries['right'])
-        g = None #Constant((0.0, 10.0))
-        # create pde instance
-        pde = FEMNavierLame(mu=1e2, lmbda0=a0,
-                            dirichlet_boundary=Dirichlet_boundary, uD=uD,
-                            neumann_boundary=Neumann_boundary, g=g,
-                            f=f)
-    else:
-        assert CONF_problem_type == 0
-        # ========== Poisson ===========
-        # define source term
-        #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
-        f = Constant(1.0)
-        # define Dirichlet bc
-        # 4 Dirichlet
-    #    Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
-    #    uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
-        # 2 Dirichlet
-        Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-        uD = (Constant(0.0), Constant(3.0))
-    #    # 1 Dirichlet
-    #    Dirichlet_boundary = (boundaries['left'])
-    #    uD = (Constant(0.0))
-    #    # homogeneous Neumann does not have to be set explicitly
-    #    Neumann_boundary = None
-    #    g = None
-        # create pde instance
-        pde = FEMPoisson(a0=a0, dirichlet_boundary=Dirichlet_boundary, uD=uD,
-                         neumann_boundary=Neumann_boundary, g=g,
-                         f=f)
+    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field)
     
     # define multioperator
     A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
     
+    # setup initial solution multivector
     w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=CONF_FEM_degree))
     logger.info("active indices of w after initialisation: %s", w.active_indices())
     

@@ -10,6 +10,8 @@ from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import takes, anything, optional
+from spuq.application.egsz.fem_discretisation import FEMPoisson
+from spuq.application.egsz.fem_discretisation import FEMNavierLame
 
 from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement, Constant
 import ufl
@@ -147,3 +149,64 @@ class SampleProblem(object):
             raise ValueError('Unsupported function type: %s', cftype)
 
         return ParametricCoefficientField(a0, a, rvs)
+
+    @classmethod
+    @takes(anything, int, str, int)
+    def setupPDE(cls, boundary_type, domain_name, problem_type, boundaries, coeff_field):
+        a0 = coeff_field.mean_func
+        Dirichlet_boundary = None
+        uD = None
+        Neumann_boundary = None
+        g = None
+        
+        if problem_type == 1:
+            # ========== Navier-Lame ===========
+            # define source term
+            f = Constant((0.0, 0.0))
+            
+            # define Dirichlet bc
+            if boundary_type == 0:
+                Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+                uD = (Constant((0.0, 0.0)), Constant((0.3, 0.0)))
+            elif boundary_type == 1:
+                Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+                uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
+            else:
+                raise Exception("wrong boundary type %i for problem type %i" % boundary_type, problem_type)
+            
+            # homogeneous Neumann does not have to be set explicitly
+            Neumann_boundary = None # (boundaries['right'])
+            g = None #Constant((0.0, 10.0))
+            
+            # create pde instance
+            pde = FEMNavierLame(mu=1e2, lmbda0=a0,
+                                dirichlet_boundary=Dirichlet_boundary, uD=uD,
+                                neumann_boundary=Neumann_boundary, g=g, f=f)
+        else:
+            assert problem_type == 0
+            # ========== Poisson ===========
+            # define source term
+            #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
+            f = Constant(1.0)
+            
+            # define Dirichlet bc
+            if boundary_type == 0:
+                Dirichlet_boundary = (boundaries['left'])
+                uD = (Constant(0.0))
+            elif boundary_type == 1:
+                Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+                uD = (Constant(0.0), Constant(3.0))
+            elif boundary_type == 2:
+                Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
+                uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
+            else:
+                raise Exception("wrong boundary type %i for problem type %i" % boundary_type, problem_type)
+        
+            # homogeneous Neumann does not have to be set explicitly
+            Neumann_boundary = None
+            g = None
+            # create pde instance
+            pde = FEMPoisson(a0=a0, dirichlet_boundary=Dirichlet_boundary, uD=uD,
+                             neumann_boundary=Neumann_boundary, g=g, f=f)
+
+        return pde, Dirichlet_boundary, uD, Neumann_boundary, g, f
