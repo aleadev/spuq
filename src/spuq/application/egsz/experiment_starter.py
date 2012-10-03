@@ -116,10 +116,10 @@ class ExperimentStarter(object):
     def start(self):
         # check if data should be cleared
         if self.opts.clear == 'SFEM' or self.opts.clear == 'all':
-            print "clearing SFEM data"
+            print "clearing SFEM data TODO"
             # TODO
         if self.opts.clear == 'MC' or self.opts.clear == 'all':
-            print "clearing MC data"
+            print "clearing MC data TODO"
             # TODO
 
         # start SFEM

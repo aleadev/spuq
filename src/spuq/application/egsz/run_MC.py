@@ -1,7 +1,7 @@
 from __future__ import division
-import logging
 import os
 import functools
+import logging
 from math import sqrt
 from collections import defaultdict
 
@@ -19,6 +19,7 @@ try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
                         plot, interactive, set_log_level, set_log_active)
     from spuq.fem.fenics.fenics_vector import FEniCSVector
+    from spuq.application.egsz.egsz_utils import setup_logging, stats_plotter
 except:
     import traceback
     print traceback.format_exc()
@@ -26,34 +27,6 @@ except:
     os.sys.exit(1)
 
 # ------------------------------------------------------------
-
-
-def setup_logging(level):
-    # log level and format configuration
-    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=__file__[:-2] + 'log', level=level,
-                        format=log_format)
-    
-    # FEniCS logging
-    from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
-    set_log_active(True)
-    set_log_level(WARNING)
-    fenics_logger = logging.getLogger("FFC")
-    fenics_logger.setLevel(logging.WARNING)
-    fenics_logger = logging.getLogger("UFL")
-    fenics_logger.setLevel(logging.WARNING)
-    
-    # module logger
-    logger = logging.getLogger(__name__)
-    logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
-    #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
-    # add console logging output
-    ch = logging.StreamHandler()
-    ch.setLevel(level)
-    ch.setFormatter(logging.Formatter(log_format))
-    logger.addHandler(ch)
-    logging.getLogger("spuq").addHandler(ch)
-    return logger
 
 
 def run_MC(opts, conf):
@@ -157,6 +130,17 @@ def run_MC(opts, conf):
     
     # plot residuals
     if opts.plotError and len(sim_stats) > 1:
+
+#        # figure 1
+#        plot_def1 = [('EST', '-g<', 'error estimator'), ("RES", '-.cx', 'residual part'), ("PROJ", '-.m>', 'projection part', 1)]
+#        if CONF_refine_Lambda:
+#            plot_def1.append(('NUM-MI', '--y+', 'active mi'))
+#        stats_plotter(sim_stats, plot_def1, plot_type='loglog', title='residual estimator', logger=logger, legend_loc='upper right', save_image='')
+#
+#        # figure 2
+#        plot_code2 = "for mu, v in D['RESERR-mu'].iteritems():\n  ms = str(mu)\n  ms = ms[ms.find('=') + 1:-1]\n  ax.loglog(x[-len(v):], v, '-g<', label=ms)"
+#        stats_plotter(sim_stats, title='residual contributions', logger=logger, legend_loc='upper right', save_image='', code=plot_code2)
+        
         try:
             from matplotlib.pyplot import figure, show, legend
             x = [s["DOFS"] for s in sim_stats]

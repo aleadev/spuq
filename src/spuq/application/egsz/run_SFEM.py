@@ -1,7 +1,7 @@
 from __future__ import division
-import logging
 import os
 import functools
+import logging
 from math import sqrt
 from collections import defaultdict
 
@@ -19,6 +19,7 @@ try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
                         plot, interactive, set_log_level, set_log_active)
     from spuq.fem.fenics.fenics_vector import FEniCSVector
+    from spuq.application.egsz.egsz_utils import setup_logging, stats_plotter
 except:
     import traceback
     print traceback.format_exc()
@@ -26,34 +27,6 @@ except:
     os.sys.exit(1)
 
 # ------------------------------------------------------------
-
-
-def setup_logging(level):
-    # log level and format configuration
-    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=__file__[:-2] + 'log', level=level,
-                        format=log_format)
-    
-    # FEniCS logging
-    from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
-    set_log_active(True)
-    set_log_level(WARNING)
-    fenics_logger = logging.getLogger("FFC")
-    fenics_logger.setLevel(logging.WARNING)
-    fenics_logger = logging.getLogger("UFL")
-    fenics_logger.setLevel(logging.WARNING)
-    
-    # module logger
-    logger = logging.getLogger(__name__)
-    logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
-    #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
-    # add console logging output
-    ch = logging.StreamHandler()
-    ch.setLevel(level)
-    ch.setFormatter(logging.Formatter(log_format))
-    logger.addHandler(ch)
-    logging.getLogger("spuq").addHandler(ch)
-    return logger
 
 
 def run_SFEM(opts, conf):
