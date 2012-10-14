@@ -76,21 +76,24 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 5
+max_refinements = 0
 
 # polynomial degree of FEM approximation
 degree = 1
 
 # flag for final solution export
-#SAVE_SOLUTION = ''
-SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
+SAVE_SOLUTION = ''
+#SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
+
+# plotting flag
+PLOT_SOLUTION = True
 
 # flags for residual, projection, new mi refinement 
 REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
 UNIFORM_REFINEMENT = True
 
 # initial mesh elements
-initial_mesh_N = 10
+initial_mesh_N = 5
 
 # ============================================================
 # PART B: Problem Setup
@@ -101,6 +104,7 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
 
 # debug---
 #mis = [Multiindex(), ]
+mis = [mis[0], mis[2]]
 # ---debug
 
 # setup domain and meshes
@@ -112,7 +116,7 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=20, rvtype="uniform", scale=100000)
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=100000)
 a0 = coeff_field.mean_func
 
 # setup boundary conditions
@@ -247,24 +251,48 @@ if len(sim_stats) > 1:
         
         # figure 1
         # --------
-        fig2 = figure()
-        fig2.suptitle("residual estimator")
-        ax = fig2.add_subplot(111)
+        fig1 = figure()
+        fig1.suptitle("residual estimator")
+        ax = fig1.add_subplot(111)
         if REFINEMENT["MI"]:
             ax.loglog(x, num_mi, '--y+', label='active mi')
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
         legend(loc='upper right')
-            
-        # figure 2
-        # --------
-        fig3 = figure()
-        ax = fig3.add_subplot(111)
-        ax.loglog(x, errest, '-g<', label='error estimator')
-        legend(loc='upper right')
         show()  # this invalidates the figure instances...
     except:
         import traceback
         print traceback.format_exc()
         logger.info("skipped plotting since matplotlib is not available...")
+
+# plot sample solution
+if PLOT_SOLUTION:
+    # get random field sample and evaluate solution (direct and parametric)
+    RV_samples = coeff_field.sample_rvs()
+    ref_maxm = w_history[-1].max_order
+    sub_spaces = w[Multiindex()].basis.num_sub_spaces
+    degree = w[Multiindex()].basis.degree
+    maxh = w[Multiindex()].basis.minh
+    projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
+    sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+    sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+    sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
+#        # debug---
+#        if not True:        
+#            for mu in w.active_indices():
+#                for i, wi in enumerate(w_history):
+#                    if i == len(w_history) - 1 or True:
+#                        plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+##                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+#                interactive()
+#        # ---debug
+    mesh_param = sample_sol_param._fefunc.function_space().mesh()
+    mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
+    wireframe = True
+    viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+    viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
+    
+    for mu in w.active_indices():
+        viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
+    interactive()
