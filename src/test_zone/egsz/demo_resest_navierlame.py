@@ -17,7 +17,6 @@ from spuq.utils.plot.plotter import Plotter
 try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
                         plot, interactive, set_log_level, set_log_active)
-    from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.fem_discretisation import FEMNavierLame
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
