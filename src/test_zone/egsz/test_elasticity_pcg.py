@@ -67,7 +67,7 @@ PLOT_SOLUTION = True
 # define initial multiindices
 mis = list(Multiindex.createCompleteOrderSet(2, 1))
 #mis = list(Multiindex.createCompleteOrderSet(0, 1))
-#mis = [mis[0], mis[2]]
+mis = [mis[0], mis[2]]
 #mis = [mis[0]]
 
 # setup meshes
@@ -77,7 +77,7 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 # define coefficient field
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=1e3)
+coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=1e5)
 a0 = coeff_field.mean_func
 
 # setup boundary conditions
@@ -97,7 +97,7 @@ uD = (Constant((0.0, 0.0)), Constant((0.3, 0.0)))
 Neumann_boundary = None # (boundaries['right'])
 g = None #Constant((0.0, 10.0))
 # create pde instance
-pde = FEMNavierLame(mu=1e2, lmbda0=a0,
+pde = FEMNavierLame(mu=1e4, lmbda0=a0,
                     dirichlet_boundary=Dirichlet_boundary, uD=uD,
                     neumann_boundary=Neumann_boundary, g=g,
                     f=f)

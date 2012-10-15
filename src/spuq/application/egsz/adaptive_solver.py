@@ -178,40 +178,41 @@ def AdaptiveSolver(A, coeff_field, pde,
 
         # marking
         # -------
-        if not do_uniform_refinement:        
-            logger.debug("starting Marking.mark")
-            mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, mierr, w.max_order,
-                                                                            theta_eta, theta_zeta, theta_delta,
-                                                                            min_zeta, maxh, max_Lambda_frac)
-            logger.info("MARKING will be carried out with %s (res) + %s (proj) cells and %s new multiindices",
-                        sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()]),
-                        sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
-            if do_refinement["RES"]:
-                mesh_markers = mesh_markers_R.copy()
+        if refinement < max_refinements:
+            if not do_uniform_refinement:        
+                logger.debug("starting Marking.mark")
+                mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, mierr, w.max_order,
+                                                                                theta_eta, theta_zeta, theta_delta,
+                                                                                min_zeta, maxh, max_Lambda_frac)
+                logger.info("MARKING will be carried out with %s (res) + %s (proj) cells and %s new multiindices",
+                            sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()]),
+                            sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
+                if do_refinement["RES"]:
+                    mesh_markers = mesh_markers_R.copy()
+                else:
+                    mesh_markers = defaultdict(set)
+                    logger.info("SKIP residual refinement")
+    
+                if do_refinement["PROJ"]:
+                    for mu, cells in mesh_markers_P.iteritems():
+                        if len(cells) > 0:
+                            mesh_markers[mu] = mesh_markers[mu].union(cells)
+                else:
+                    logger.info("SKIP projection refinement")
+    
+                if not do_refinement["MI"] or refinement == max_refinements:
+                    new_multiindices = {}
+                    logger.info("SKIP new multiindex refinement")
             else:
-                mesh_markers = defaultdict(set)
-                logger.info("SKIP residual refinement")
-
-            if do_refinement["PROJ"]:
-                for mu, cells in mesh_markers_P.iteritems():
-                    if len(cells) > 0:
-                        mesh_markers[mu] = mesh_markers[mu].union(cells)
-            else:
-                logger.info("SKIP projection refinement")
-
-            if not do_refinement["MI"] or refinement == max_refinements:
+                logger.info("UNIFORM REFINEMENT active")
+                mesh_markers = {}
+                for mu, vec in w.iteritems():
+                    from dolfin import cells
+                    mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
                 new_multiindices = {}
-                logger.info("SKIP new multiindex refinement")
-        else:
-            logger.info("UNIFORM REFINEMENT active")
-            mesh_markers = {}
-            for mu, vec in w.iteritems():
-                from dolfin import cells
-                mesh_markers[mu] = list([c.index() for c in cells(vec._fefunc.function_space().mesh())])
-            new_multiindices = {}
-        
-        # carry out refinement of meshes
-        Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
+            
+            # carry out refinement of meshes
+            Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
 
     logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
                 refinement, max_refinements, sim_stats[refinement]["DOFS"], len(sim_stats[refinement]["MI"]))

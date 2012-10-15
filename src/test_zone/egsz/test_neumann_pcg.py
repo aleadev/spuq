@@ -13,6 +13,7 @@ from spuq.application.egsz.adaptive_solver import prepare_rhs, pcg_solve
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.plot.plotter import Plotter
+from spuq.application.egsz.egsz_utils import setup_logging
 try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
                         plot, interactive, set_log_level, set_log_active)
@@ -24,34 +25,11 @@ except:
     print "FEniCS has to be available"
     os.sys.exit(1)
 
+
 # ------------------------------------------------------------
 
-# setup logging
-# log level and format configuration
 LOG_LEVEL = logging.INFO
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(filename=__file__[:-2] + 'log', level=LOG_LEVEL,
-                    format=log_format)
-
-# FEniCS logging
-from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
-set_log_active(True)
-set_log_level(WARNING)
-fenics_logger = logging.getLogger("FFC")
-fenics_logger.setLevel(logging.WARNING)
-fenics_logger = logging.getLogger("UFL")
-fenics_logger.setLevel(logging.WARNING)
-
-# module logger
-logger = logging.getLogger(__name__)
-logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
-#logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
-# add console logging output
-ch = logging.StreamHandler()
-ch.setLevel(LOG_LEVEL)
-ch.setFormatter(logging.Formatter(log_format))
-logger.addHandler(ch)
-logging.getLogger("spuq").addHandler(ch)
+logger = setup_logging(LOG_LEVEL)
 
 # determine path of this module
 path = os.path.dirname(__file__)
@@ -77,16 +55,15 @@ domain = 'square'
 
 # initial mesh elements
 #initial_mesh_N = 3
-initial_mesh_N = 5
+initial_mesh_N = 10
 
 # decay exponent
-decay_exp = 3
+decay_exp = 2
 
 
 # ============================================================
 # PART B: Problem Setup
 # ============================================================
-
 
 # define initial multiindices
 mis = list(Multiindex.createCompleteOrderSet(4, 1))
@@ -140,11 +117,6 @@ pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
 
 
 
-
-
-
-
-
 import math
 from spuq.linalg.vector import inner
 def norm(v):
@@ -167,10 +139,6 @@ def traceit(frame, event, arg):
 
 import sys
 print sys.settrace(traceit)
-
-
-
-
 
 
 
