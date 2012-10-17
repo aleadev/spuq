@@ -118,10 +118,8 @@ pcg_eps = 1e-6
 pcg_maxiter = 100
 
 b = prepare_rhs(A, w, coeff_field, pde)
-
 P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
 w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
-
 logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
 #if True:

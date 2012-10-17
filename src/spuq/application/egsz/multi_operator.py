@@ -21,10 +21,10 @@ from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProje
 from spuq.utils.enum import Enum
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 ASSEMBLY_TYPE = Enum('MU', 'JOINT_MU', 'JOINT_GLOBAL')
+
 
 class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials."""
@@ -69,7 +69,6 @@ class MultiOperator(Operator):
                 mu2 = mu.dec(m)
                 if mu2 in Lambda:
                     mus.append(mu2)
-            
             
             logger.debug("apply on mu = %s with joint mesh for %s", str(mu), str(mus))
 
@@ -119,7 +118,6 @@ class MultiOperator(Operator):
     @takes(any, MultiVectorWithProjection)
     def apply_A(self, w):
         """Apply operator to vector which has to live in the same domain."""
-
         v = 0 * w
         Lambda = w.active_indices()
         maxm = w.max_order
@@ -162,12 +160,12 @@ class MultiOperator(Operator):
 
     @property
     def domain(self):
-        """Returns the basis of the domain."""
+        """Return the basis of the domain."""
         return self._domain
 
     @property
     def codomain(self):
-        """Returns the basis of the codomain."""
+        """Return the basis of the codomain."""
         return self._codomain
 
 
@@ -201,10 +199,10 @@ class PreconditioningOperator(Operator):
 
     @property
     def domain(self):
-        """Returns the basis of the domain."""
+        """Return the basis of the domain."""
         return self._domain
 
     @property
     def codomain(self):
-        """Returns the basis of the codomain."""
+        """Return the basis of the codomain."""
         return self._codomain

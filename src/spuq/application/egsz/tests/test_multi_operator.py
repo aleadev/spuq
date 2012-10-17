@@ -2,7 +2,7 @@ from __future__ import division
 import numpy as np
 import logging
 
-from spuq.application.egsz.multi_vector import MultiVectorWithProjection
+from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
 from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.coefficient_field import CoefficientField, ListCoefficientField
 from spuq.linalg.basis import CanonicalBasis
@@ -79,11 +79,11 @@ def test_apply():
 
     L = LegendrePolynomials(normalised=True)
     H = StochasticHermitePolynomials(mu=0.5, normalised=True)
-    v0_ex = (2 * vecs[0] +
-             3 * (L.get_beta(0)[1] * vecs[1] - L.get_beta(0)[0] * vecs[0]) +
+    v0_ex = (2 * vecs[0] + 
+             3 * (L.get_beta(0)[1] * vecs[1] - L.get_beta(0)[0] * vecs[0]) + 
              4 * (H.get_beta(0)[1] * vecs[2] - H.get_beta(0)[0] * vecs[0]))
-    v2_ex = (2 * vecs[2] + 4 * (H.get_beta(1)[1] * vecs[3] -
-                                H.get_beta(1)[0] * vecs[2] +
+    v2_ex = (2 * vecs[2] + 4 * (H.get_beta(1)[1] * vecs[3] - 
+                                H.get_beta(1)[0] * vecs[2] + 
                                 H.get_beta(1)[-1] * vecs[0]))
 
     assert_equal(v[mis[0]], v0_ex)
@@ -201,6 +201,38 @@ def test_fenics_with_assembly():
     for mi, vec in zip(mis, vecs):
         w[mi] = vec
     v = A * w
+
+
+@skip_if(not HAVE_FENICS)
+def test_matrixization():
+    def mult_assemble(a, basis):
+        return MultiplicationOperator(a(0), basis)
+
+    mean_func = ConstFunction(2)
+    a = [ConstFunction(3), ConstFunction(4)]
+    rvs = [UniformRV(), NormalRV(mu=0.5)]
+    coeff_field = ListCoefficientField(mean_func, a, rvs)
+
+    A = MultiOperator(coeff_field, mult_assemble)
+    mis = [Multiindex([0]),
+           Multiindex([1]),
+           Multiindex([0, 1]),
+           Multiindex([0, 2])]
+    mesh = UnitSquare(4, 4)
+    fs = FunctionSpace(mesh, "CG", 2)
+    F = [interpolate(Expression("*".join(["x[0]"] * i)), fs) for i in range(1, 5)]
+    vecs = [FEniCSVector(f) for f in F]
+
+    w = MultiVector()
+    for mi, vec in zip(mis, vecs):
+        w[mi] = vec
+
+    P = w.to_euclidian_operator
+    Q = w.from_euclidian_operator
+    A_linear = P * A * Q
+    A_mat = A_linear.evaluate_matrix()
+
+    print A_mat
 
 
 test_main()

@@ -27,8 +27,10 @@ class FEniCSVector(FEMVector):
         if sub_spaces is None or sub_spaces == basis.num_sub_spaces:
             f = Function(basis._fefs)
         else:
-            assert sub_spaces == 0
-            V = FunctionSpace(basis._fefs.mesh(), basis._fefs.ufl_element().family(), basis._fefs.ufl_element().degree())
+            if sub_spaces == 0:
+                V = FunctionSpace(basis._fefs.mesh(), basis._fefs.ufl_element().family(), basis._fefs.ufl_element().degree())
+            else:
+                V = VectorFunctionSpace(basis._fefs.mesh(), basis._fefs.ufl_element().family(), basis._fefs.ufl_element().degree())
             f = Function(V)
         return FEniCSVector(f)
 
@@ -39,6 +41,12 @@ class FEniCSVector(FEMVector):
     def basis(self):
         '''Return FEniCSBasis.'''
         return FEniCSBasis(self._fefunc.function_space())
+
+    @property
+    def dim(self):
+        '''Return dimension.'''
+#        return self.basis.dim()
+        return self._fefunc.function_space().dim()
 
     @property
     def num_sub_spaces(self):
@@ -151,7 +159,7 @@ class FEniCSVector(FEMVector):
         return self.basis.degree
 
     def __getstate__(self):
-        # pickling preparation
+        """pickling preparation"""
         d = {}
         d['array'] = self.array()
         # function space
@@ -166,7 +174,7 @@ class FEniCSVector(FEMVector):
         return d
 
     def __setstate__(self, d):
-        # pickling restore
+        """pickling restore"""
         # mesh
         verts = d['coordinates']
         elems = d['cells']
@@ -190,30 +198,3 @@ class FEniCSVector(FEMVector):
         v = Function(V)
         v.vector()[:] = d['array']
         self._fefunc = v
-
-#    def pickle(self, outdir, filename):
-#        """construct representation suitable for pickling"""
-#        logger.info("pickling data (and mesh) to file %s", os.path.join(outdir, 'DATA_' + filename + '.pkl'))
-#        basis = self.basis._fefs
-#        ufl = basis.ufl_element()
-#        mesh = basis.mesh()
-#        meshfile = File(os.path.join(outdir, 'MESH_' + filename + '.xml'))
-#        meshfile << mesh
-#        data = (self.array(), (ufl.family(), ufl.degree()))
-#        with open(os.path.join(outdir, 'DATA_' + filename + '.pkl'), 'wb') as f:
-#            pickle.dump(data, f)
-#    
-#    @classmethod
-#    def from_pickle(cls, indir, filename, sub_spaces=1):
-#        """unpickle object"""
-#        logger.info("unpickling data (and mesh) from file %s", os.path.join(indir, 'DATA_' + filename + '.pkl'))
-#        mesh = Mesh(os.path.join(indir, 'MESH_' + filename + '.xml'))
-#        with open(os.path.join(indir, 'DATA_' + filename + '.pkl'), "rb") as f:
-#            data = pickle.load(f)
-#        if sub_spaces > 1:
-#            fs = VectorFunctionSpace(mesh, data[1][0], data[1][1])
-#        else:
-#            fs = FunctionSpace(mesh, data[1][0], data[1][1])
-#        f = Function(fs)
-#        f.coeffs = data[0]
-#        return cls(f)

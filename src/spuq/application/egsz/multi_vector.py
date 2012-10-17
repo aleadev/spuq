@@ -1,10 +1,12 @@
 from spuq.linalg.vector import Scalar, Vector, inner
 from spuq.linalg.basis import Basis
+from spuq.linalg.operator import BaseOperator
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import takes, anything, optional
 from spuq.utils import strclass
 
+import numpy as np
 import os
 import pickle
 from collections import defaultdict
@@ -26,12 +28,26 @@ class MultiVector(Vector):
 
     @property
     def basis(self):  # pragma: no cover
-        """Implementation of Basis too complicated for MultiVector"""
-        raise NotImplementedError
+        """Return basis for MultiVector"""
+        return MultiVectorBasis(self)
+
+    @property
+    def dim(self):
+        """Return set of dimensions of MultiVector."""
+        return {mu:self[mu].dim for mu in self.active_indices()}
 
     def flatten(self):
-        """Not yet defined for MultiVector"""
-        raise NotImplementedError
+        """Return flattened (Euclidian) vector"""
+        F = self.to_euclidian_operator
+        return F.apply(self)
+
+    @property
+    def to_euclidian_operator(self):
+        return MultiVectorOperator(self, to_euclidian=True)
+
+    @property
+    def from_euclidian_operator(self):
+        return MultiVectorOperator(self, to_euclidian=False)
 
     @property
     def max_order(self):
@@ -118,31 +134,6 @@ class MultiVector(Vector):
     def __setstate__(self, d):
         # pickling restore
         self.__dict__.update(d)
-
-
-#    def pickle(self, outdir):
-#        """pickle object"""
-##        outdir = os.path.abspath(os.path.abspath(outdir))
-#        if not os.path.exists(outdir):
-#            os.makedirs(outdir)
-#        Lambda = self.active_indices()
-#        # save active multiindex set
-#        with open(os.path.join(outdir, 'MI.pkl'), 'wb') as f:
-#            pickle.dump(Lambda, f)
-#        # iteratively pickle multiindex data/mesh
-#        for mu in Lambda:
-#            self[mu].pickle(outdir, str(mu))
-#    
-#    @classmethod
-#    def from_pickle(cls, indir, veccls, sub_spaces=1):
-#        """unpickle object"""
-#        with open(os.path.join(indir, 'MI.pkl'), "rb") as f:
-#            Lambda = pickle.load(f)
-#            print "from_pickle Lambda:", Lambda
-#            w = cls()
-#            for mu in Lambda:
-#                w[mu] = veccls.from_pickle(indir, str(mu), sub_spaces)
-#            return w
     
 
 class MultiVectorWithProjection(MultiVector):
@@ -319,3 +310,54 @@ class MultiVectorWithProjection(MultiVector):
         self.__dict__.update(d)
         # NOTE: this sets default projection and does not restore any other projection type! 
         self.project = MultiVectorWithProjection.default_project
+
+
+class MultiVectorOperator(BaseOperator):
+    def __init__(self, multvec=None, to_euclidian=True, basis=None):
+#        super(MultiVectorOperator, self).__init__(None, None)
+        if multvec is not None:
+            self._basis = multvec.basis
+        else:
+            assert dim is not None and basis is not None
+            self._basis = basis
+        self._dim = self._basis.dim
+        self._dimsum = sum(self._dim.values())      # ;)
+        self._to_euclidian = to_euclidian
+        
+    @property
+    def dim(self):
+        return self._dimsum
+
+    @property
+    def can_invert(self):
+        return True 
+
+    def invert(self):
+        return MultiVectorOperator(to_euclidian=False, basis=self._basis)
+
+    def apply(self, vec):
+        if self._to_euclidian:
+            assert vec.dim == self._dim
+            a = np.empty(0)
+            for mu in vec.active_indices:
+                a = np.hstack((a, vec[mu]))
+            return a
+        else:
+            assert len(vec) == self._dimsum
+            new_vec = MultiVector()
+            ci = 0
+            for mu in self._basis.keys():
+                fenics_vec = FEniCSVector.from_basis(self._basis[mu])
+                cdim = self._basis[mu].dim
+                fenics_vec.coeffs = vec[ci:ci + cdim]
+                new_vec[mu] = fenics_vec
+                ci += cdim
+
+
+class MultiVectorBasis(object):
+    def __init__(self, multivec):
+        self._basis = {mu:multivec[mu].basis for mu in multivec.active_indices()}
+
+    @property
+    def dim(self):
+        return {mu:self._basis[mu].dim for mu in self._basis.keys()}

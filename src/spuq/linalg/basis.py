@@ -80,12 +80,6 @@ class FunctionBasis(Basis):
 
 # class SubBasis, IndexedBasis
 
-
-# NOTE: not directly supported by fenics classes - why do we need it?
-#    @abstractmethod
-#    def eval_at(self, vector):
-#        """Evaluated the basis functions at the specified points"""
-#        return NotImplemented
 #class TensorProductBasis(Basis):
 #    def eval_at(self, vector):
 #        # for b in bases:

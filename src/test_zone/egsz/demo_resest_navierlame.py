@@ -48,7 +48,7 @@ domain = domains[domaintype]
 decay_exp = 2
 
 # refinements
-max_refinements = 1
+max_refinements = 0
 
 # polynomial degree of FEM approximation
 degree = 1
@@ -68,7 +68,7 @@ REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
 UNIFORM_REFINEMENT = True
 
 # initial mesh elements
-initial_mesh_N = 5
+initial_mesh_N = 10
 
 # ============================================================
 # PART B: Problem Setup

@@ -14,6 +14,11 @@ class FEMVector(Vector, Flat):
         raise NotImplementedError
 
     @abstractproperty
+    def dim(self):
+        '''return dimension'''
+        raise NotImplementedError
+
+    @abstractproperty
     def coeffs(self):
         '''return coefficient vector'''
         raise NotImplementedError
