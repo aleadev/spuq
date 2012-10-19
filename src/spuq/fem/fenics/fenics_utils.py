@@ -52,6 +52,7 @@ def apply_bc(fenics_obj, bc=DEFAULT_BC, V=None):
         bc.apply(fenics_obj)
     return fenics_obj
 
+
 @takes(GenericMatrix, (BoundaryCondition, sequence_of(BoundaryCondition)))
 def remove_boundary_entries(A, bcs):
     if not isinstance(bcs, BoundaryCondition):
@@ -147,6 +148,7 @@ def weighted_H1_norm(w, vec, piecewise=False):
         ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * dx)
         norm_vec = sqrt(ae)
     return norm_vec
+
 
 # TODO: make this function readable (variable names, comments)
 @takes((list, tuple), optional(Mesh))

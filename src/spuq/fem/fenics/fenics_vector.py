@@ -62,6 +62,7 @@ class FEniCSVector(FEMVector):
         '''Set FEniCS coefficient vector of Function.'''
         self._fefunc.vector()[:] = val
 
+    @property
     def array(self):
         '''Return copy of coefficient vector as numpy array.'''
         return self._fefunc.vector().array()

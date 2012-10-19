@@ -154,6 +154,10 @@ class FlatVector(Vector, Flat):
     def coeffs(self):
         return self._coeffs
 
+    @property
+    def dim(self):
+        return len(self.coeffs)
+
     def as_array(self):
         return self.coeffs
 

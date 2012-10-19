@@ -1,3 +1,4 @@
+from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.linalg.vector import Scalar, Vector, inner
 from spuq.linalg.basis import Basis
 from spuq.linalg.operator import BaseOperator
@@ -35,6 +36,9 @@ class MultiVector(Vector):
     def dim(self):
         """Return set of dimensions of MultiVector."""
         return {mu:self[mu].dim for mu in self.active_indices()}
+
+    def __len__(self):
+        return sum(d for d in self.dim.values())
 
     def flatten(self):
         """Return flattened (Euclidian) vector"""
@@ -338,20 +342,28 @@ class MultiVectorOperator(BaseOperator):
     def apply(self, vec):
         if self._to_euclidian:
             assert vec.dim == self._dim
+#            print "MultiVectorOperator TO-EUCLIDIAN", type(vec) 
             a = np.empty(0)
-            for mu in vec.active_indices:
-                a = np.hstack((a, vec[mu]))
+            for mu in self._basis.active_indices():
+                a = np.hstack((a, vec[mu].coeffs.array()))
             return a
         else:
             assert len(vec) == self._dimsum
+#            print "MultiVectorOperator TO-MULTIVECTOR", type(vec) 
             new_vec = MultiVector()
             ci = 0
-            for mu in self._basis.keys():
-                fenics_vec = FEniCSVector.from_basis(self._basis[mu])
-                cdim = self._basis[mu].dim
+            basis = self._basis
+            for mu in self._basis.active_indices():
+                fenics_vec = FEniCSVector.from_basis(basis._basis[mu])
+                cdim = basis._basis[mu].dim
+#                tv = vec[ci:ci + cdim].view()
+#                tv.shape = prod(tv.shape) 
+#                fenics_vec.coeffs = tv
                 fenics_vec.coeffs = vec[ci:ci + cdim]
                 new_vec[mu] = fenics_vec
                 ci += cdim
+#        print "\t-->", type(new_vec)
+        return new_vec
 
 
 class MultiVectorBasis(object):
@@ -361,3 +373,6 @@ class MultiVectorBasis(object):
     @property
     def dim(self):
         return {mu:self._basis[mu].dim for mu in self._basis.keys()}
+
+    def active_indices(self):
+        return self._basis.keys()

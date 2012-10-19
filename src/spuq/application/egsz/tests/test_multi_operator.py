@@ -7,7 +7,7 @@ from spuq.application.egsz.multi_operator import MultiOperator
 from spuq.application.egsz.coefficient_field import CoefficientField, ListCoefficientField
 from spuq.linalg.basis import CanonicalBasis
 from spuq.linalg.vector import FlatVector
-from spuq.linalg.operator import DiagonalMatrixOperator, MultiplicationOperator
+from spuq.linalg.operator import DiagonalMatrixOperator, MultiplicationOperator, evaluate_operator_matrix
 from spuq.linalg.function import ConstFunction, SimpleFunction
 from spuq.stochastics.random_variable import NormalRV, UniformRV
 from spuq.polyquad.polynomials import LegendrePolynomials, StochasticHermitePolynomials
@@ -122,7 +122,7 @@ def test_fenics_vector():
         h01=H.get_beta(0)[1], h00=H.get_beta(0)[0])
     vec0 = FEniCSVector(interpolate(ex0, fs))
 
-    assert_almost_equal(v[mis[0]].array(), vec0.array())
+    assert_almost_equal(v[mis[0]].array, vec0.array)
 
     # ======================================================================
     # test with different meshes
@@ -149,8 +149,8 @@ def test_fenics_vector():
     vec0 = FEniCSVector(interpolate(ex0, fss[0]))
     vec2 = FEniCSVector(interpolate(ex2, fss[2]))
 
-    assert_almost_equal(v[mis[0]].array(), vec0.array())
-    assert_almost_equal(v[mis[2]].array(), vec2.array())
+    assert_almost_equal(v[mis[0]].array, vec0.array)
+    assert_almost_equal(v[mis[2]].array, vec2.array)
 
 
 @skip_if(not HAVE_FENICS)
@@ -174,8 +174,8 @@ def test_fenics_with_assembly():
         w[mi] = vec
     v = A * w
 
-    #print '\n', v[mis[0]].array()
-    #print w[mis[0]].array()
+    #print '\n', v[mis[0]].array
+    #print w[mis[0]].array
 
     #    L = LegendrePolynomials(normalised=True)
     #    H = StochasticHermitePolynomials(mu=0.5, normalised=True)
@@ -184,7 +184,7 @@ def test_fenics_with_assembly():
     #                     h01=H.get_beta(0)[1], h00=H.get_beta(0)[0])
     #    vec0 = FEniCSVector(interpolate(ex0, fs))
     #
-    #    assert_almost_equal(v[mis[0]].array(), vec0.array())
+    #    assert_almost_equal(v[mis[0]].array, vec0.array)
 
 
     # ======================================================================
@@ -215,10 +215,10 @@ def test_matrixization():
 
     A = MultiOperator(coeff_field, mult_assemble)
     mis = [Multiindex([0]),
-           Multiindex([1]),
-           Multiindex([0, 1]),
+#           Multiindex([1]),
+#           Multiindex([0, 1]),
            Multiindex([0, 2])]
-    mesh = UnitSquare(4, 4)
+    mesh = UnitSquare(1, 1)
     fs = FunctionSpace(mesh, "CG", 2)
     F = [interpolate(Expression("*".join(["x[0]"] * i)), fs) for i in range(1, 5)]
     vecs = [FEniCSVector(f) for f in F]
@@ -229,10 +229,17 @@ def test_matrixization():
 
     P = w.to_euclidian_operator
     Q = w.from_euclidian_operator
+    
+    Pw = P.apply(w)
+    assert type(Pw) == np.ndarray and len(Pw) == sum((v for v in w.dim.values()))
+    QPw = Q.apply(Pw)
+    assert w.active_indices() == QPw.active_indices()
+    for mu in w.active_indices():
+        assert_equal(w[mu].array, QPw[mu].array)
+ 
     A_linear = P * A * Q
-    A_mat = A_linear.evaluate_matrix()
-
-    print A_mat
+    A_mat = evaluate_operator_matrix(A_linear)
+#    print A_mat
 
 
 test_main()

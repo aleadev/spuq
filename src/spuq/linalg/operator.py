@@ -12,6 +12,21 @@ __all__ = ["Operator", "BaseOperator", "ComposedOperator", "SummedOperator",
            "MultiplicationOperator"]
 
 
+
+def evaluate_operator_matrix(op):
+    """Evaluate matrix representation of operator"""
+    import numpy as np
+    N = op.dim
+    A = np.matrix(np.zeros((N, N)))
+    e = np.zeros((N,))
+    for i in range(N):
+        if i > 0:
+            e[i - 1] = 0
+        e[i] = 1
+        A[:, i] = op.apply(e)[:, None]
+    return A
+
+
 @with_equality
 class Operator(object):
     """Abstract base class for (linear) operators mapping elements from
@@ -64,19 +79,6 @@ class Operator(object):
     def as_matrix(self):  # pragma: no cover
         """Return the operator in matrix form"""
         raise NotImplementedException
-
-    def evaluate_matrix(self):
-        """Evaluate matrix representation of operator"""
-        import numpy as np
-        N = self.dim
-        A = np.matrix(np.zeros((N, N)))
-        e = np.zeros((N, 1))
-        for i in range(N):
-            if i > 0:
-                e[i - 1] = 0
-            e[i] = 1
-            A[:, i] = self.apply(e)
-        return A
 
     @takes(anything, (Scalar, Vector, "Operator"))
     def __mul__(self, other):
@@ -159,7 +161,10 @@ class ComposedOperator(Operator):
     def __init__(self, op1, op2, trans=None, inv=None, invtrans=None):
         """Takes two operators and returns the composition of those
         operators"""
-        assert(op1.codomain == op2.domain)
+        try:
+            assert(op1.codomain == op2.domain)
+        except AttributeError:
+            pass
         self.op1 = op1
         self.op2 = op2
         self.trans = None
@@ -189,8 +194,11 @@ class ComposedOperator(Operator):
 
     def apply(self, vec):
         """Apply operator to vector which should be in the domain of operator"""
+#        print "COMPOSITE", type(self.op1), type(self.op2)
         r = self.op1.apply(vec)
+#        print "\tCOMPOSITE intermediate", type(r)
         r = self.op2.apply(r)
+#        print "\tCOMPOSITE ", type(r), " --> ", type(vec)
         return r
 
     def can_transpose(self):
