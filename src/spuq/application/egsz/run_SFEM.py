@@ -90,7 +90,7 @@ def run_SFEM(opts, conf):
     REFINEMENT = {"RES":CONF_refine_residual, "PROJ":CONF_refine_projection, "MI":CONF_refine_Lambda}
     
     # initial mesh elements
-    initial_mesh_N = 10
+    initial_mesh_N = CONF_initial_mesh_N
 
     
     # ============================================================
@@ -112,7 +112,11 @@ def run_SFEM(opts, conf):
                                         freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
     
     # setup boundary conditions
-    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field)
+    try:
+        mu = CONF_mu
+    except:
+        pass
+    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field, mu=mu)
     
     # define multioperator
     A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
@@ -125,10 +129,6 @@ def run_SFEM(opts, conf):
     # ============================================================
     # PART C: Adaptive Algorithm
     # ============================================================
-    
-    # -------------------------------------------------------------
-    # -------------- ADAPTIVE ALGORITHM OPTIONS -------------------
-    # -------------------------------------------------------------
     
     # refinement loop
     # ===============

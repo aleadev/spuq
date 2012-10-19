@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import optparse
 import ConfigParser
 from run_SFEM import run_SFEM
@@ -40,19 +42,24 @@ class ExperimentStarter(object):
         basedir = dirname(options.conffile)
     
         if options.debug:
-            print "program options", options
-            print "basedir", basedir 
+            print("program options", options)
+            print("basedir", basedir) 
         
         options.basedir = basedir
         return options
         
-    def _parse_config(self, opts):
+    @classmethod
+    def _parse_config(cls, opts=None, configfile=None):
         try:
             confparser = ConfigParser.SafeConfigParser()
-            if not confparser.read(opts.conffile):
-                raise ConfigParser.ParsingError("file not found")
+            if configfile is not None:
+                filename = configfile
+            else:
+                configfile = opts.conffile
+            if not confparser.read(filename):
+                raise ConfigParser.ParsingError("file " + filename + " not found")
         except ConfigParser.ParsingError, err:
-            print "Could not parse:", err
+            print("Could not parse:", err)
 
         # extract options
         getter = ("get", "getint", "getfloat", "getboolean")
@@ -67,7 +74,9 @@ class ExperimentStarter(object):
                             "coeff_scale":2,
                             "freq_scale":2,
                             "freq_skip":1,
-                            "gamma":2}),
+                            "gamma":2,
+                            "mu":2,
+                            "initial_mesh_N":1}),
                    ("SFEM adaptive algorithm",
                         {"iterations":1,
                             "uniform_refinement":3,
@@ -101,43 +110,61 @@ class ExperimentStarter(object):
         for sec, optsdict in option_defs:
             conf[sec] = {}
             for key, keytype in optsdict.iteritems():
-                exec "conf['" + sec + "']['" + key + "'] = confparser." + getter[keytype] + "('" + sec + "','" + key + "')"
+                try:
+                    exec "conf['" + sec + "']['" + key + "'] = confparser." + getter[keytype] + "('" + sec + "','" + key + "')"
+                except:
+                    print("skipped", sec, key)
 
-        if opts.debug:
+        if opts is not None and opts.debug:
             for sec in confparser.sections():
-                print "section", sec
+                print("section", sec)
                 for opt in confparser.options(sec):
-                    print "\t", opt, "=", confparser.get(sec, opt)
-                print ""
-            print conf
+                    print("\t", opt, "=", confparser.get(sec, opt))
+                print("")
+            print(conf)
 
+        return conf
+
+    @classmethod
+    def _extract_config(cls, dic, savefile=None):
+        CONFstr = 'CONF_'
+        conf = {}
+        for k, v in dic.iteritems():
+            if k.startswith(CONFstr):
+                conf[k[len(CONFstr):]] = v
+        
+        if savefile is not None:
+            with open(savefile, 'a') as f:
+                for k in sorted(conf):
+                    print(k + " = " + str(conf[k]), file=f)
         return conf
 
     def start(self):
         # check if data should be cleared
         if self.opts.clear == 'SFEM' or self.opts.clear == 'all':
-            print "clearing SFEM data TODO"
+            print("clearing SFEM data TODO")
             # TODO
         if self.opts.clear == 'MC' or self.opts.clear == 'all':
-            print "clearing MC data TODO"
+            print("clearing MC data TODO")
             # TODO
 
         # start SFEM
         if self.opts.runSFEM:
-            print "="*60
-            print "starting SFEM"
-            print "="*60
+            print("="*60)
+            print("starting SFEM")
+            print("="*60)
             run_SFEM(self.opts, self.conf)
         
         # start MC
         if self.opts.runMC:
-            print "="*60
-            print "starting MC"
-            print "="*60
+            print("="*60)
+            print("starting MC")
+            print("="*60)
             run_MC(self.opts, self.conf)
 
 # -----------------------------------------------------------------------------
 
-# get configuration and start experiments
-starter = ExperimentStarter()
-starter.start()
+if __name__ == "__main__":
+    # get configuration and start experiments
+    starter = ExperimentStarter()
+    starter.start()

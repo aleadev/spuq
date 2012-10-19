@@ -5,6 +5,7 @@ import functools
 import numpy as np
 from math import sqrt
 
+from spuq.application.egsz.experiment_starter import ExperimentStarter
 from spuq.application.egsz.pcg import pcg
 from spuq.application.egsz.adaptive_solver import setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator, ASSEMBLY_TYPE
@@ -31,8 +32,25 @@ except:
 
 # ------------------------------------------------------------
 
-LOG_LEVEL = logging.INFO
+configfile = "test_elasticity_pcg.conf"
+config = ExperimentStarter._parse_config(configfile=configfile)
+
+# propagate config values
+for sec in config.keys():
+    if sec == "LOGGING":
+        continue
+    secconf = config[sec]
+    for key, val in secconf.iteritems():
+        print "CONF_" + key + "= secconf['" + key + "'] =", secconf[key]
+        exec "CONF_" + key + "= secconf['" + key + "']"
+
+# setup logging
+print "LOG_LEVEL = logging." + config["LOGGING"]["level"]
+exec "LOG_LEVEL = logging." + config["LOGGING"]["level"]
 logger = setup_logging(LOG_LEVEL)
+
+# save current settings
+ExperimentStarter._extract_config(globals(), savefile="test_elasticity_pcg-save.conf")
 
 # ------------------------------------------------------------
 
@@ -40,21 +58,11 @@ logger = setup_logging(LOG_LEVEL)
 # PART A: Simulation Options
 # ============================================================
 
-# domain
-domain = 'square'
+# flags for residual, projection, new mi refinement 
+REFINEMENT = {"RES":CONF_refine_residual, "PROJ":CONF_refine_projection, "MI":CONF_refine_Lambda}
 
 # initial mesh elements
-#initial_mesh_N = 3
-initial_mesh_N = 10
-
-# decay exponent
-decay_exp = 2
-
-# FEM degree
-degree = 1
-
-# multioperator assembly type
-assembly_type = ASSEMBLY_TYPE.MU #JOINT_GLOBAL #JOINT_MU
+initial_mesh_N = CONF_initial_mesh_N
 
 # plotting flag
 PLOT_SOLUTION = True
@@ -65,47 +73,34 @@ PLOT_SOLUTION = True
 # ============================================================
 
 # define initial multiindices
-mis = list(Multiindex.createCompleteOrderSet(2, 1))
+mis = list(Multiindex.createCompleteOrderSet(CONF_initial_Lambda, 1))
 #mis = list(Multiindex.createCompleteOrderSet(0, 1))
 mis = [mis[0], mis[2]]
 #mis = [mis[0]]
-
-# setup meshes
-mesh0, boundaries, dim = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
+    
+# setup domain and meshes
+mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=initial_mesh_N)
+#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
 # define coefficient field
-coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
-gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=1e5)
-a0 = coeff_field.mean_func
+# NOTE: for proper treatment of corner points, see elasticity_residual_estimator
+coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
+coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
+                                    freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
 
 # setup boundary conditions
-Dirichlet_boundary = None
-uD = None
-Neumann_boundary = None
-g = None
-# ========== Navier-Lame ===========
-# define source term
-f = Constant((0.0, 0.0))
-# define Dirichlet bc
-Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-uD = (Constant((0.0, 0.0)), Constant((0.3, 0.0)))
-#    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-#    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
-# homogeneous Neumann does not have to be set explicitly
-Neumann_boundary = None # (boundaries['right'])
-g = None #Constant((0.0, 10.0))
-# create pde instance
-pde = FEMNavierLame(mu=1e4, lmbda0=a0,
-                    dirichlet_boundary=Dirichlet_boundary, uD=uD,
-                    neumann_boundary=Neumann_boundary, g=g,
-                    f=f)
+try:
+    mu = CONF_mu
+except:
+    pass
+pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field, mu=mu)
 
 # define multioperator
-A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=assembly_type)
+A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
 
-w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
+# setup initial solution multivector
+w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=CONF_FEM_degree))
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 
@@ -114,12 +109,9 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # ============================================================
 
 # pcg solver
-pcg_eps = 1e-6
-pcg_maxiter = 100
-
 b = prepare_rhs(A, w, coeff_field, pde)
 P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
-w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
+w, zeta, numit = pcg(A, b, P, w0=w, eps=CONF_pcg_eps, maxiter=CONF_pcg_maxiter)
 logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
 #if True:

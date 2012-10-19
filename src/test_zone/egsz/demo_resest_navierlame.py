@@ -4,6 +4,7 @@ import os
 import functools
 from math import sqrt
 
+from spuq.application.egsz.experiment_starter import ExperimentStarter
 from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator, ASSEMBLY_TYPE
 from spuq.application.egsz.sample_problems import SampleProblem
@@ -28,9 +29,25 @@ except:
 
 # ------------------------------------------------------------
 
+configfile = "test_elasticity_pcg.conf"
+config = ExperimentStarter._parse_config(configfile=configfile)
+
+# propagate config values
+for sec in config.keys():
+    if sec == "LOGGING":
+        continue
+    secconf = config[sec]
+    for key, val in secconf.iteritems():
+        print "CONF_" + key + "= secconf['" + key + "'] =", secconf[key]
+        exec "CONF_" + key + "= secconf['" + key + "']"
+
 # setup logging
-LOG_LEVEL = logging.INFO
+print "LOG_LEVEL = logging." + config["LOGGING"]["level"]
+exec "LOG_LEVEL = logging." + config["LOGGING"]["level"]
 logger = setup_logging(LOG_LEVEL)
+
+# save current settings
+ExperimentStarter._extract_config(globals(), savefile="demo_resest_navierlame-save.conf")
 
 # determine path of this module
 path = os.path.dirname(__file__)
@@ -39,88 +56,46 @@ path = os.path.dirname(__file__)
 # PART A: Simulation Options
 # ============================================================
 
-# set problem (0:Poisson, 1:Navier-Lame)
-domaintype = 0
-domains = ('square', 'lshape', 'cooks')
-domain = domains[domaintype]
+# flags for residual, projection, new mi refinement 
+REFINEMENT = {"RES":CONF_refine_residual, "PROJ":CONF_refine_projection, "MI":CONF_refine_Lambda}
 
-# decay exponent
-decay_exp = 2
-
-# refinements
-max_refinements = 0
-
-# polynomial degree of FEM approximation
-degree = 1
-
-# multioperator assembly type
-assembly_type = ASSEMBLY_TYPE.MU #JOINT_GLOBAL #JOINT_MU
-
-# flag for final solution export
-SAVE_SOLUTION = ''
-#SAVE_SOLUTION = os.path.join(os.path.dirname(__file__), "results/demo-residual-A2")
+# initial mesh elements
+initial_mesh_N = CONF_initial_mesh_N
 
 # plotting flag
 PLOT_SOLUTION = True
 
-# flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":True, "PROJ":True, "MI":False}
-UNIFORM_REFINEMENT = True
-
-# initial mesh elements
-initial_mesh_N = 10
 
 # ============================================================
 # PART B: Problem Setup
 # ============================================================
-
+    
 # define initial multiindices
-mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(2, 1)]
-
-# debug---
-#mis = [Multiindex(), ]
-mis = [mis[0], mis[2]]
-# ---debug
+mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(CONF_initial_Lambda, 1)]
 
 # setup domain and meshes
-mesh0, boundaries, dim = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
+mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=initial_mesh_N)
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
 # define coefficient field
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
-coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
-gamma = 0.9
-coeff_field = SampleProblem.setupCF(coeff_types[1], decayexp=decay_exp, gamma=gamma, freqscale=1, freqskip=0, rvtype="uniform", scale=1e5)
-a0 = coeff_field.mean_func
+coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
+coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
+                                    freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
 
 # setup boundary conditions
-Dirichlet_boundary = None
-uD = None
-Neumann_boundary = None
-g = None
-# ========== Navier-Lame ===========
-# define source term
-f = Constant((0.0, 0.0))
-# define Dirichlet bc
-Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-uD = (Constant((0.0, 0.0)), Constant((0.3, 0.0)))
-#    Dirichlet_boundary = (boundaries['left'], boundaries['right'])
-#    uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
-# homogeneous Neumann does not have to be set explicitly
-Neumann_boundary = None # (boundaries['right'])
-g = None #Constant((0.0, 10.0))
-# create pde instance
-pde = FEMNavierLame(mu=1e4, lmbda0=a0,
-                    dirichlet_boundary=Dirichlet_boundary, uD=uD,
-                    neumann_boundary=Neumann_boundary, g=g,
-                    f=f)
+try:
+    mu = CONF_mu
+except:
+    pass
+pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field, mu=mu)
 
 # define multioperator
-A = MultiOperator(coeff_field, pde.assemble_operator, assembly_type=assembly_type)
+A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
 
-#setup multivector
-w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=degree))
+# setup initial solution multivector
+w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=CONF_FEM_degree))
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
 
@@ -128,50 +103,25 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # PART C: Adaptive Algorithm
 # ============================================================
 
-# -------------------------------------------------------------
-# -------------- ADAPTIVE ALGORITHM OPTIONS -------------------
-# -------------------------------------------------------------
-# error constants
-cQ = 1.0
-ceta = 1.0
-# marking parameters
-theta_eta = 0.5         # residual marking bulk parameter
-theta_zeta = 0.1        # projection marking threshold factor
-min_zeta = 1e-10        # minimal projection error considered
-maxh = 1 / 10           # maximal mesh width for projection maximum norm evaluation
-newmi_add_maxm = 10     # maximal search length for new new multiindices (to be added to max order of solution)
-theta_delta = 0.95       # number new multiindex activation bound
-max_Lambda_frac = 1 / 10 # fraction of |Lambda| for max number of new multiindices
-# residual error evaluation
-quadrature_degree = 3
-# projection error evaluation
-projection_degree_increase = 2
-refine_projection_mesh = 2
-# pcg solver
-pcg_eps = 1e-6
-pcg_maxiter = 100
-error_eps = 1e-4
-
-w_history = []
-
 # refinement loop
 # ===============
+w_history = []
 w0 = w
-w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, degree, gamma=gamma, cQ=cQ, ceta=ceta,
+w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, CONF_FEM_degree, gamma=CONF_gamma, cQ=CONF_cQ, ceta=CONF_ceta,
                     # marking parameters
-                    theta_eta=theta_eta, theta_zeta=theta_zeta, min_zeta=min_zeta,
-                    maxh=maxh, newmi_add_maxm=newmi_add_maxm, theta_delta=theta_delta,
-                    max_Lambda_frac=max_Lambda_frac,
+                    theta_eta=CONF_theta_eta, theta_zeta=CONF_theta_zeta, min_zeta=CONF_min_zeta,
+                    maxh=CONF_maxh, newmi_add_maxm=CONF_newmi_add_maxm, theta_delta=CONF_theta_delta,
+                    max_Lambda_frac=CONF_max_Lambda_frac,
                     # residual error evaluation
-                    quadrature_degree=quadrature_degree,
+                    quadrature_degree=CONF_quadrature_degree,
                     # projection error evaluation
-                    projection_degree_increase=projection_degree_increase, refine_projection_mesh=refine_projection_mesh,
+                    projection_degree_increase=CONF_projection_degree_increase, refine_projection_mesh=CONF_refine_projection_mesh,
                     # pcg solver
-                    pcg_eps=pcg_eps, pcg_maxiter=pcg_maxiter,
+                    pcg_eps=CONF_pcg_eps, pcg_maxiter=CONF_pcg_maxiter,
                     # adaptive algorithm threshold
-                    error_eps=error_eps,
+                    error_eps=CONF_error_eps,
                     # refinements
-                    max_refinements=max_refinements, do_refinement=REFINEMENT, do_uniform_refinement=UNIFORM_REFINEMENT,
+                    max_refinements=CONF_iterations, do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
                     w_history=w_history)
 
 from operator import itemgetter
@@ -204,13 +154,20 @@ if len(sim_stats) > 1:
         # figure 1
         # --------
         fig1 = figure()
-        fig1.suptitle("residual estimator")
+        fig1.suptitle("residual estimator components")
         ax = fig1.add_subplot(111)
         if REFINEMENT["MI"]:
             ax.loglog(x, num_mi, '--y+', label='active mi')
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+        legend(loc='upper right')                
+        # figure 2
+        # --------
+        fig2 = figure()
+        fig2.suptitle("residual estimator")
+        ax = fig2.add_subplot(111)
+        ax.loglog(x, errest, '-g<', label='error estimator')
         legend(loc='upper right')
         show()  # this invalidates the figure instances...
     except:

@@ -152,7 +152,7 @@ class SampleProblem(object):
 
     @classmethod
     @takes(anything, int, str, int)
-    def setupPDE(cls, boundary_type, domain_name, problem_type, boundaries, coeff_field):
+    def setupPDE(cls, boundary_type, domain_name, problem_type, boundaries, coeff_field, mu=1e4):
         a0 = coeff_field.mean_func
         Dirichlet_boundary = None
         uD = None
@@ -179,7 +179,7 @@ class SampleProblem(object):
             g = None #Constant((0.0, 10.0))
             
             # create pde instance
-            pde = FEMNavierLame(mu=1e2, lmbda0=a0,
+            pde = FEMNavierLame(mu=mu, lmbda0=a0,
                                 dirichlet_boundary=Dirichlet_boundary, uD=uD,
                                 neumann_boundary=Neumann_boundary, g=g, f=f)
         else:
