@@ -53,6 +53,10 @@ class FEniCSVector(FEMVector):
         return self._fefunc.function_space().num_sub_spaces() 
 
     @property
+    def mesh(self):
+        return self._fefunc.function_space().mesh()
+
+    @property
     def coeffs(self):
         '''Return FEniCS coefficient vector of Function.'''
         return self._fefunc.vector()
@@ -66,6 +70,10 @@ class FEniCSVector(FEMVector):
     def array(self):
         '''Return copy of coefficient vector as numpy array.'''
         return self._fefunc.vector().array()
+
+    def set_zero(self):
+        '''Set coefficients to zero.'''
+        self.coeffs.zero()
 
     def eval(self, x):
         return self._fefunc(x)

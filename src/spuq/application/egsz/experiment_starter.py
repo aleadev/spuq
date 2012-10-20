@@ -134,9 +134,12 @@ class ExperimentStarter(object):
                 conf[k[len(CONFstr):]] = v
         
         if savefile is not None:
+            import time
             with open(savefile, 'a') as f:
+                print("\n" + time.asctime() + "="*60 + "\n", file=f)
                 for k in sorted(conf):
                     print(k + " = " + str(conf[k]), file=f)
+                print("\n" + "="*80 + "\n", file=f)
         return conf
 
     def start(self):

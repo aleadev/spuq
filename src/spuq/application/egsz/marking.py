@@ -33,10 +33,22 @@ class Marking(object):
             logger.info("REFINE: refining %s of %s cells for mesh of mu %s", len(cell_ids), w[mu]._fefunc.function_space().mesh().num_cells(), mu)
             w[mu] = w[mu].refine(cell_ids, with_prolongation=True)
 
+        # determine current mesh sizes
+        minh, maxh = 1e6, 0
+        for mu in w.active_indices():
+            mesh = w[mu].mesh
+            minH, maxH = mesh.hmin(), mesh.hmax()
+            if minH < minh:
+                minh = minH 
+            if maxH > maxh:
+                maxh = maxH 
+        logger.info("REFINE: current meshes minh = %s and maxh = %s", minh, maxh)
+
         # add new multiindices to solution vector
         for mu in new_multiindices:
             logger.info("REFINE: adding new multiindex %s", mu)
             w[mu] = eval_vec()
+            logger.info("REFINE: new mesh maxh = %s", w[mu].mesh.hmax())
 
 
     @classmethod

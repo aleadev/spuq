@@ -32,6 +32,9 @@ except:
 
 # ------------------------------------------------------------
 
+# randomly refine initial meshes
+RANDOM_MESHES = False
+
 configfile = "test_elasticity_pcg.conf"
 config = ExperimentStarter._parse_config(configfile=configfile)
 
@@ -75,13 +78,16 @@ PLOT_SOLUTION = True
 # define initial multiindices
 mis = list(Multiindex.createCompleteOrderSet(CONF_initial_Lambda, 1))
 #mis = list(Multiindex.createCompleteOrderSet(0, 1))
-mis = [mis[0], mis[2]]
+#mis = [mis[0], mis[2]]
 #mis = [mis[0]]
+print "MIS", mis
     
 # setup domain and meshes
 mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=initial_mesh_N)
-#meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
-meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
+if RANDOM_MESHES:
+    meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.5, 0.4))
+else:
+    meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 
 # define coefficient field
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator

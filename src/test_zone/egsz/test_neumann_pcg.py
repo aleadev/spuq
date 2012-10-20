@@ -68,7 +68,7 @@ decay_exp = 2
 # define initial multiindices
 mis = list(Multiindex.createCompleteOrderSet(4, 1))
 #mis = list(Multiindex.createCompleteOrderSet(0, 1))
-mis = [mis[0]]
+#mis = [mis[0]]
 
 # setup meshes
 mesh0, boundaries, dim = SampleDomain.setupDomain(domain, initial_mesh_N=initial_mesh_N)
@@ -83,15 +83,6 @@ meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
 w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), setup_vec)
 logger.info("active indices of w after initialisation: %s", w.active_indices())
 
-# ---debug
-#from spuq.application.egsz.multi_vector import MultiVectorWithProjection
-#if SAVE_SOLUTION != "":
-#    w.pickle(SAVE_SOLUTION)
-#u = MultiVectorWithProjection.from_pickle(SAVE_SOLUTION, FEniCSVector)
-#import sys
-#sys.exit()
-# ---debug
-
 # define coefficient field
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials")
 gamma = 0.9
@@ -105,14 +96,12 @@ uD = (Constant(-2.0), Constant(3.0))
 Neumann_boundary = None
 g = None
 
-
 # define source term
 f = Constant(1.0)
 
 pde = FEMPoisson(dirichlet_boundary=Dirichlet_boundary, uD=uD,
                  neumann_boundary=Neumann_boundary, g=g,
                  f=f)
-
 
 
 
@@ -142,10 +131,6 @@ print sys.settrace(traceit)
 
 
 
-
-
-
-
 # define multioperator
 A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs)
 
@@ -154,14 +139,12 @@ pcg_eps = 1e-6
 pcg_maxiter = 100
 
 b = prepare_rhs(A, w, coeff_field, pde)
-
 P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
 w, zeta, numit = pcg(A, b, P, w0=w, eps=pcg_eps, maxiter=pcg_maxiter)
-
 
 logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
 if True:
-    for i, mesh in enumerate(meshes):
-        plot(mesh, title="mesh %i" % i)
+    for mu in w.active_indices():
+        plot(w[mu]._fefunc, title="solution %s" % str(mu))
     interactive()

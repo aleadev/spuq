@@ -278,9 +278,10 @@ logger.info("\n======================================\nMEMORY USED: " + str(reso
 # NOTE: save at this point since MC tends to run out of memory
 if SAVE_SOLUTION != "":
     # save solution (also creates directory if not existing)
-    w.pickle(SAVE_SOLUTION)
-    # save simulation data
     import pickle
+    with open(os.path.join(SAVE_SOLUTION, 'SIM-SOLUTION.pkl'), 'wb') as fout:
+        pickle.dump(w, fout)
+    # save simulation data
     with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
         pickle.dump(sim_stats, fout)
 

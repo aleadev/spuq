@@ -198,7 +198,7 @@ for mu in w.active_indices():
 b = b2
 B = []
 for mu in b.active_indices():
-    B += [b[mu].array()]
+    B += [b[mu].array]
 print np.array(B)
 print pde.assemble_operator(coeff_field.mean_func, w[Multiindex()].basis)._matrix.array()
 print pde.assemble_operator_inner_dofs(coeff_field[0][0], w[Multiindex()].basis)._matrix.array()

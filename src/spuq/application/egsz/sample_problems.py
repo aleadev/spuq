@@ -163,6 +163,10 @@ class SampleProblem(object):
             # ========== Navier-Lame ===========
             # define source term
             f = Constant((0.0, 0.0))
+
+            # homogeneous Neumann does not have to be set explicitly
+            Neumann_boundary = None # (boundaries['right'])
+            g = None #Constant((0.0, 10.0))
             
             # define Dirichlet bc
             if boundary_type == 0:
@@ -170,13 +174,18 @@ class SampleProblem(object):
                 uD = (Constant((0.0, 0.0)), Constant((0.3, 0.0)))
             elif boundary_type == 1:
                 Dirichlet_boundary = (boundaries['left'], boundaries['right'])
+                uD = (Constant((0.0, 0.0)), Constant((0.0, 0.3)))
+            elif boundary_type == 2:
+                Dirichlet_boundary = (boundaries['left'], boundaries['right'])
                 uD = (Constant((0.0, 0.0)), Constant((1.0, 1.0)))
+            elif boundary_type == 3:
+                Dirichlet_boundary = (boundaries['left'])
+                uD = (Constant((0.0, 0.0)))
+                Neumann_boundary = (boundaries['right'])
+                g = (Constant((0.0, 100.0)))
             else:
                 raise Exception("wrong boundary type %i for problem type %i" % boundary_type, problem_type)
             
-            # homogeneous Neumann does not have to be set explicitly
-            Neumann_boundary = None # (boundaries['right'])
-            g = None #Constant((0.0, 10.0))
             
             # create pde instance
             pde = FEMNavierLame(mu=mu, lmbda0=a0,

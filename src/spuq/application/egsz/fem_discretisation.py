@@ -13,7 +13,6 @@ default_Dirichlet_boundary = lambda x, on_boundary: on_boundary
 
 
 class FEMDiscretisationBase(FEMDiscretisation):
-
     def create_dirichlet_bcs(self, V, uD, boundary):
         """Apply Dirichlet boundary conditions."""
         if uD is None:
@@ -50,7 +49,6 @@ class FEMDiscretisationBase(FEMDiscretisation):
         if len(val) == 1:
             val = val[0]
         return val
-
 
     def assemble_operator_inner_dofs(self, coeff, basis):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
@@ -270,7 +268,6 @@ class FEMNavierLame(FEMDiscretisationBase):
         A, _ = assemble_system(a, l, bcs)
         return A
 
-
     def assemble_rhs(self, lmbda, basis, withBC=True, f=None):
         """Assemble the discrete right-hand side."""
         if f is None:
@@ -350,5 +347,3 @@ class FEMNavierLame(FEMDiscretisationBase):
                 # TODO: check sign!
                 Nbres = gj - dot(self.sigma(lmbda, self.mu, v), nu)
                 form.append((inner(Nbres, Nbres), ds(j + 1)))
-
-

@@ -72,6 +72,8 @@ PLOT_SOLUTION = True
     
 # define initial multiindices
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(CONF_initial_Lambda, 1)]
+#mis = [mis[0], mis[2]]
+#mis = [mis[0]]
 
 # setup domain and meshes
 mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=initial_mesh_N)

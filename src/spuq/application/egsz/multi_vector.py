@@ -88,6 +88,10 @@ class MultiVector(Vector):
         for mi in multiindex_set:
             self[Multiindex(mi)] = init_vector.copy()
 
+    def set_zero(self):
+        for mu in self.active_indices():
+            self[mu].set_zero()
+
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.mi2vec == other.mi2vec)
