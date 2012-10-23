@@ -14,8 +14,8 @@ class SampleDomain(object):
         mesh0 = UnitInterval(N)
         maxx, minx = 1, 0
         # setup boundary parts
-        left, right = compile_subdomains(['near(x[0], minx) && on_boundary',
-                                          'near(x[0], maxx) && on_boundary'])
+        left, right = compile_subdomains(['near(x[0], 0.) && on_boundary',
+                                          'near(x[0], 1.) && on_boundary'])
         left.minx = minx
         right.maxx = maxx
         return mesh0, {'left':left, 'right':right}, 1
@@ -26,9 +26,9 @@ class SampleDomain(object):
         mesh0 = Mesh(lshape_xml)
         maxx, minx, maxy, miny = 1, -1, 1, -1
         # setup boundary parts
-        top, bottom, left, right = compile_subdomains([  'near(x[1], maxy) && on_boundary',
-                                                         'near(x[1], miny) && on_boundary',
-                                                         'near(x[0], minx) && on_boundary',
+        top, bottom, left, right = compile_subdomains([  'near(x[1], 1.) && on_boundary',
+                                                         'near(x[1], -1.) && on_boundary',
+                                                         'near(x[0], -1.) && on_boundary',
                                                          'x[0]>=0. && x[1]<1. && x[1]>=-1. && on_boundary'])
         top.maxy = maxy
         bottom.miny = miny
@@ -41,10 +41,10 @@ class SampleDomain(object):
         mesh0 = UnitSquare(N, N)
         maxx, minx, maxy, miny = 1, 0, 1, 0
         # setup boundary parts
-        top, bottom, left, right = compile_subdomains([  'near(x[1], maxy) && on_boundary',
-                                                         'near(x[1], miny) && on_boundary',
-                                                         'near(x[0], minx) && on_boundary',
-                                                         'near(x[0], maxx) && on_boundary'])
+        top, bottom, left, right = compile_subdomains([  'near(x[1], 1.) && on_boundary',
+                                                         'near(x[1], 0.) && on_boundary',
+                                                         'near(x[0], 0.) && on_boundary',
+                                                         'near(x[0], 1.) && on_boundary'])
         top.maxy = maxy
         bottom.miny = miny
         left.minx = minx
@@ -60,14 +60,14 @@ class SampleDomain(object):
     #    plot(mesh, interactive=True, axes=True) 
         maxx, minx, maxy, miny = 48, 0, 60, 0
         # setup boundary parts
-        llc, lrc, tlc, trc = compile_subdomains(['near(x[0], minx) && near(x[1], miny)',
-                                                         'near(x[0], maxx) && near(x[1], miny)',
-                                                         'near(x[0], minx) && near(x[1], maxy)',
-                                                         'near(x[0], maxx) && near(x[1], maxy)'])    
-        top, bottom, left, right = compile_subdomains([  'x[0] > minx && x[0] < maxx && x[1] >= 44. && on_boundary',
-                                                         'x[0] > minx && x[0] < maxx && x[1] <= 44. && on_boundary',
-                                                         'near(x[0], minx) && on_boundary',
-                                                         'near(x[0], maxx) && on_boundary'])    
+        llc, lrc, tlc, trc = compile_subdomains(['near(x[0], 0.) && near(x[1], 0.)',
+                                                         'near(x[0], 48.) && near(x[1], 0.)',
+                                                         'near(x[0], 0.) && near(x[1], 60.)',
+                                                         'near(x[0], 48.) && near(x[1], 60.)'])    
+        top, bottom, left, right = compile_subdomains([  'x[0] > 0. && x[0] < 48. && x[1] >= 44. && on_boundary',
+                                                         'x[0] > 0. && x[0] < 48. && x[1] <= 44. && on_boundary',
+                                                         'near(x[0], 0.) && on_boundary',
+                                                         'near(x[0], 48.) && on_boundary'])    
         # the corners
         llc.minx = minx
         llc.miny = miny

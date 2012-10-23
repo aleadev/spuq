@@ -182,7 +182,7 @@ class SampleProblem(object):
                 Dirichlet_boundary = (boundaries['left'])
                 uD = (Constant((0.0, 0.0)))
                 Neumann_boundary = (boundaries['right'])
-                g = (Constant((0.0, 100.0)))
+                g = (Constant((0.0, 1.0)))
             else:
                 raise Exception("wrong boundary type %i for problem type %i" % boundary_type, problem_type)
             

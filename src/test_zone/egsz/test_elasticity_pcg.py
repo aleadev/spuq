@@ -5,7 +5,6 @@ import functools
 import numpy as np
 from math import sqrt
 
-from spuq.application.egsz.experiment_starter import ExperimentStarter
 from spuq.application.egsz.pcg import pcg
 from spuq.application.egsz.adaptive_solver import setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator, ASSEMBLY_TYPE
@@ -18,6 +17,7 @@ from spuq.application.egsz.adaptive_solver import prepare_rhs, pcg_solve
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.plot.plotter import Plotter
+from spuq.application.egsz.experiment_starter import ExperimentStarter
 from spuq.application.egsz.egsz_utils import setup_logging
 try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
@@ -35,8 +35,11 @@ except:
 # randomly refine initial meshes
 RANDOM_MESHES = False
 
+# determine path of this module
+path = os.path.dirname(__file__)
+
 configfile = "test_elasticity_pcg.conf"
-config = ExperimentStarter._parse_config(configfile=configfile)
+config = ExperimentStarter._parse_config(configfile=os.path.join(path, configfile))
 
 # propagate config values
 for sec in config.keys():
@@ -53,16 +56,13 @@ exec "LOG_LEVEL = logging." + config["LOGGING"]["level"]
 logger = setup_logging(LOG_LEVEL)
 
 # save current settings
-ExperimentStarter._extract_config(globals(), savefile="test_elasticity_pcg-save.conf")
+ExperimentStarter._extract_config(globals(), savefile=os.path.join(path, "test_elasticity_pcg-save.conf"))
 
 # ------------------------------------------------------------
 
 # ============================================================
 # PART A: Simulation Options
 # ============================================================
-
-# flags for residual, projection, new mi refinement 
-REFINEMENT = {"RES":CONF_refine_residual, "PROJ":CONF_refine_projection, "MI":CONF_refine_Lambda}
 
 # initial mesh elements
 initial_mesh_N = CONF_initial_mesh_N

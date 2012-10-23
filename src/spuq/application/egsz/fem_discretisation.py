@@ -143,7 +143,7 @@ class FEMPoisson(FEMDiscretisationBase):
 
         # treat Neumann boundary
         if self._neumann_boundary is not None:
-            Ng, ds = self._prepareNeumann(V.mesh())
+            Ng, ds = self._prepareNeumann(V.mesh())            
             for j in range(len(Ng)):
                 l -= dot(Ng[j], v) * ds(j + 1)
         

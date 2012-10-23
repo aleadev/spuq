@@ -158,7 +158,7 @@ for i in range(max_iterations):
         # define boundary measures
         ds = Measure("ds")[Neumann_parts]
         # shear load (Neumann boundary)
-        g = Constant((0.0, 100.0))
+        g = Constant((0.0, 0.3))
 #        g = Constant((0.0, 1.0))
         L -= dot(g, v) * ds(1)
     
@@ -176,7 +176,7 @@ for i in range(max_iterations):
 
     # setup boundary condition at right end
     if not with_Neumann:
-        r = Constant((-0.1, 0.5))
+        r = Constant((-5.0, -5.0))
         bcr = DirichletBC(V, r, right)
         bcs.append(bcr)
 

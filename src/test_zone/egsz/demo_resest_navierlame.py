@@ -29,8 +29,11 @@ except:
 
 # ------------------------------------------------------------
 
+# determine path of this module
+path = os.path.dirname(__file__)
+
 configfile = "test_elasticity_pcg.conf"
-config = ExperimentStarter._parse_config(configfile=configfile)
+config = ExperimentStarter._parse_config(configfile=os.path.join(path, configfile))
 
 # propagate config values
 for sec in config.keys():
@@ -47,10 +50,8 @@ exec "LOG_LEVEL = logging." + config["LOGGING"]["level"]
 logger = setup_logging(LOG_LEVEL)
 
 # save current settings
-ExperimentStarter._extract_config(globals(), savefile="demo_resest_navierlame-save.conf")
+ExperimentStarter._extract_config(globals(), savefile=os.path.join(path, "demo_resest_navierlame-save.conf"))
 
-# determine path of this module
-path = os.path.dirname(__file__)
 
 # ============================================================
 # PART A: Simulation Options
@@ -86,7 +87,7 @@ coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
 coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
                                     freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
 
-# setup boundary conditions
+# setup boundary conditions and pde
 try:
     mu = CONF_mu
 except:

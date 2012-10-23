@@ -5,7 +5,7 @@ from dolfin import (FunctionSpace, Expression, dx, inner,
                     assemble, Constant, DirichletBC, refine,
                     Function, norm, Mesh, CellFunction, cells,
                     GenericMatrix, GenericVector)
-from dolfin.cpp import BoundaryCondition, _set_matrix_single_item
+from dolfin.cpp import BoundaryCondition
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 
@@ -60,8 +60,16 @@ def remove_boundary_entries(A, bcs):
             remove_boundary_entries(A, bc)
     else:
         dofs = bcs.get_boundary_values().keys()
-        for i in dofs:
-            _set_matrix_single_item(A, i, i, 0.0)
+        N = len(dofs)
+        values = np.zeros(1, dtype=np.float_)
+        rows = np.array([0], dtype=np.uintc)
+        cols = np.array([0], dtype=np.uintc)
+        A.apply("insert")   # TODO: not sure about these applies
+        for d in dofs:
+            rows[0] = d
+            cols[0] = d
+            A.set(values, rows, cols)
+        A.apply("insert")
 
 
 @takes(GenericVector, (BoundaryCondition, sequence_of(BoundaryCondition)), bool)
