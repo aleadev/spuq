@@ -8,6 +8,8 @@ __all__ = [
 
 import spuq.utils.fixes
 
+import numpy as np
+np.set_printoptions(suppress=True, linewidth=1000, precision=3, edgeitems=20)
 
 try:
     from numpy.testing import Tester
