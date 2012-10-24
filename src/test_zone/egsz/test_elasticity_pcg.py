@@ -114,11 +114,61 @@ logger.info("active indices of w after initialisation: %s", w.active_indices())
 # PART C: Assemble and Solve
 # ============================================================
 
-# pcg solver
-b = prepare_rhs(A, w, coeff_field, pde)
-P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
-w, zeta, numit = pcg(A, b, P, w0=w, eps=CONF_pcg_eps, maxiter=CONF_pcg_maxiter)
-logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
+try:
+    # pcg solver
+    b = prepare_rhs(A, w, coeff_field, pde)
+    P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
+    w, zeta, numit = pcg(A, b, P, w0=w, eps=CONF_pcg_eps, maxiter=CONF_pcg_maxiter)
+    logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
+
+    raise Exception("TESTING")
+except Exception as e:
+    print e
+    def get_exception_frame_data():
+        import sys
+        import traceback
+        tb = sys.exc_info()[2]
+        while tb.tb_next:
+            tb = tb.tb_next
+        frame = tb.tb_frame
+        return (frame, frame.f_code.co_name, frame.f_locals)
+
+    def do_debug(**kwargs):
+        from spuq.utils.debug import Mdb
+        Mdb().set_trace()
+
+    def test_symmetry(A=None, w0=None, **kwargs):
+        from spuq.linalg.operator import evaluate_operator_matrix
+        v = w0
+        P = v.to_euclidian_operator
+        Q = v.from_euclidian_operator
+        print "Computing the matrix. This may take a while..."
+        A_mat = evaluate_operator_matrix(P * A * Q)
+
+        import scipy.linalg as la
+        print "norm(A-A^T) = %s" % la.norm(A_mat - A_mat.T)
+        print "norm(A) = %s" % la.norm(A_mat)
+        B=0.5 * (A_mat + A_mat.T)
+        lam = la.eig(B)[0]
+        print "l_min = %s, l_max = %s" % (min(lam), max(lam))
+
+    def test_symmetry_mod(A=None, **kwargs):
+        test_symmetry(A=A, w0=w, **kwargs)
+
+    debug_map = {"pcg": test_symmetry,
+                 "<module>": test_symmetry_mod}
+
+    (frame, name, locals) = get_exception_frame_data()
+    if name in debug_map:
+        debug_map[name](**locals)
+        do_debug(**locals)
+    else:
+        raise
+
+    #sys.exit()
+
+
+
 
 #if True:
 #    for i, mesh in enumerate(meshes):
