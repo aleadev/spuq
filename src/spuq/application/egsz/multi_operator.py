@@ -60,21 +60,19 @@ class MultiOperator(Operator):
             Vfine = w[Lambda[0]].basis.copy(mesh=mesh)
         
         for mu in Lambda:
-            # identify active multi indices
-            mus = [mu]
-            for m in range(maxm):
-                mu1 = mu.inc(m)
-                if mu1 in Lambda:
-                    mus.append(mu1)
-                mu2 = mu.dec(m)
-                if mu2 in Lambda:
-                    mus.append(mu2)
-            
-            logger.debug("apply on mu = %s with joint mesh for %s", str(mu), str(mus))
 
             if self._assembly_type != ASSEMBLY_TYPE.JOINT_GLOBAL:
                 # create joint mesh and basis
-                if self._assembly_type == ASSEMBLY_TYPE.JOINT_MU and hasattr(w[mu].basis, "mesh"):
+                if (self._assembly_type == ASSEMBLY_TYPE.JOINT_MU
+                    and hasattr(w[mu].basis, "mesh")):
+                    # identify active multi indices
+                    mus = set([mu])
+                    mus = mus.union([mu.inc(m) for m in range(maxm)])
+                    mus = mus.union([mu.dec(m) for m in range(maxm)])
+                    mus = mus.intersection(Lambda)
+                    logger.debug("apply on mu = %s with joint mesh for %s",
+                                 str(mu), str(mus))
+
                     meshes = [w[m].basis.mesh for m in mus]
                     mesh = create_joint_mesh(meshes)
                     Vfine = w[mu].basis.copy(mesh=mesh)
