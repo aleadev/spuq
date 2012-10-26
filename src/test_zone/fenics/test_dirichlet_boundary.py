@@ -83,18 +83,49 @@ def prepare_elasticity():
 #a, L, bcs = prepare_poisson()
 a, L, bcs = prepare_elasticity()
 
-A0 = assemble(a).array()
-b0 = assemble(L).array()
 
-for bc in bcs:
-    dofs = bc.get_boundary_values().keys()
-    vals = bc.get_boundary_values().values()
-    print dofs
+def assem1():
+    A, b = assemble_system(a, L, bcs)
+    A = A.array()
+    b = b.array()
+    return A, b
+
+def assem2():
+    A = assemble(a).array()
+    b = assemble(L).array()
+
+    for bc in bcs:
+        dofs = bc.get_boundary_values().keys()
+        vals = bc.get_boundary_values().values()
+        print dofs
     
-    g0 = b0 * 0
+        g0 = b * 0
+        g0[dofs] = vals
+        
+        n = np.size(A, 1)
+        I = np.eye(n)
+        I_I = I + 0
+        I_I[dofs, dofs] = 0
+        I_B = I - I_I
+    
+        AAA = assemble_system(a, L, bc)[0].array()
+        D_B = AAA * I_B
+    
+        b = np.dot(I_I, b) + np.dot(D_B, g0) - np.dot(I_I, np.dot(A, g0))
+        A = np.dot(I_I, np.dot(A, I_I)) + D_B
+    return A, b
+
+def assem3():
+    A = assemble(a).array()
+    b = assemble(L).array()
+
+    dofs = sum([bc.get_boundary_values().keys() for bc in bcs], [])
+    vals = sum([bc.get_boundary_values().values() for bc in bcs], [])
+
+    g0 = b * 0
     g0[dofs] = vals
     
-    n = np.size(A0, 1)
+    n = np.size(A, 1)
     I = np.eye(n)
     I_I = I + 0
     I_I[dofs, dofs] = 0
@@ -102,19 +133,16 @@ for bc in bcs:
     
     AAA = assemble_system(a, L, bc)[0].array()
     D_B = AAA * I_B
-    #print D_B
+
+    b = np.dot(I_I, b) + np.dot(D_B, g0) - np.dot(I_I, np.dot(A, g0))
+    A = np.dot(I_I, np.dot(A, I_I)) + D_B
+    return A, b
+
     
-    b2 = np.dot(I_I, b0) + np.dot(D_B, g0) - np.dot(I_I, np.dot(A0, g0))
-    print b2
-    print
-    A2 = np.dot(I_I, np.dot(A0, I_I)) + D_B
-    
-    A, b = assemble_system(a, L, bc)
-    A = A.array()
-    b = b.array()
-    
-    print np.array([b0, b, b2]).T
-    print
-    
-    print la.norm(A - A2), la.norm(b - b2)
-    print
+A1, b1 = assem1()
+A2, b2 = assem2()
+A3, b3 = assem3()
+
+print la.norm(A1 - A2), la.norm(b1 - b2)
+print la.norm(A1 - A3), la.norm(b1 - b3)
+print
