@@ -1,4 +1,4 @@
-from numpy import unique, nonzero
+from numpy import unique, nonzero, zeros, sum
 
 try:
     import matplotlib
@@ -23,6 +23,8 @@ except (Exception, SystemExit) as e:
 #    print traceback.format_exc()
     print "mayavi is not available"
     HAS_MAYAVI = False
+
+from dolfin import Function
 
 #from spuq.fem.fenics.fenics_vector import FEniCSVector
 #from spuq.utils.type_check import takes, anything, optional
@@ -81,21 +83,55 @@ class Plotter(object):
             return pylab.figure(num)
         else:
             assert HAS_MAYAVI
-            return mlab.figure(num, **kwargs)
+            fig = mlab.figure(num, bgcolor=(0.75, 0.75, 0.75), size=(800, 600), **kwargs)
 
 
     # ========================================
     # =========== mayavi methods =============
     # ========================================
 
-    @staticmethod
-    def plotMesh(coordinates, triangles, values=None, **kwargs):
+    @classmethod
+    def plotMesh(cls, coordinates, triangles=None, values=None, axes=True, displacement=False, newfigure=True, scale=1, **kwargs):
         # http://docs.enthought.com/mayavi/mayavi/auto/mlab_helper_functions.html#mayavi.mlab.triangular_mesh
+        if newfigure:
+            cls.figure()
+        if isinstance(coordinates, Function) and triangles is None:
+            coordinates, triangles, values = cls._function_data(coordinates)
+        else:
+            assert triangles is not None
         x = coordinates[:, 0]
         y = coordinates[:, 1]
-        if values is None:
+        representation = "surface"
+        scalars = None
+        if displacement:
+            representation = "wireframe"
+            assert values.shape[1] == 2
+            x = coordinates[:, 0] + scale * values[:, 0]
+            y = coordinates[:, 1] + scale * values[:, 1]
+            scalars = sum(values, axis=1)
+        else:
+            assert values is None or len(values.shape) == 1
+        if values is None or displacement:
             values = 0 * x
-        mlab.triangular_mesh(x, y, values, triangles, **kwargs)
+        mlab.triangular_mesh(x, y, values, triangles, representation=representation, scalars=scalars, **kwargs)
+        if axes:
+            cls.axes()
+
+    @staticmethod
+    def _function_data(f):
+        mesh = f.function_space().mesh()
+        coordinates = mesh.coordinates()
+        N = coordinates.shape[0]
+        cells = mesh.cells()
+        nss = f.function_space().num_sub_spaces()
+        # NOTE: since these are nodal values, the coefficients would just have to be assigned appropriately
+        if nss == 2:
+            values = zeros((N, 2))
+        else:
+            values = zeros(N)
+        for i, c in enumerate(coordinates):
+            values[i] = f(c)
+        return coordinates, cells, values
 
     @staticmethod
     def labels(xlabel="x", ylabel="y", zlabel="z", obj=None):
@@ -112,7 +148,7 @@ class Plotter(object):
 
     @staticmethod
     def axes(*args, **kwargs):
-        mlab.show(args, kwargs)
+        mlab.axes(color=(1, 1, 1), line_width=2, nb_labels=3)
 
     @staticmethod
     def title(*args, **kwargs):

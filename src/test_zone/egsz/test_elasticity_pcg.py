@@ -35,6 +35,9 @@ except:
 # randomly refine initial meshes
 RANDOM_MESHES = False
 
+# use alternate mayavi plotting
+MAYAVI_PLOTTING = True
+
 # determine path of this module
 path = os.path.dirname(__file__)
 
@@ -121,7 +124,7 @@ try:
     w, zeta, numit = pcg(A, b, P, w0=w, eps=CONF_pcg_eps, maxiter=CONF_pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
-    raise Exception("TESTING")
+#    raise Exception("TESTING")
 except Exception as e:
     print e
     def get_exception_frame_data():
@@ -148,7 +151,7 @@ except Exception as e:
         import scipy.linalg as la
         print "norm(A-A^T) = %s" % la.norm(A_mat - A_mat.T)
         print "norm(A) = %s" % la.norm(A_mat)
-        B=0.5 * (A_mat + A_mat.T)
+        B = 0.5 * (A_mat + A_mat.T)
         lam = la.eig(B)[0]
         print "l_min = %s, l_max = %s" % (min(lam), max(lam))
 
@@ -200,34 +203,19 @@ if PLOT_SOLUTION:
     mesh_param = sample_sol_param._fefunc.function_space().mesh()
     mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
     wireframe = True
-    viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
-    viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
+    if not MAYAVI_PLOTTING:
+        viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+        viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
+    else:
+        Plotter.plotMesh(sample_sol_param._fefunc, displacement=True, scale=100)
+        Plotter.plotMesh(sample_sol_direct._fefunc, displacement=True, scale=100)
     
     for mu in w.active_indices():
-        viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
-    interactive()
-
-
-
-#import math
-#from spuq.linalg.vector import inner
-#def norm(v):
-#    return math.sqrt(inner(v, v))
-#
-#def traceit(frame, event, arg):
-#    filename = frame.f_code.co_filename
-#    funcname = frame.f_code.co_name
-#    lineno = frame.f_lineno
-#
-#    if event == "line" and lineno == 33 and funcname == "pcg":
-#        locals = frame.f_locals
-#        locals["norm"] = norm
-#        globals = frame.f_globals
-#        print "Iter %s -> %s, %s, %s" % eval(
-#            "(i-1, norm(rho[i-1]), norm(s[i-1]), norm(v[i-1]))",
-#            globals, locals)
-#
-#    return traceit
-#
-#import sys
-#print sys.settrace(traceit)
+        if not MAYAVI_PLOTTING:
+            viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
+        else:
+            Plotter.plotMesh(w[mu]._fefunc, displacement=True, scale=100)
+    if not MAYAVI_PLOTTING:
+        interactive()
+    else:
+        Plotter.show()
