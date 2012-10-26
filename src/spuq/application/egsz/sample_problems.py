@@ -66,13 +66,13 @@ class SampleProblem(object):
 
     @classmethod
     #@takes(anything, str, str, optional(dict))
-    def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1, scale=1, dim=2):
+    def setupCF2(cls, functype, amptype, rvtype='uniform', gamma=0.9, decayexp=2, freqscale=1, freqskip=0, N=1, scale=1, dim=2, secondparam=None):
         if rvtype == "uniform":
             rvs = lambda i: UniformRV(a= -1, b=1)
         elif rvtype == "normal":
             rvs = lambda i: NormalRV(mu=0.5)
         else:
-            raise ValueError("Unkown RV type %s", rvtype)
+            raise ValueError("Unknown RV type %s", rvtype)
 
         if functype == "cos":
             if dim == 1:
@@ -94,7 +94,7 @@ class SampleProblem(object):
 #            func = "(A/A)*(B/B)*1.0"
             func = "1.0+A+B-A-B"
         else:
-            raise ValueError("Unkown func type %s", functype)
+            raise ValueError("Unknown function type %s", functype)
             
         def get_decay_start(exp, gamma=1):
             start = 1
@@ -111,7 +111,7 @@ class SampleProblem(object):
             amp = gamma / N
             ampfunc = lambda i: gamma * (i < N)
         else:
-            raise ValueError("Unkown amplitude type %s", amptype)
+            raise ValueError("Unknown amplitude type %s", amptype)
 
         element = FiniteElement('Lagrange', ufl.triangle, 1)
         # NOTE: the explicit degree of the expression should influence the quadrature order during assembly
@@ -130,29 +130,31 @@ class SampleProblem(object):
                             m=int(mu[0]), n=int(mu[1]),
                             degree=degree, element=element) for i, mu in enumerate(mis))
 
+        if secondparam is not None:
+            from itertools import izip
+            a0 = (a0, secondparam[0])
+            a = ((am, bm) for am, bm in izip(a, secondparam[1]))
         return ParametricCoefficientField(a0, a, rvs)
 
     @classmethod
     @takes(anything, str, optional(dict))
-    def setupCF(cls, cftype, decayexp=2, gamma=0.9, freqscale=1, freqskip=0, N=1, rvtype='uniform', scale=1, dim=2):
+    def setupCF(cls, cftype, decayexp=2, gamma=0.9, freqscale=1, freqskip=0, N=1, rvtype='uniform', scale=1, dim=2, secondparam=None):
         if cftype == "EF-square-cos":
-            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim)
+            return cls.setupCF2("cos", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim, secondparam=secondparam)
         elif cftype == "EF-square-sin":
-            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim)
+            return cls.setupCF2("sin", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim, secondparam=secondparam)
         elif cftype == "monomials":
-            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim)
+            return cls.setupCF2("monomials", "decay-inf", rvtype=rvtype, gamma=gamma, decayexp=decayexp, freqscale=freqscale, freqskip=freqskip, N=N, scale=scale, dim=dim, secondparam=secondparam)
         elif cftype == "linear":
-            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale, dim=dim)
+            return cls.setupCF2("monomials", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale, dim=dim, secondparam=secondparam)
         elif cftype == "constant":
-            return cls.setupCF2("constant", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale, dim=dim)
+            return cls.setupCF2("constant", "constant", rvtype=rvtype, gamma=gamma, N=2, scale=scale, dim=dim, secondparam=secondparam)
         else:
             raise ValueError('Unsupported function type: %s', cftype)
 
-        return ParametricCoefficientField(a0, a, rvs)
-
     @classmethod
     @takes(anything, int, str, int)
-    def setupPDE(cls, boundary_type, domain_name, problem_type, boundaries, coeff_field, mu=1e4):
+    def setupPDE(cls, boundary_type, domain_name, problem_type, boundaries, coeff_field):
         a0 = coeff_field.mean_func
         Dirichlet_boundary = None
         uD = None
@@ -188,7 +190,7 @@ class SampleProblem(object):
             
             
             # create pde instance
-            pde = FEMNavierLame(mu=mu, lmbda0=a0,
+            pde = FEMNavierLame(lmbda0=a0[0], mu0=a0[1],
                                 dirichlet_boundary=Dirichlet_boundary, uD=uD,
                                 neumann_boundary=Neumann_boundary, g=g, f=f)
         else:

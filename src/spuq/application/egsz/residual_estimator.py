@@ -165,8 +165,9 @@ class ResidualEstimator(object):
         h = CellSize(mesh)
 
         # scaling of residual terms and definition of residual form
-        R_T = (1 / a0_f) * R_T
-        R_E = (1 / a0_f) * R_E
+        a0_s = a0_f[0] if isinstance(a0_f, tuple) else a0_f     # required for elasticity parameters
+        R_T = (1 / a0_s) * R_T
+        R_E = (1 / a0_s) * R_E
         res_form = (h ** 2 * dot(R_T, R_T) * s * dx
                     + avg(h) * dot(avg(R_E), avg(R_E)) * 2 * avg(s) * dS)
         # add Neumann residuals
@@ -261,6 +262,10 @@ class ResidualEstimator(object):
         # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
         a0_f = coeff_field.mean_func
         am_f, _ = coeff_field[m]
+        if isinstance(a0_f, tuple):
+            assert isinstance(am_f, tuple)
+            a0_f = a0_f[0]
+            am_f = am_f[0]
         # create discretisation space
         V_coeff = w[mu].basis.refine_maxh(maxh)
         # interpolate coefficient functions on mesh
@@ -371,6 +376,8 @@ class ResidualEstimator(object):
         def prepare_ainfty(Lambda, M):
             ainfty = []
             a0_f = coeff_field.mean_func
+            if isinstance(a0_f, tuple):
+                a0_f = a0_f[0]
             # retrieve (sufficiently fine) function space for maximum norm evaluation
             # NOTE: we use the deterministic mesh since it is assumed to be the finest
             V = w[Multiindex()].basis.refine_maxh(maxh)
@@ -380,6 +387,8 @@ class ResidualEstimator(object):
             min_a0 = f.min_val
             for m in range(M):
                 am_f, am_rv = coeff_field[m]
+                if isinstance(am_f, tuple):
+                    am_f = am_f[0]
                 # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
                 f.interpolate(am_f)
                 max_am = f.max_val
@@ -395,7 +404,10 @@ class ResidualEstimator(object):
         ainfty = prepare_ainfty(Lambda, M)
         for mu in Lambda:
             # evaluate energy norm of w[mu]
-            norm_w = weighted_H1_norm(coeff_field.mean_func, w[mu])
+            a0_f = coeff_field.mean_func
+            if isinstance(a0_f, tuple):
+                a0_f = a0_f[0]
+            norm_w = weighted_H1_norm(a0_f, w[mu])
             logger.debug("NEW MI with mu = %s    norm(w) = %s", mu, norm_w)
             # iterate multiindex extensions
             for m in range(M):

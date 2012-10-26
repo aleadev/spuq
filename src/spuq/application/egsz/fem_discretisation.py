@@ -216,12 +216,12 @@ class FEMNavierLame(FEMDiscretisationBase):
         ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
     """
 
-    def __init__(self, mu, lmbda0,
+    def __init__(self, mu0, lmbda0,
                  f=Constant(1.0),
                  dirichlet_boundary=default_Dirichlet_boundary, uD=None,
                  neumann_boundary=None, g=None):
         self.lmbda0 = lmbda0
-        self.mu = mu
+        self.mu0 = mu0
         self._f = f
         self._dirichlet_boundary = dirichlet_boundary
         self._uD = uD
@@ -235,21 +235,21 @@ class FEMNavierLame(FEMDiscretisationBase):
     @property
     def norm(self):
         '''Energy norm wrt operator, i.e. (\sigma(v),\eps(v))=||C^{1/2}\eps(v)||.'''
-        return lambda v: np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu, v), sym(nabla_grad(v))) * dx))
+        return lambda v: np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu0, v), sym(nabla_grad(v))) * dx))
 
     def function_space(self, mesh, degree=1):
         return VectorFunctionSpace(mesh, "CG", degree=degree)
 
-    def assemble_operator(self, lmbda, basis, withBC=True):
+    def assemble_operator(self, lmbdamu, basis, withBC=True):
         """Assemble the discrete problem and return as Operator."""
-        matrix = self.assemble_lhs(lmbda, basis, withBC=withBC)
+        matrix = self.assemble_lhs(lmbdamu, basis, withBC=withBC)
         return FEniCSOperator(matrix, basis)
 
-    def assemble_solve_operator(self, lmbda, basis, withBC=True):
-        matrix = self.assemble_lhs(lmbda, basis, withBC=withBC)
+    def assemble_solve_operator(self, lmbdamu, basis, withBC=True):
+        matrix = self.assemble_lhs(lmbdamu, basis, withBC=withBC)
         return FEniCSSolveOperator(matrix, basis)
 
-    def assemble_lhs(self, lmbda, basis, withBC=True):
+    def assemble_lhs(self, lmbdamu, basis, withBC=True):
         """Assemble the discrete operator."""
         f = self._f
         # get FEniCS function space
@@ -258,7 +258,9 @@ class FEMNavierLame(FEMDiscretisationBase):
         u = TrialFunction(V)
         v = TestFunction(V)
 
-        a = inner(self.sigma(lmbda, self.mu, u), sym(nabla_grad(v))) * dx
+        lmbda = lmbdamu[0] 
+        mu = lmbdamu[1]
+        a = inner(self.sigma(lmbda, mu, u), sym(nabla_grad(v))) * dx
         l = inner(f, v) * dx
 
         if withBC:
@@ -268,7 +270,7 @@ class FEMNavierLame(FEMDiscretisationBase):
         A, _ = assemble_system(a, l, bcs)
         return A
 
-    def assemble_rhs(self, lmbda, basis, withBC=True, f=None):
+    def assemble_rhs(self, lmbdamu, basis, withBC=True, f=None):
         """Assemble the discrete right-hand side."""
         if f is None:
             f = self._f
@@ -281,7 +283,9 @@ class FEMNavierLame(FEMDiscretisationBase):
         u = TrialFunction(V)
         v = TestFunction(V)
 
-        a = inner(self.sigma(lmbda, self.mu, u), sym(nabla_grad(v))) * dx
+        lmbda = lmbdamu[0] 
+        mu = lmbdamu[1]
+        a = inner(self.sigma(lmbda, mu, u), sym(nabla_grad(v))) * dx
         l = inner(f, v) * dx
         
         # treat Neumann boundary
@@ -329,21 +333,27 @@ class FEMNavierLame(FEMDiscretisationBase):
         else:
             return 2.0 * mu * div(sym(nabla_grad(v))) + dot(nabla_grad(lmbda), tr(sym(nabla_grad(v))) * Identity(v.cell().d)) + lmbda * div(tr(sym(nabla_grad(v))) * Identity(v.cell().d))
 
-    def r_T(self, lmbda, v):
+    def r_T(self, lmbdamu, v):
         """Volume residual."""
-        return self.Dsigma(lmbda, self.mu, v)
+        lmbda = lmbdamu[0] 
+        mu = lmbdamu[1]
+        return self.Dsigma(lmbda, mu, v)
 
-    def r_E(self, lmbda, v, nu):
+    def r_E(self, lmbdamu, v, nu):
         """Edge residual."""
-        return dot(self.sigma(lmbda, self.mu, v), nu)
+        lmbda = lmbdamu[0] 
+        mu = lmbdamu[1]
+        return dot(self.sigma(lmbda, mu, v), nu)
 
-    def r_Nb(self, lmbda, v, nu, mesh):
+    def r_Nb(self, lmbdamu, v, nu, mesh):
         """Neumann boundary residual."""
         form = None
+        lmbda = lmbdamu[0] 
+        mu = lmbdamu[1]
         if self._neumann_boundary is not None:
             form = []
             g, ds = self._prepareNeumann(mesh)
             for j, gj in enumerate(g):
                 # TODO: check sign!
-                Nbres = gj - dot(self.sigma(lmbda, self.mu, v), nu)
+                Nbres = gj - dot(self.sigma(lmbda, mu, v), nu)
                 form.append((inner(Nbres, Nbres), ds(j + 1)))

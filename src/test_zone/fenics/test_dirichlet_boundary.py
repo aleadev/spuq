@@ -4,19 +4,6 @@ import scipy.linalg as la
 
 np.set_printoptions(suppress=True, linewidth=1000, precision=3, edgeitems=20)
 
-def remove_boundary_entries(A, bc):
-    from dolfin.cpp import _set_matrix_single_item
-    dofs = bc.get_boundary_values().keys()
-    values = np.zeros(1, dtype=np.float_)
-    rows = np.array([0], dtype=np.uintc)
-    cols = np.array([0], dtype=np.uintc)
-    A.apply("insert")
-    for d in dofs:
-        rows[0] = d
-        cols[0] = d
-        A.set(values, rows, cols)
-    A.apply("insert")
-
 
 def prepare_poisson():
     N = 4
@@ -40,7 +27,7 @@ def prepare_poisson():
 
 
 def prepare_elasticity():
-    N = 4
+    N = 1
     mesh = UnitSquare(N, N)
     V = VectorFunctionSpace(mesh, "Lagrange", 1)
     
@@ -72,7 +59,7 @@ def prepare_elasticity():
     bcl = DirichletBC(V, Constant((0, 0)), left)
     
     # Set up boundary condition at right side
-    bcr = DirichletBC(V, Constant((1, 1)), right)
+    bcr = DirichletBC(V, Constant((1, 2)), right)
     
     # Set up boundary conditions
     bcs = [bcl, bcr]
@@ -121,6 +108,7 @@ def assem3():
 
     dofs = sum([bc.get_boundary_values().keys() for bc in bcs], [])
     vals = sum([bc.get_boundary_values().values() for bc in bcs], [])
+    print dofs
 
     g0 = b * 0
     g0[dofs] = vals
@@ -131,7 +119,7 @@ def assem3():
     I_I[dofs, dofs] = 0
     I_B = I - I_I
     
-    AAA = assemble_system(a, L, bc)[0].array()
+    AAA = assemble_system(a, L, bcs)[0].array()
     D_B = AAA * I_B
 
     b = np.dot(I_I, b) + np.dot(D_B, g0) - np.dot(I_I, np.dot(A, g0))

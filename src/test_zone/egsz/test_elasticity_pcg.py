@@ -95,15 +95,17 @@ else:
 # define coefficient field
 # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
 coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
+from itertools import count
+muparam = (CONF_mu, (0 for _ in count())) 
 coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
-                                    freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
+                                    freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale, secondparam=muparam)
 
 # setup boundary conditions
 try:
     mu = CONF_mu
 except:
-    pass
-pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field, mu=mu)
+    mu = None
+pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field)
 
 # define multioperator
 A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
@@ -207,14 +209,15 @@ if PLOT_SOLUTION:
         viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
         viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
     else:
-        Plotter.plotMesh(sample_sol_param._fefunc, displacement=True, scale=100)
-        Plotter.plotMesh(sample_sol_direct._fefunc, displacement=True, scale=100)
+        PLOTSCALE = 100 if CONF_boundary_type == 3 else 1
+        Plotter.plotMesh(sample_sol_param._fefunc, displacement=True, scale=PLOTSCALE)
+        Plotter.plotMesh(sample_sol_direct._fefunc, displacement=True, scale=PLOTSCALE)
     
-    for mu in w.active_indices():
-        if not MAYAVI_PLOTTING:
-            viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
-        else:
-            Plotter.plotMesh(w[mu]._fefunc, displacement=True, scale=100)
+#    for mu in w.active_indices():
+#        if not MAYAVI_PLOTTING:
+#            viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
+#        else:
+#            Plotter.plotMesh(w[mu]._fefunc, displacement=True, scale=PLOTSCALE)
     if not MAYAVI_PLOTTING:
         interactive()
     else:
