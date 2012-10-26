@@ -124,7 +124,7 @@ try:
     w, zeta, numit = pcg(A, b, P, w0=w, eps=CONF_pcg_eps, maxiter=CONF_pcg_maxiter)
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
-    raise Exception("TESTING")
+#    raise Exception("TESTING")
 except Exception as e:
     print e
     def get_exception_frame_data():

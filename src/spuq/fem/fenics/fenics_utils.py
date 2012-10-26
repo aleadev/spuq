@@ -60,7 +60,6 @@ def remove_boundary_entries(A, bcs):
             remove_boundary_entries(A, bc)
     else:
         dofs = bcs.get_boundary_values().keys()
-        N = len(dofs)
         values = np.zeros(1, dtype=np.float_)
         rows = np.array([0], dtype=np.uintc)
         cols = np.array([0], dtype=np.uintc)
