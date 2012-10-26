@@ -23,8 +23,9 @@ def evaluate_operator_matrix(op):
     T = time() 
     for i in range(N):
         dt = time() - T
-        if dt > 10 or (i < cmod and i < 10):
-            print "\t%i of %i" % (i, N)
+        if dt > 1:
+            print "\t%i of %i (dt=%s)" % (i, N, dt)
+            T = time()
         e.coeffs[i] = 1
         A[:, i] = op.apply(e).coeffs[:, None]
         e.coeffs[i] = 0
