@@ -19,16 +19,15 @@ def evaluate_operator_matrix(op):
     from math import import log, floor
     N = op.dim
     A = np.matrix(np.zeros((N, N)))
-    e = np.zeros((N,))
+    e = FlatVector(np.zeros((N,)))
     cexp = log(N, 2.5)
     cmod = floor(2.5 ** cexp)
     for i in range(N):
         if i % cmod == 0:
             print "\t%i of %i" % (i, N)
-        if i > 0:
-            e[i - 1] = 0
-        e[i] = 1
-        A[:, i] = op.apply(e)[:, None]
+        e.coeffs[i] = 1
+        A[:, i] = op.apply(e).coeffs[:, None]
+        e.coeffs[i] = 0
     return A
 
 
