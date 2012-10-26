@@ -1,5 +1,5 @@
 from spuq.fem.fenics.fenics_vector import FEniCSVector
-from spuq.linalg.vector import Scalar, Vector, inner
+from spuq.linalg.vector import Scalar, Vector, FlatVector, inner
 from spuq.linalg.basis import Basis
 from spuq.linalg.operator import BaseOperator
 from spuq.math_utils.multiindex import Multiindex
@@ -331,6 +331,7 @@ class MultiVectorOperator(BaseOperator):
         self._dim = self._basis.dim
         self._dimsum = sum(self._dim.values())      # ;)
         self._to_euclidian = to_euclidian
+        self._last_vec = None
         
     @property
     def dim(self):
@@ -343,31 +344,51 @@ class MultiVectorOperator(BaseOperator):
     def invert(self):
         return MultiVectorOperator(to_euclidian=False, basis=self._basis)
 
+
+    def _multivec_to_euclidian(self, vec):
+        assert vec.dim == self._dim
+        if not self._last_vec:
+            new_vec = FlatVector(np.empty(self._dimsum))
+            self._last_vec = new_vec
+        else:
+            new_vec = self._last_vec
+        coeffs = new_vec.coeffs
+
+        start = 0
+        for mu in self._basis.active_indices():
+            vec_mu = vec[mu]
+            dim = vec_mu.dim
+            coeffs[start:start + dim] = vec_mu.coeffs.array()
+            start += dim
+        return new_vec
+
+    def _euclidian_to_multivec(self, vec):
+        assert vec.dim == self._dimsum
+
+        if not self._last_vec:
+            new_vec = MultiVector()
+            for mu in self._basis.active_indices():
+                vec_mu = FEniCSVector.from_basis(self._basis._basis[mu])
+                new_vec[mu] = vec_mu
+            self._last_vec = new_vec
+        else:
+            new_vec = self._last_vec
+
+        start = 0
+        basis = self._basis
+        for mu in self._basis.active_indices():
+            vec_mu = new_vec[mu]
+            dim = self._basis._basis[mu].dim
+            vec_mu.coeffs = vec.coeffs[start:start + dim]
+            new_vec[mu] = vec_mu
+            start += dim
+        return new_vec
+
     def apply(self, vec):
         if self._to_euclidian:
-            assert vec.dim == self._dim
-#            print "MultiVectorOperator TO-EUCLIDIAN", type(vec) 
-            a = np.empty(0)
-            for mu in self._basis.active_indices():
-                a = np.hstack((a, vec[mu].coeffs.array()))
-            return a
+            return self._multivec_to_euclidian(vec)
         else:
-            assert len(vec) == self._dimsum
-#            print "MultiVectorOperator TO-MULTIVECTOR", type(vec) 
-            new_vec = MultiVector()
-            ci = 0
-            basis = self._basis
-            for mu in self._basis.active_indices():
-                fenics_vec = FEniCSVector.from_basis(basis._basis[mu])
-                cdim = basis._basis[mu].dim
-#                tv = vec[ci:ci + cdim].view()
-#                tv.shape = prod(tv.shape) 
-#                fenics_vec.coeffs = tv
-                fenics_vec.coeffs = vec[ci:ci + cdim]
-                new_vec[mu] = fenics_vec
-                ci += cdim
-#        print "\t-->", type(new_vec)
-        return new_vec
+            return self._euclidian_to_multivec(vec)
 
 
 class MultiVectorBasis(object):
