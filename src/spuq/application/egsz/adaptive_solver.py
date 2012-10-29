@@ -63,7 +63,8 @@ def prepare_rhs(A, w, coeff_field, pde):
         if eps_m in b.active_indices():
             g0 = b[eps_m].copy()
             g0.coeffs = pde.assemble_rhs(am_f, basis=b[eps_m].basis, withNeumannBC=False, f=zero_func)
-            pde.set_dirichlet_bc_entries(g0, homogeneous=True)
+            homogeneousNBC = False if eps_m.order < 2 else True
+            pde.set_dirichlet_bc_entries(g0, homogeneous=homogeneousNBC)
             b[eps_m] += beta[1] * g0
 
         g0 = b[zero].copy()

@@ -122,7 +122,8 @@ class ResidualEstimator(object):
 #        R_E = a0_f * dot(nabla_grad(w[mu]._fefunc), nu)
         R_E = r_E(a0_f, w[mu]._fefunc, nu)
         # get Neumann residual
-        R_Nb = r_Nb(a0_f, w[mu]._fefunc, nu, mesh)
+        homogeneousNBC = False if mu.order < 2 else True
+        R_Nb = r_Nb(a0_f, w[mu]._fefunc, nu, mesh, homogeneous=homogeneousNBC)
 
         # iterate m
         Lambda = w.active_indices()
@@ -173,7 +174,7 @@ class ResidualEstimator(object):
         # add Neumann residuals
         if R_Nb is not None:
             for rj, dsj in R_Nb:
-                res_form = res_form + (1 / a0_f) * h * s * rj * dsj
+                res_form = res_form + (1 / a0_s) * h * s * rj * dsj
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)

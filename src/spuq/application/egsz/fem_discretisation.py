@@ -145,7 +145,7 @@ class FEMPoisson(FEMDiscretisationBase):
         if withNeumannBC and self._neumann_boundary is not None:
             Ng, ds = self._prepareNeumann(V.mesh())            
             for j in range(len(Ng)):
-                l -= dot(Ng[j], v) * ds(j + 1)
+                l += dot(Ng[j], v) * ds(j + 1)
         
         if withDirichletBC:
             bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
@@ -194,14 +194,17 @@ class FEMPoisson(FEMDiscretisationBase):
         """Edge residual."""
         return a * dot(nabla_grad(v), nu)
 
-    def r_Nb(self, a, v, nu, mesh):
+    def r_Nb(self, a, v, nu, mesh, homogeneous=False):
         """Neumann boundary residual."""
         form = None
         if self._neumann_boundary is not None:
             form = []
             g, ds = self._prepareNeumann(mesh)
             for j, gj in enumerate(g):
-                Nbres = gj - dot(nabla_grad(v), nu)
+                if not homogeneous:
+                    Nbres = gj - dot(nabla_grad(v), nu)
+                else:
+                    Nbres = Constant(0) - dot(nabla_grad(v), nu)
                 form.append((a * inner(Nbres, Nbres), ds(j + 1)))
         return form
 
@@ -290,7 +293,7 @@ class FEMNavierLame(FEMDiscretisationBase):
         if withNeumannBC and self._neumann_boundary is not None:
             Ng, ds = self._prepareNeumann(V.mesh())            
             for j in range(len(Ng)):
-                l -= dot(Ng[j], v) * ds(j + 1)
+                l += dot(Ng[j], v) * ds(j + 1)
                         
         if withDirichletBC:
             bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
@@ -341,7 +344,7 @@ class FEMNavierLame(FEMDiscretisationBase):
         lmbda, mu = lmbdamu[0], lmbdamu[1]
         return dot(self.sigma(lmbda, mu, v), nu)
 
-    def r_Nb(self, lmbdamu, v, nu, mesh):
+    def r_Nb(self, lmbdamu, v, nu, mesh, homogeneous=False):
         """Neumann boundary residual."""
         form = None
         lmbda, mu = lmbdamu[0], lmbdamu[1]
@@ -349,5 +352,9 @@ class FEMNavierLame(FEMDiscretisationBase):
             form = []
             g, ds = self._prepareNeumann(mesh)
             for j, gj in enumerate(g):
-                Nbres = gj - dot(self.sigma(lmbda, mu, v), nu)
+                if not homogeneous:
+                    Nbres = gj - dot(self.sigma(lmbda, mu, v), nu)
+                else:
+                    Nbres = Constant((0, 0)) - dot(self.sigma(lmbda, mu, v), nu)
                 form.append((inner(Nbres, Nbres), ds(j + 1)))
+        return form

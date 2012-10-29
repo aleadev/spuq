@@ -10,6 +10,8 @@ from spuq.application.egsz.adaptive_solver import setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator, ASSEMBLY_TYPE
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
+from spuq.application.egsz.sampling import compute_parametric_sample_solution, compute_direct_sample_solution, compute_solution_variance
+from spuq.application.egsz.sampling import get_projection_basis
 from spuq.application.egsz.adaptive_solver import prepare_rhs, pcg_solve
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.math_utils.multiindex import Multiindex
@@ -28,6 +30,9 @@ except:
 
 
 # ------------------------------------------------------------
+
+# use alternate mayavi plotting
+MAYAVI_PLOTTING = True
 
 configfile = "test_neumann_pcg.conf"
 config = ExperimentStarter._parse_config(configfile=configfile)
@@ -116,14 +121,50 @@ import sys
 sys.settrace(traceit)
 
 
-
 # pcg solver
 b = prepare_rhs(A, w, coeff_field, pde)
 P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
 w, zeta, numit = pcg(A, b, P, w0=w, eps=CONF_pcg_eps, maxiter=CONF_pcg_maxiter)
 logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
-if True:
-    for mu in w.active_indices():
-        plot(w[mu]._fefunc, title="solution %s" % str(mu))
-    interactive()
+#if True:
+#    for mu in w.active_indices():
+#        plot(w[mu]._fefunc, title="solution %s" % str(mu))
+#    interactive()
+
+
+if PLOT_SOLUTION:
+    # get random field sample and evaluate solution (direct and parametric)
+    RV_samples = coeff_field.sample_rvs()
+    ref_maxm = w.max_order
+    mu0 = Multiindex()
+    sub_spaces = w[mu0].basis.num_sub_spaces
+    degree = w[mu0].basis.degree
+    maxh = w[mu0].basis.minh
+    projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
+    sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+    sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+    sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
+#        # debug---
+#        if not True:        
+#            for mu in w.active_indices():
+#                for i, wi in enumerate(w_history):
+#                    if i == len(w_history) - 1 or True:
+#                        plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+##                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+#                interactive()
+#        # ---debug
+    mesh_param = sample_sol_param._fefunc.function_space().mesh()
+    mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
+    wireframe = True
+    if not MAYAVI_PLOTTING:
+        viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+        viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
+    else:
+        Plotter.plotMesh(sample_sol_param._fefunc)
+        Plotter.plotMesh(sample_sol_direct._fefunc)
+
+    if not MAYAVI_PLOTTING:
+        interactive()
+    else:
+        Plotter.show()

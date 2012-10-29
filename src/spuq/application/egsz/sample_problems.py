@@ -185,10 +185,14 @@ class SampleProblem(object):
                 uD = (Constant((0.0, 0.0)))
                 Neumann_boundary = (boundaries['right'])
                 g = (Constant((0.0, 1.0)))
+            elif boundary_type == 4:
+                Dirichlet_boundary = (boundaries['top'])
+                uD = (Constant((0.0, 0.0)))
+                Neumann_boundary = (boundaries['right'])
+                g = (Constant((1.0, 0.0)))
             else:
                 raise Exception("wrong boundary type %i for problem type %i" % boundary_type, problem_type)
-            
-            
+                    
             # create pde instance
             pde = FEMNavierLame(lmbda0=a0[0], mu0=a0[1],
                                 dirichlet_boundary=Dirichlet_boundary, uD=uD,
@@ -200,6 +204,10 @@ class SampleProblem(object):
             #f = Expression("10.*exp(-(pow(x[0] - 0.6, 2) + pow(x[1] - 0.4, 2)) / 0.02)", degree=3)
             f = Constant(1.0)
             
+            # homogeneous Neumann does not have to be set explicitly
+            Neumann_boundary = None
+            g = None
+
             # define Dirichlet bc
             if boundary_type == 0:
                 Dirichlet_boundary = (boundaries['left'])
@@ -210,12 +218,19 @@ class SampleProblem(object):
             elif boundary_type == 2:
                 Dirichlet_boundary = (boundaries['left'], boundaries['right'], boundaries['top'], boundaries['bottom'])
                 uD = (Constant(0.0), Constant(0.0), Constant(0.0), Constant(0.0))
+            elif boundary_type == 3:
+                Dirichlet_boundary = (boundaries['left'])
+                uD = (Constant(0.0))
+                Neumann_boundary = (boundaries['right'])
+                g = (Constant(1.0))
+            elif boundary_type == 4:
+                Dirichlet_boundary = (boundaries['top'])
+                uD = (Constant(1.0))
+                Neumann_boundary = (boundaries['bottom'])
+                g = (Constant(1.0))
             else:
                 raise Exception("wrong boundary type %i for problem type %i" % boundary_type, problem_type)
-        
-            # homogeneous Neumann does not have to be set explicitly
-            Neumann_boundary = None
-            g = None
+            
             # create pde instance
             pde = FEMPoisson(a0=a0, dirichlet_boundary=Dirichlet_boundary, uD=uD,
                              neumann_boundary=Neumann_boundary, g=g, f=f)

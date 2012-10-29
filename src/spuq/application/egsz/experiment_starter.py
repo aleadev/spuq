@@ -55,6 +55,7 @@ class ExperimentStarter(object):
             if configfile is not None:
                 filename = configfile
             else:
+                assert opts is not None
                 configfile = opts.conffile
             if not confparser.read(filename):
                 raise ConfigParser.ParsingError("file " + filename + " not found")
