@@ -1,4 +1,4 @@
-from numpy import unique, nonzero, zeros, sum
+from numpy import unique, nonzero, zeros, sum, sqrt
 
 try:
     import matplotlib
@@ -108,7 +108,7 @@ class Plotter(object):
             assert values.shape[1] == 2
             x = coordinates[:, 0] + scale * values[:, 0]
             y = coordinates[:, 1] + scale * values[:, 1]
-            scalars = sum(values, axis=1)
+            scalars = sqrt(sum(values * values, axis=1))
         else:
             assert values is None or len(values.shape) == 1
         if values is None or displacement:

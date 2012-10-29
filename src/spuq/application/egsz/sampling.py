@@ -96,8 +96,8 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
         b = cache.b
     except AttributeError:
         a = coeff_field.mean_func
-        A0 = pde.assemble_lhs(a, proj_basis, withBC=False)
-        b = pde.assemble_rhs(a, proj_basis, withBC=False)
+        A0 = pde.assemble_lhs(a, proj_basis, withDirichletBC=False)
+        b = pde.assemble_rhs(a, proj_basis, withDirichletBC=False)
         A_m = [None] * maxm
         if cache is not None:
             cache.A = A0
@@ -110,7 +110,7 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
         for m in range(maxm):
             if A_m[m] is None:
                 a_m = coeff_field[m][0]
-                A_m[m] = pde.assemble_lhs(a_m, proj_basis, withBC=False)
+                A_m[m] = pde.assemble_lhs(a_m, proj_basis, withDirichletBC=False)
             A += RV_samples[m] * A_m[m]
 
     with timing(msg="direct BC", logfunc=logger.info):
