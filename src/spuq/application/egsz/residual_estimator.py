@@ -122,7 +122,7 @@ class ResidualEstimator(object):
 #        R_E = a0_f * dot(nabla_grad(w[mu]._fefunc), nu)
         R_E = r_E(a0_f, w[mu]._fefunc, nu)
         # get Neumann residual
-        homogeneousNBC = False if mu.order < 2 else True
+        homogeneousNBC = False if mu.order == 0 else True
         R_Nb = r_Nb(a0_f, w[mu]._fefunc, nu, mesh, homogeneous=homogeneousNBC)
 
         # iterate m

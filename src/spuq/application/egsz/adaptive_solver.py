@@ -47,7 +47,7 @@ def setup_vector(mesh, pde, degree=1, maxh=None):
 def prepare_rhs(A, w, coeff_field, pde):
     b = 0 * w
     zero = Multiindex()
-    b[zero].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[zero].basis)
+    b[zero].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[zero].basis, withNeumannBC=True)
     
     f = pde._f
     if f.value_rank() == 0:
@@ -62,9 +62,8 @@ def prepare_rhs(A, w, coeff_field, pde):
 
         if eps_m in b.active_indices():
             g0 = b[eps_m].copy()
-            g0.coeffs = pde.assemble_rhs(am_f, basis=b[eps_m].basis, withNeumannBC=False, f=zero_func)
-            homogeneousNBC = False if eps_m.order < 2 else True
-            pde.set_dirichlet_bc_entries(g0, homogeneous=homogeneousNBC)
+            g0.coeffs = pde.assemble_rhs(am_f, basis=b[eps_m].basis, withNeumannBC=False, f=zero_func)  # this equates to homogeneous Neumann bc
+            pde.set_dirichlet_bc_entries(g0, homogeneous=True)
             b[eps_m] += beta[1] * g0
 
         g0 = b[zero].copy()
