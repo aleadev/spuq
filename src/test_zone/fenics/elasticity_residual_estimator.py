@@ -33,7 +33,7 @@ max_iterations = 15
 with_Neumann = True
 
 # set domain (lshape or Cook's membrane)
-Cooks_membrane = True
+Cooks_membrane = False
 
 # refinement fraction
 Theta = 0.4
@@ -109,29 +109,16 @@ else:
     right.maxx = maxx
 
 
-## Dirichlet boundary condition
-#def default_displacement(values, x):
-#    values[0], values[1] = 0.0, 0.0
-# 
-#class BCDisplacement(Expression):
-#    def __init__(self, displacement=default_displacement):
-#        self.force = force
-#    def eval(self, values, x):
-#        self.force(values, x)
-#    def value_shape(self):
-#        return (2,)
-
-
 # =============================
 # =============================
 
 E = 1e5
 nu = 0.4    
 mu = E / (2.0 * (1.0 + nu))
-#lmbda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
-#print "mu, lambda =", mu, lmbda
-import ufl
-lmbda = Expression("100000.*(0.6+0.5*sin(2.*(x[0]+x[1])))", element=FiniteElement('Lagrange', ufl.triangle, 1))
+lmbda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
+print "mu, lambda =", mu, lmbda
+#import ufl
+#lmbda = Expression("100000.*(0.6+0.5*sin(2.*(x[0]+x[1])))", element=FiniteElement('Lagrange', ufl.triangle, 1))
 
 for i in range(max_iterations):
     # Define variational problem
@@ -158,9 +145,8 @@ for i in range(max_iterations):
         # define boundary measures
         ds = Measure("ds")[Neumann_parts]
         # shear load (Neumann boundary)
-        g = Constant((0.0, 0.3))
-#        g = Constant((0.0, 1.0))
-        L -= dot(g, v) * ds(1)
+        g = Constant((0.0, 1.0))
+        L += dot(g, v) * ds(1)
     
     # setup boundary condition at left end
     l = Constant((0.0, 0.0))
@@ -176,7 +162,10 @@ for i in range(max_iterations):
 
     # setup boundary condition at right end
     if not with_Neumann:
-        r = Constant((-5.0, -5.0))
+        if Cooks_membrane:
+            r = Constant((0.0, 5.0))
+        else:
+            r = Constant((0.0, 0.3))
         bcr = DirichletBC(V, r, right)
         bcs.append(bcr)
 
@@ -199,7 +188,7 @@ for i in range(max_iterations):
     # Define form for assembling error indicators
     form = h ** 2 * dot(R_T, R_T) * w * dx + avg(h) * dot(avg(R_dT), avg(R_dT)) * 2 * avg(w) * dS
     if with_Neumann:
-        sigmanerr = g + dot(sigma(u_h), n)
+        sigmanerr = g - dot(sigma(u_h), n)
         R_NdT = dot(sigmanerr, sigmanerr) 
         form += h * R_NdT * w * ds(1)
 
@@ -230,12 +219,15 @@ for i in range(max_iterations):
 
 # Plot final solution
 #plot(u_h, mode="displacement", mesh=mesh, wireframe=False, rescale=False, axes=True)
-viz_u = plot(u_h, title="displacement", mode="displacement", mesh=mesh, wireframe=True, rescale=False, axes=True)
+scale = 1000 if with_Neumann else 1
+su_h = u_h.copy()
+su_h.vector()[:] = scale*su_h.vector()[:]
+viz_u = plot(su_h, title="displacement", mode="displacement", mesh=mesh, wireframe=True, axes=True)
 viz_mesh = plot(mesh)
-viz_u.write_png("displacement.png")
-viz_u.write_ps("displacement", format='pdf')
-viz_mesh.write_png("displacement.png")
-viz_mesh.write_ps("displacement", format='pdf')
+#viz_u.write_png("displacement.png")
+#viz_u.write_ps("displacement", format='pdf')
+#viz_mesh.write_png("displacement.png")
+#viz_mesh.write_ps("displacement", format='pdf')
 
 # Hold plots
 interactive()
