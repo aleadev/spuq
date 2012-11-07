@@ -142,22 +142,26 @@ if len(sim_stats) > 1:
         errest = [sqrt(s["EST"]) for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
+        lambdaerr = [s["LAMBDA"] for s in sim_stats]
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
         print "errest", errest
-        
+        print "reserr", reserr
+        print "projerr", projerr
+
         # figure 1
         # --------
-        fig2 = figure()
-        fig2.suptitle("residual estimator")
-        ax = fig2.add_subplot(111)
+        fig1 = figure()
+        fig1.suptitle("residual estimator components")
+        ax = fig1.add_subplot(111)
         if REFINEMENT["MI"]:
             ax.loglog(x, num_mi, '--y+', label='active mi')
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+        ax.loglog(x[1:], lambdaerr[1:], '-.b^', label='lambda part')
         legend(loc='upper right')
-            
+
         # figure 2
         # --------
         fig3 = figure()
