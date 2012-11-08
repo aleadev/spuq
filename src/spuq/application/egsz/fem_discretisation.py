@@ -202,10 +202,10 @@ class FEMPoisson(FEMDiscretisationBase):
             g, ds = self._prepareNeumann(mesh)
             for j, gj in enumerate(g):
                 if not homogeneous:
-                    Nbres = gj - dot(nabla_grad(v), nu)
+                    Nbres = gj - a * dot(nabla_grad(v), nu)
                 else:
-                    Nbres = Constant(0) - dot(nabla_grad(v), nu)
-                form.append((a * inner(Nbres, Nbres), ds(j + 1)))
+                    Nbres = Constant(0) - a * dot(nabla_grad(v), nu)
+                form.append((inner(Nbres, Nbres), ds(j + 1)))
         return form
 
 

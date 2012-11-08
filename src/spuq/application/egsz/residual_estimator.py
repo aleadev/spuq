@@ -172,14 +172,12 @@ class ResidualEstimator(object):
 
         # scaling of residual terms and definition of residual form
         a0_s = a0_f[0] if isinstance(a0_f, tuple) else a0_f     # required for elasticity parameters
-        R_T = (1 / a0_s) * R_T
-        R_E = (1 / a0_s) * R_E
-        res_form = (h ** 2 * dot(R_T, R_T) * s * dx
-                    + avg(h) * dot(avg(R_E), avg(R_E)) * 2 * avg(s) * dS)
+        res_form = (h ** 2 * (1 / a0_s) * dot(R_T, R_T) * s * dx
+                    + avg(h) * dot(avg(R_E) / avg(a0_s), avg(R_E)) * 2 * avg(s) * dS)
         # add Neumann residuals
         if R_Nb is not None:
             for rj, dsj in R_Nb:
-                res_form = res_form + (1 / a0_s) * h * s * rj**2 * dsj
+                res_form = res_form + (1 / a0_s) * h * s * rj ** 2 * dsj
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)

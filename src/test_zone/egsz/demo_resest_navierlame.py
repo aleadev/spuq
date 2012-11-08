@@ -170,7 +170,7 @@ if len(sim_stats) > 1:
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
-        ax.loglog(x[1:], lambdaerr[1:], '-.b^', label='lambda part')
+        ax.loglog(x[1:], lambdaerr[1:], '-.b^', label='pcg part')
         legend(loc='upper right')
         # figure 2
         # --------

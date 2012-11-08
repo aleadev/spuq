@@ -61,7 +61,7 @@ initial_mesh_N = CONF_initial_mesh_N
 
 # plotting flag
 PLOT_SOLUTION = True
-
+MAYAVI_PLOTTING = True
 
 # ============================================================
 # PART B: Problem Setup
@@ -159,7 +159,7 @@ if len(sim_stats) > 1:
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
-        ax.loglog(x[1:], lambdaerr[1:], '-.b^', label='lambda part')
+        ax.loglog(x[1:], lambdaerr[1:], '-.b^', label='pcg part')
         legend(loc='upper right')
 
         # figure 2
@@ -173,3 +173,46 @@ if len(sim_stats) > 1:
         import traceback
         print traceback.format_exc()
         logger.info("skipped plotting since matplotlib is not available...")
+
+
+# plot sample solution
+if PLOT_SOLUTION:
+    # get random field sample and evaluate solution (direct and parametric)
+    RV_samples = coeff_field.sample_rvs()
+    ref_maxm = w_history[-1].max_order
+    sub_spaces = w[Multiindex()].basis.num_sub_spaces
+    degree = w[Multiindex()].basis.degree
+    maxh = w[Multiindex()].basis.minh
+    projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
+    sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+    sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+    sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
+#        # debug---
+#        if not True:        
+#            for mu in w.active_indices():
+#                for i, wi in enumerate(w_history):
+#                    if i == len(w_history) - 1 or True:
+#                        plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+##                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+#                interactive()
+#        # ---debug
+    mesh_param = sample_sol_param._fefunc.function_space().mesh()
+    mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
+    wireframe = True
+    if not MAYAVI_PLOTTING:
+        viz_p = plot(sample_sol_param._fefunc, title="parametric solution", wireframe=wireframe)#, rescale=False)
+        viz_d = plot(sample_sol_direct._fefunc, title="direct solution", wireframe=wireframe)#, rescale=False)
+    else:
+        Plotter.plotMesh(sample_sol_param._fefunc)
+        Plotter.plotMesh(sample_sol_direct._fefunc)
+
+    for mu in w.active_indices():
+        if not MAYAVI_PLOTTING:
+            viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
+        else:
+            Plotter.plotMesh(w[mu]._fefunc)
+            
+    if not MAYAVI_PLOTTING:
+        interactive()
+    else:
+        Plotter.show()
