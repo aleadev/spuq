@@ -20,7 +20,7 @@ from spuq.application.egsz.experiment_starter import ExperimentStarter
 from spuq.application.egsz.egsz_utils import setup_logging
 try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
-                        plot, interactive, set_log_level, set_log_active)
+                        plot, interactive, set_log_level, set_log_active, VectorFunctionSpace, project, grad)
     from spuq.fem.fenics.fenics_vector import FEniCSVector
 except:
     import traceback
@@ -118,7 +118,7 @@ def traceit(frame, event, arg):
     return traceit
 
 import sys
-sys.settrace(traceit)
+#sys.settrace(traceit)
 
 
 # pcg solver
@@ -136,6 +136,20 @@ logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 if PLOT_SOLUTION:
     # get random field sample and evaluate solution (direct and parametric)
     RV_samples = coeff_field.sample_rvs()
+    if False:
+        foo = []
+        for i, sam in enumerate(RV_samples):
+            foo.append(sam)
+            if i==100:
+                break
+            print "RV_samples:", foo
+        RV_samples = foo
+    if not True:
+        RV_samples =  [0.4665877729078365, 0.793184920279451, 0.5180825582224986, 
+                       0.04011850006307882, -0.2758205582187734, -0.15819618000193025, 
+                       0.35323233387386366, -0.4420968599815964, -0.8260491796406144, 
+                       -0.9089562185225297, 0.5751333963473928, -0.03307779164657276, 
+                       0.15427690586776888]
     ref_maxm = w.max_order
     mu0 = Multiindex()
     sub_spaces = w[mu0].basis.num_sub_spaces
@@ -156,13 +170,26 @@ if PLOT_SOLUTION:
 #        # ---debug
     mesh_param = sample_sol_param._fefunc.function_space().mesh()
     mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
-    wireframe = True
+
+    V=sample_sol_param._fefunc.function_space()
+    Vd = VectorFunctionSpace(V.mesh(), "DG", 0)
+    gradsol=project(grad(sample_sol_param._fefunc),Vd)
+    gradsolx, gradsoly=gradsol.split(deepcopy=True)
+
+
+    MAYAVI_PLOTTING = False
     if not MAYAVI_PLOTTING:
+        wireframe = not True
         viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
         viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
+        viz_x = plot(gradsolx, title="x-gradient solution", wireframe=wireframe)#, rescale=False)
+        viz_y = plot(gradsoly, title="y-gradient solution", wireframe=wireframe)#, rescale=False)
     else:
         Plotter.plotMesh(sample_sol_param._fefunc)
         Plotter.plotMesh(sample_sol_direct._fefunc)
+
+        Plotter.plotMesh(gradsolx)
+        Plotter.plotMesh(gradsoly)
 
     if not MAYAVI_PLOTTING:
         interactive()

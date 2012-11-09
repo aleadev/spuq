@@ -23,6 +23,7 @@ largest error indicator)
 """
 
 from dolfin import *
+from spuq.utils.plot.plotter import Plotter
 from numpy import array, sqrt
 
 # error tolerance
@@ -145,9 +146,9 @@ for i in range(max_iterations):
         # define boundary measures
         ds = Measure("ds")[Neumann_parts]
         # shear load (Neumann boundary)
-        g = Constant((0.0, 1.0))
+        g = Constant((0.0, 0.3))
         L += dot(g, v) * ds(1)
-    
+
     # setup boundary condition at left end
     l = Constant((0.0, 0.0))
     bcl = DirichletBC(V, l, left)

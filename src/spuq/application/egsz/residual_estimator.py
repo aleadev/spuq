@@ -64,12 +64,17 @@ class ResidualEstimator(object):
         resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
         logger.debug("starting evaluateProjectionEstimator")
         projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
-        eta = sum([reserror[mu] ** 2 for mu in reserror.keys()])
-        delta = sum([projerror[mu] ** 2 for mu in projerror.keys()])
-        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
-              + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
+        eta = sum(reserror[mu] ** 2 for mu in reserror)
+        delta = sum(projerror[mu] ** 2 for mu in projerror)
+        est1 = ceta / sqrt(1 - gamma) * sqrt(eta)
+        est2 = cQ / sqrt(1 - gamma) * sqrt(delta)
+        est3 = cQ * sqrt(zeta / (1 - gamma))
+        est4 = zeta / (1 - gamma)
+#        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
+#              + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
+        xi = (est1 + est2 + est3) ** 2 + est4
         logger.info("Total Residual ERROR Factors: A1=%s  A2=%s  A3=%s  A4=%s", ceta / sqrt(1 - gamma), cQ / sqrt(1 - gamma), cQ * sqrt(zeta / (1 - gamma)), zeta / (1 - gamma))
-        return (xi, resind, projind)
+        return (xi, resind, projind, (est1, est2, est3, est4))
 
 
     @classmethod
@@ -167,14 +172,12 @@ class ResidualEstimator(object):
 
         # scaling of residual terms and definition of residual form
         a0_s = a0_f[0] if isinstance(a0_f, tuple) else a0_f     # required for elasticity parameters
-        R_T = (1 / a0_s) * R_T
-        R_E = (1 / a0_s) * R_E
-        res_form = (h ** 2 * dot(R_T, R_T) * s * dx
-                    + avg(h) * dot(avg(R_E), avg(R_E)) * 2 * avg(s) * dS)
+        res_form = (h ** 2 * (1 / a0_s) * dot(R_T, R_T) * s * dx
+                    + avg(h) * dot(avg(R_E) / avg(a0_s), avg(R_E)) * 2 * avg(s) * dS)
         # add Neumann residuals
         if R_Nb is not None:
             for rj, dsj in R_Nb:
-                res_form = res_form + (1 / a0_s) * h * s * rj * dsj
+                res_form = res_form + (1 / a0_s) * h * s * rj ** 2 * dsj
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
@@ -232,8 +235,8 @@ class ResidualEstimator(object):
                 dmu = sum(zeta_mu)
                 if local:
                     proj_error[mu] = FlatVector(dmu)
-#                    global_error[mu] = sqrt(sum([e ** 2 for e in dmu]))
-                    global_error[mu] = sum([sqrt(sum([e ** 2 for e in perr])) for perr in zeta_mu])
+#                    global_error[mu] = sqrt(sum(e ** 2 for e in dmu))
+                    global_error[mu] = sum(sqrt(sum(e ** 2 for e in perr)) for perr in zeta_mu)
                 else:
                     proj_error[mu] = dmu
                     global_error = dmu

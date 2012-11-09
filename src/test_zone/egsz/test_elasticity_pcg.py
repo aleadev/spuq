@@ -71,7 +71,7 @@ ExperimentStarter._extract_config(globals(), savefile=os.path.join(path, "test_e
 initial_mesh_N = CONF_initial_mesh_N
 
 # plotting flag
-PLOT_SOLUTION = True
+PLOT_SOLUTION = False
 
 
 # ============================================================

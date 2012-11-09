@@ -155,6 +155,7 @@ if len(sim_stats) > 1:
         errest = [sqrt(s["EST"]) for s in sim_stats]
         reserr = [s["RES"] for s in sim_stats]
         projerr = [s["PROJ"] for s in sim_stats]
+        lambdaerr = [s["LAMBDA"] for s in sim_stats]
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
         print "errest", errest
@@ -169,7 +170,8 @@ if len(sim_stats) > 1:
         ax.loglog(x, errest, '-g<', label='error estimator')
         ax.loglog(x, reserr, '-.cx', label='residual part')
         ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
-        legend(loc='upper right')                
+        ax.loglog(x[1:], lambdaerr[1:], '-.b^', label='pcg part')
+        legend(loc='upper right')
         # figure 2
         # --------
         fig2 = figure()

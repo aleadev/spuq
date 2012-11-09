@@ -96,7 +96,7 @@ class SampleProblem(object):
     boundary_defs[(POISSON, "dirichlet_zero_left")] = [BoundaryDef(type=DIRICHLET, where=LEFT, func=Constant(0.0))]
     boundary_defs[(POISSON, 0)] = boundary_defs[(POISSON, "dirichlet_zero_left")]
     boundary_defs[(POISSON, "dirichlet_inhomogeneous")] = [BoundaryDef(type=DIRICHLET, where=LEFT, func=Constant(0.0)),
-                                                           BoundaryDef(type=DIRICHLET, where=RIGHT, func=Constant(3.0))]
+                                                           BoundaryDef(type=DIRICHLET, where=RIGHT, func=Constant(1.0))]
     boundary_defs[(POISSON, 1)] = boundary_defs[(POISSON, "dirichlet_inhomogeneous")]
     boundary_defs[(POISSON, "dirichlet_zero_all")] = [BoundaryDef(type=DIRICHLET, where=LEFT, func=Constant(0.0)),
                                                       BoundaryDef(type=DIRICHLET, where=RIGHT, func=Constant(0.0)),
