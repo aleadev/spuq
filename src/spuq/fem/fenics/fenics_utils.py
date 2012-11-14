@@ -151,6 +151,9 @@ def weighted_H1_norm(w, vec, piecewise=False):
         s = TestFunction(DG)
         ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * s * dx)
         norm_vec = np.array([sqrt(e) for e in ae])
+        # map DG dofs to cell indices
+        dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(vec.basis.mesh)]
+        norm_vec = norm_vec[dofs]
     else:
         ae = assemble(w * inner(nabla_grad(vec._fefunc), nabla_grad(vec._fefunc)) * dx)
         norm_vec = sqrt(ae)

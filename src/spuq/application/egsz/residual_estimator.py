@@ -33,7 +33,7 @@ from __future__ import division
 import numpy as np
 from operator import itemgetter
 
-from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFunctionSpace,
+from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFunctionSpace, cells,
                     Constant, FunctionSpace, TestFunction, CellSize, FacetNormal, parameters)
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -182,6 +182,9 @@ class ResidualEstimator(object):
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
         eta_indicator = np.array([sqrt(e) for e in eta])
+        # map DG dofs to cell indices
+        dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
+        eta_indicator = eta_indicator[dofs]
         global_error = sqrt(sum(e for e in eta))
 
 #        # debug ---        

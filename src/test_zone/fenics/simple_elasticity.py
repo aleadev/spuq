@@ -1,4 +1,7 @@
 from dolfin import *
+from spuq.utils.plot.plotter import Plotter
+
+MAYAVI_PLOTTING = False
 
 # Create mesh
 N = 30
@@ -35,4 +38,8 @@ solver = LinearVariationalSolver(problem)
 solver.parameters["symmetric"] = True
 solver.solve()
 
-plot(u,mode="displacement",interactive=True,wireframe=True)
+if not MAYAVI_PLOTTING:
+    plot(u,mode="displacement",interactive=True,wireframe=True)
+else:
+    Plotter.plotMesh(u,displacement=True)
+    Plotter.show()

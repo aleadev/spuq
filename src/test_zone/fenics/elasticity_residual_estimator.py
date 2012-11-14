@@ -26,12 +26,14 @@ from dolfin import *
 from spuq.utils.plot.plotter import Plotter
 from numpy import array, sqrt
 
+MAYAVI_PLOTTING = True
+
 # error tolerance
 tolerance = 0.1
 max_iterations = 15
 
 # set Neumann boundary condition on right edge
-with_Neumann = True
+with_Neumann = False
 
 # set domain (lshape or Cook's membrane)
 Cooks_membrane = False
@@ -182,8 +184,8 @@ for i in range(max_iterations):
     R_dT = dot(sigma(u_h), n)
 
     # Will use space of constants to localize indicator form
-    Constants = FunctionSpace(mesh, "DG", 0)
-    w = TestFunction(Constants)
+    DG0 = FunctionSpace(mesh, "DG", 0)
+    w = TestFunction(DG0)
     h = CellSize(mesh)
 
     # Define form for assembling error indicators
@@ -213,7 +215,8 @@ for i in range(max_iterations):
     largest_error = max(indicators)
     cell_markers = MeshFunction("bool", mesh, mesh.topology().dim())
     for c in cells(mesh):
-        cell_markers[c] = indicators[c.index()] > (Theta * largest_error)
+        dof = DG0.dofmap().cell_dofs(c.index())[0]
+        cell_markers[dof] = indicators[c.index()] > (Theta * largest_error)
 
     # Refine mesh
     mesh = refine(mesh, cell_markers)
@@ -222,13 +225,16 @@ for i in range(max_iterations):
 #plot(u_h, mode="displacement", mesh=mesh, wireframe=False, rescale=False, axes=True)
 scale = 1000 if with_Neumann else 1
 su_h = u_h.copy()
-su_h.vector()[:] = scale*su_h.vector()[:]
-viz_u = plot(su_h, title="displacement", mode="displacement", mesh=mesh, wireframe=True, axes=True)
-viz_mesh = plot(mesh)
-#viz_u.write_png("displacement.png")
-#viz_u.write_ps("displacement", format='pdf')
-#viz_mesh.write_png("displacement.png")
-#viz_mesh.write_ps("displacement", format='pdf')
-
-# Hold plots
-interactive()
+su_h.vector()[:] = scale * su_h.vector()[:]
+if MAYAVI_PLOTTING:
+    from spuq.utils.plot.plotter import Plotter
+    Plotter.plotMesh(su_h, displacement=True)
+    Plotter.show()
+else:
+    viz_u = plot(su_h, title="displacement", mode="displacement", mesh=mesh, wireframe=True, axes=True)
+    viz_mesh = plot(mesh)
+    #viz_u.write_png("displacement.png")
+    #viz_u.write_ps("displacement", format='pdf')
+    #viz_mesh.write_png("displacement.png")
+    #viz_mesh.write_ps("displacement", format='pdf')
+    interactive()
