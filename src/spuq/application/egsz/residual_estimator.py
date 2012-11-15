@@ -74,7 +74,7 @@ class ResidualEstimator(object):
 #              + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
         xi = (est1 + est2 + est3) ** 2 + est4
         logger.info("Total Residual ERROR Factors: A1=%s  A2=%s  A3=%s  A4=%s", ceta / sqrt(1 - gamma), cQ / sqrt(1 - gamma), cQ * sqrt(zeta / (1 - gamma)), zeta / (1 - gamma))
-        return (xi, resind, projind, (est1, est2, est3, est4))
+        return (xi, resind, projind, (est1, est2, est3, est4), (eta, delta, zeta))
 
 
     @classmethod

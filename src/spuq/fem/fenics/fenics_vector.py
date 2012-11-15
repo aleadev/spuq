@@ -170,7 +170,7 @@ class FEniCSVector(FEMVector):
     def __getstate__(self):
         """pickling preparation"""
         d = {}
-        d['array'] = self.array()
+        d['array'] = self.array
         # function space
         V = self.basis
         d['num_subspaces'] = self.basis.num_sub_spaces

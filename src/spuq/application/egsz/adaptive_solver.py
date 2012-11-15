@@ -126,56 +126,61 @@ def AdaptiveSolver(A, coeff_field, pde,
                     max_refinements=7,
                     do_refinement={"RES":True, "PROJ":True, "MI":False},
                     do_uniform_refinement=False,
-                    w_history=None):
+                    w_history=None,
+                    sim_stats=None):
     f = pde.f
 
     w = w0
-    if not w_history is None:
-        w_history.append(w)
+    if sim_stats is None:
+        assert w_history is None or len(w_history) == 1
+        sim_stats = []
+
+    try:
+        start_iteration = len(w_history) - 1
+    except:
+        start_iteration = 0
+    logger.info("START/CONTINUE EXPERIMENT at iteration %i", start_iteration)
 
     # data collection
-    sim_stats = []                  # mis, residual, estimator and dof progress
-    for refinement in range(max_refinements + 1):
+    import resource
+    for refinement in range(start_iteration, max_refinements + 1):
         logger.info("************* REFINEMENT LOOP iteration %i (of %i) *************", refinement, max_refinements)
         # memory usage info
-        import resource
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 
         # pcg solve
         # ---------
         stats = {}
-#            w.set_zero()
         w, zeta = pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter)
-        if not w_history is None:
+        logger.info("DIM of w = %s", w.dim)
+        if w_history is not None:
             w_history.append(w)
-
-#        print "===== SOLUTION w"
-#        for mu in w.active_indices():
-#            print "for mu:", w[mu]
-#            print w[mu].array()
 
         # error evaluation
         # ----------------
         # residual and projection errors
         logger.debug("evaluating ResidualEstimator.evaluateError")
-        xi, resind, projind, estparts = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh, quadrature_degree, projection_degree_increase, refine_projection_mesh)
+        xi, resind, projind, estparts, errors = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh, quadrature_degree, projection_degree_increase, refine_projection_mesh)
         reserrmu = [(mu, sqrt(sum(resind[mu].coeffs ** 2))) for mu in resind.keys()]
-#        reserr = sqrt(sum([sum(resind[mu].coeffs ** 2) for mu in resind.keys()]))
         projerrmu = [(mu, sqrt(sum(projind[mu].coeffs ** 2))) for mu in projind.keys()]
-#        projerr = sqrt(sum([sum(projind[mu].coeffs ** 2) for mu in projind.keys()]))
-        reserr = estparts[0]
-        projerr = estparts[1]
-        lambdaerr = estparts[2]
-        logger.info("Overall Estimator Error xi = %s while residual error is %s, projection error is %s, lambda error is %s", xi, reserr, projerr, lambdaerr)
+        res_part = estparts[0]
+        proj_part = estparts[1]
+        pcg_part = estparts[2]
+        logger.info("Overall Estimator Error xi = %s while residual error is %s, projection error is %s, pcg error is %s", xi, res_part, proj_part, pcg_part)
         stats["EST"] = xi
-        stats["RES"] = reserr
-        stats["PROJ"] = projerr
-        stats["LAMBDA"] = lambdaerr
+        stats["RES-PART"] = res_part
+        stats["PROJ-PART"] = proj_part
+        stats["PCG-PART"] = pcg_part
+        stats["ETA-ERR"] = errors[0]
+        stats["DELTA-ERR"] = errors[1]
+        stats["ZETA-ERR"] = errors[2]
         stats["RES-mu"] = reserrmu
         stats["PROJ-mu"] = projerrmu
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
         sim_stats.append(stats)
-        # inactice mi projection error
+        print sim_stats[refinement]
+        logger.debug("squared error components: eta=%s  delta=%s  zeta=%", errors[0], errors[1], errors[2])
+        # inactive mi projection error
         logger.debug("evaluating ResidualEstimator.evaluateInactiveProjectionError")
         mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, newmi_add_maxm) 
 

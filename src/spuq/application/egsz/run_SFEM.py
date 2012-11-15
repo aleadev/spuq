@@ -12,6 +12,7 @@ from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.application.egsz.sampling import compute_parametric_sample_solution, compute_direct_sample_solution, compute_solution_variance
 from spuq.application.egsz.sampling import get_projection_basis
+from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
@@ -28,43 +29,7 @@ except:
 
 # ------------------------------------------------------------
 
-
 def run_SFEM(opts, conf):
-#    option_defs = (("SFEM",
-#                     {"problem_type":1,
-#                         "domain":0,
-#                         "boundary_type":1,
-#                         "assembly_type":0,
-#                         "FEM_degree":1,
-#                         "decay_exp":1,
-#                         "coeff_type":1,
-#                         "coeff_scale":2,
-#                         "freq_scale":2,
-#                         "freq_skip":1,
-#                         "gamma":2}),
-#                   ("SFEM adaptive algorithm",
-#                     {"iterations":1,
-#                         "uniform_refinement":3,
-#                         "initial_Lambda":1,
-#                         "refine_residual":3,
-#                         "refine_projection":3,
-#                         "refine_Lambda":3,
-#                         "cQ":2,
-#                         "ceta":2,
-#                         "theta_eta":2,
-#                         "theta_zeta":2,
-#                         "min_zeta":2,
-#                         "maxh":2,
-#                         "newmi_add_maxm":1,
-#                         "theta_delta":2,
-#                         "max_Lambda_frac":2,
-#                         "quadrature_degree":1,
-#                         "projection_degree_increase":1,
-#                         "refine_projection_mesh":1,
-#                         "pcg_eps":2,
-#                         "pcg_maxiter":1,
-#                         "error_eps":2}))
-
     # propagate config values
     for sec in conf.keys():
         if sec == "LOGGING":
@@ -108,23 +73,46 @@ def run_SFEM(opts, conf):
     # define coefficient field
     # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
     coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
+    from itertools import count
+    if CONF_mu is not None:
+        muparam = (CONF_mu, (0 for _ in count()))
+    else:
+        muparam = None 
     coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
-                                        freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
-    
-    # setup boundary conditions
-    try:
-        mu = CONF_mu
-    except:
-        pass
-    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field, mu=mu)
-    
+                                    freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale, secondparam=muparam)
+
+    # setup boundary conditions and pde
+    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field)
+
     # define multioperator
     A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
-    
+
     # setup initial solution multivector
     w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=CONF_FEM_degree))
     logger.info("active indices of w after initialisation: %s", w.active_indices())
+
+    if opts.continueExperiment:
+        logger.info("CONTINUIING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
+        import pickle
+        LOAD_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
+        logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'))
+        # load solutions
+        with open(os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'rb') as fin:
+            w_history = pickle.load(fin)
+        # convert to MultiVectorWithProjection
+        for i, mv in enumerate(w_history):
+            w_history[i] = MultiVectorWithProjection(cache_active=True, multivector=w_history[i])
+        # load simulation data
+        logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'))
+        with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
+            sim_stats = pickle.load(fin)
     
+        logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
+    else:
+        sim_stats = None
+        w_history = [w]
+    w0 = w_history[-1]
+
     
     # ============================================================
     # PART C: Adaptive Algorithm
@@ -132,8 +120,6 @@ def run_SFEM(opts, conf):
     
     # refinement loop
     # ===============
-    w_history = []
-    w0 = w
     w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, CONF_FEM_degree, gamma=CONF_gamma, cQ=CONF_cQ, ceta=CONF_ceta,
                         # marking parameters
                         theta_eta=CONF_theta_eta, theta_zeta=CONF_theta_zeta, min_zeta=CONF_min_zeta,
@@ -149,7 +135,8 @@ def run_SFEM(opts, conf):
                         error_eps=CONF_error_eps,
                         # refinements
                         max_refinements=CONF_iterations, do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
-                        w_history=w_history)
+                        w_history=w_history,
+                        sim_stats=sim_stats)
     
     from operator import itemgetter
     active_mi = [(mu, w[mu]._fefunc.function_space().mesh().num_cells()) for mu in w.active_indices()]
@@ -172,7 +159,7 @@ def run_SFEM(opts, conf):
     # flag for final solution export
     if opts.saveData:
         import pickle
-        SAVE_SOLUTION = os.path.join(opts.basedir, "SFEM-results")
+        SAVE_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
         try:
             os.makedirs(SAVE_SOLUTION)
         except:
@@ -199,8 +186,8 @@ def run_SFEM(opts, conf):
             L2 = [s["L2"] for s in sim_stats]
             H1 = [s["H1"] for s in sim_stats]
             errest = [sqrt(s["EST"]) for s in sim_stats]
-            reserr = [s["RES"] for s in sim_stats]
-            projerr = [s["PROJ"] for s in sim_stats]
+            res_part = [s["RES-PART"] for s in sim_stats]
+            proj_part = [s["PROJ-PART"] for s in sim_stats]
             _reserrmu = [s["RES-mu"] for s in sim_stats]
             _projerrmu = [s["PROJ-mu"] for s in sim_stats]
             mi = [s["MI"] for s in sim_stats]
@@ -220,8 +207,8 @@ def run_SFEM(opts, conf):
             if REFINEMENT["MI"]:
                 ax.loglog(x, num_mi, '--y+', label='active mi')
             ax.loglog(x, errest, '-g<', label='error estimator')
-            ax.loglog(x, reserr, '-.cx', label='residual part')
-            ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+            ax.loglog(x, res_part, '-.cx', label='residual part')
+            ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
             legend(loc='upper right')
     
             # --------
@@ -271,7 +258,7 @@ def run_SFEM(opts, conf):
                 Plotter.labels()
                 Plotter.title(str(mu))
             else:
-                viz_mesh = plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False, axes=True)
+                viz_mesh = plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False)
 #                if SAVE_SOLUTION != '':
 #                    viz_mesh.write_png(SAVE_SOLUTION + '/mesh' + str(mu) + '.png')
 #                    viz_mesh.write_ps(SAVE_SOLUTION + '/mesh' + str(mu), format='pdf')
@@ -289,7 +276,7 @@ def run_SFEM(opts, conf):
         ref_maxm = w_history[-1].max_order
         sub_spaces = w[Multiindex()].basis.num_sub_spaces
         degree = w[Multiindex()].basis.degree
-        maxh = min(w[Multiindex()].basis.minh / 4, MC_HMAX)
+        maxh = min(w[Multiindex()].basis.minh / 4, CONF_max_h)
         maxh = w[Multiindex()].basis.minh
         projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
         sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
@@ -299,23 +286,23 @@ def run_SFEM(opts, conf):
         # plot
         print sub_spaces
         if sub_spaces == 0:
-            viz_p = plot(sample_sol_param._fefunc, title="parametric solution", axes=True)
-            viz_d = plot(sample_sol_direct._fefunc, title="direct solution", axes=True)
+            viz_p = plot(sample_sol_param._fefunc, title="parametric solution")
+            viz_d = plot(sample_sol_direct._fefunc, title="direct solution")
             if ref_maxm > 0:
-                viz_v = plot(sol_variance._fefunc, title="solution variance", axes=True)
+                viz_v = plot(sol_variance._fefunc, title="solution variance")
     
             # debug---
             if not True:        
                 for mu in w.active_indices():
                     for i, wi in enumerate(w_history):
                         if i == len(w_history) - 1 or True:
-                            plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+                            plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i))
     #                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
                     interactive()
             # ---debug
             
             for mu in w.active_indices():
-                plot(w[mu]._fefunc, title="parametric solution " + str(mu), axes=True)
+                plot(w[mu]._fefunc, title="parametric solution " + str(mu))
         else:
             mesh_param = sample_sol_param._fefunc.function_space().mesh()
             mesh_direct = sample_sol_direct._fefunc.function_space().mesh()

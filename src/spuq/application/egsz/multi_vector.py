@@ -23,9 +23,12 @@ class MultiVector(Vector):
     anything specific."""
 
     @takes(anything, optional(callable))
-    def __init__(self, on_modify=lambda: None):
+    def __init__(self, on_modify=lambda: None, multivector=None):
         self.mi2vec = dict()
         self.on_modify = on_modify
+        if multivector is not None:
+            for mu, vec in multivector.iteritems():
+                self[mu] = vec
 
     @property
     def basis(self):  # pragma: no cover
@@ -146,14 +149,14 @@ class MultiVector(Vector):
 
 class MultiVectorWithProjection(MultiVector):
     @takes(anything, optional(callable), optional(bool))
-    def __init__(self, project=None, cache_active=False):
-        MultiVector.__init__(self, self.clear_cache)
+    def __init__(self, project=None, cache_active=False, multivector=None):
         if not project:
             project = MultiVectorWithProjection.default_project
         self.project = project
         self._proj_cache = defaultdict(dict)
         self._back_cache = {}
         self._cache_active = cache_active
+        MultiVector.__init__(self, self.clear_cache, multivector=multivector)
 
     @staticmethod
     def default_project(vec_src, dest):

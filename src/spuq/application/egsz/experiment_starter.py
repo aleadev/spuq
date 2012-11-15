@@ -5,6 +5,54 @@ import ConfigParser
 from run_SFEM import run_SFEM
 from run_MC import run_MC
 
+# standard options for simulation
+# types: 0=string, 1=int, 2=float, 3=bool
+std_options = (("SFEM",
+                {"experiment_name": (0, ""),
+                    "problem_type":1,
+                    "domain":0,
+                    "boundary_type":1,
+                    "assembly_type":0,
+                    "FEM_degree":1,
+                    "initial_Lambda":1,
+                    "decay_exp":1,
+                    "coeff_type":1,
+                    "coeff_scale":2,
+                    "freq_scale":2,
+                    "freq_skip":1,
+                    "gamma":2,
+                    "mu":(2, None),
+                    "initial_mesh_N":(1, 10),
+                    "iterative_solver":(3, False)}),
+           ("SFEM adaptive algorithm",
+                {"iterations":1,
+                    "uniform_refinement":3,
+                    "refine_residual":3,
+                    "refine_projection":3,
+                    "refine_Lambda":3,
+                    "cQ":2,
+                    "ceta":2,
+                    "theta_eta":2,
+                    "theta_zeta":2,
+                    "min_zeta":2,
+                    "maxh":2,
+                    "newmi_add_maxm":1,
+                    "theta_delta":2,
+                    "max_Lambda_frac":2,
+                    "quadrature_degree":1,
+                    "projection_degree_increase":1,
+                    "refine_projection_mesh":1,
+                    "pcg_eps":2,
+                    "pcg_maxiter":1,
+                    "error_eps":2}),
+           ("LOGGING",
+                {"level":0}),
+           ("MC",
+                {"runs":1,
+                    "N":1,
+                    "max_h":2})
+           )
+
 
 class ExperimentStarter(object):
     def __init__(self):
@@ -14,14 +62,20 @@ class ExperimentStarter(object):
     def _parse_options(self):
         optparser = optparse.OptionParser()
         
-        optparser.add_option('-f', '--conffile', dest='conffile', default='test.conf')
+        optparser.add_option('-f', '--config', dest='config', default='test.conf')
         
         optparser.add_option('--runSFEM', action='store_true', default=False,
                              dest='runSFEM', help='')
         optparser.add_option('--runMC', action='store_true', default=False,
                              dest='runMC', help='')
+        optparser.add_option('--continueExperiment', action='store_true', default=False,
+                             dest='continueExperiment', help='')
         optparser.add_option('--noSaveData', action='store_false', default=True,
                              dest='saveData', help='')
+        optparser.add_option('--noTypeCheck', action='store_false', default=True,
+                             dest='typeCheck', help='disable type check')
+        optparser.add_option('--profiling', action='store_true', default=False,
+                             dest='profiling', help='enable profiling (timing)')
         
         optparser.add_option('--plotSolution', action='store_true', default=False,
                              dest='plotSolution', help='')
@@ -39,7 +93,7 @@ class ExperimentStarter(object):
         
         options, args = optparser.parse_args()
         from os.path import dirname
-        basedir = dirname(options.conffile)
+        basedir = dirname(options.config)
     
         if options.debug:
             print("program options", options)
@@ -47,16 +101,18 @@ class ExperimentStarter(object):
         
         options.basedir = basedir
         return options
-        
-    @classmethod
+
+    @classmethod        
     def _parse_config(cls, opts=None, configfile=None):
+        class _Undefined:
+            pass
         try:
             confparser = ConfigParser.SafeConfigParser()
             if configfile is not None:
                 filename = configfile
             else:
                 assert opts is not None
-                configfile = opts.conffile
+                filename = opts.config
             if not confparser.read(filename):
                 raise ConfigParser.ParsingError("file " + filename + " not found")
         except ConfigParser.ParsingError, err:
@@ -64,57 +120,21 @@ class ExperimentStarter(object):
 
         # extract options
         getter = ("get", "getint", "getfloat", "getboolean")
-        option_defs = (("SFEM",
-                        {"problem_type":1,
-                            "domain":0,
-                            "boundary_type":1,
-                            "assembly_type":0,
-                            "FEM_degree":1,
-                            "decay_exp":1,
-                            "coeff_type":1,
-                            "coeff_scale":2,
-                            "freq_scale":2,
-                            "freq_skip":1,
-                            "gamma":2,
-                            "mu":2,
-                            "initial_mesh_N":1}),
-                   ("SFEM adaptive algorithm",
-                        {"iterations":1,
-                            "uniform_refinement":3,
-                            "initial_Lambda":1,
-                            "refine_residual":3,
-                            "refine_projection":3,
-                            "refine_Lambda":3,
-                            "cQ":2,
-                            "ceta":2,
-                            "theta_eta":2,
-                            "theta_zeta":2,
-                            "min_zeta":2,
-                            "maxh":2,
-                            "newmi_add_maxm":1,
-                            "theta_delta":2,
-                            "max_Lambda_frac":2,
-                            "quadrature_degree":1,
-                            "projection_degree_increase":1,
-                            "refine_projection_mesh":1,
-                            "pcg_eps":2,
-                            "pcg_maxiter":1,
-                            "error_eps":2}),
-                   ("LOGGING",
-                        {"level":0}),
-                   ("MC",
-                        {"runs":1,
-                            "N":1,
-                            "max_h":2})
-                   )
         conf = {}
-        for sec, optsdict in option_defs:
+        for sec, optsdict in std_options:
             conf[sec] = {}
             for key, keytype in optsdict.iteritems():
                 try:
+                    if type(keytype) is tuple:
+                        keytype, defaultval = keytype[0], keytype[1]
+                    else:
+                        defaultval = _Undefined
                     exec "conf['" + sec + "']['" + key + "'] = confparser." + getter[keytype] + "('" + sec + "','" + key + "')"
                 except:
-                    print("skipped", sec, key)
+                    if not isinstance(defaultval, _Undefined):
+                        exec "conf['" + sec + "']['" + key + "'] = " + str(defaultval)
+                    else:
+                        print("skipped", sec, key)
 
         if opts is not None and opts.debug:
             for sec in confparser.sections():

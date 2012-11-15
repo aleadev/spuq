@@ -28,7 +28,6 @@ except:
 
 # ------------------------------------------------------------
 
-
 def run_MC(opts, conf):
     # propagate config values
     for sec in conf.keys():
@@ -58,20 +57,18 @@ def run_MC(opts, conf):
     # ============================================================
 
     # define coefficient field
-    # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
     coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
+    from itertools import count
+    if CONF_mu is not None:
+        muparam = (CONF_mu, (0 for _ in count()))
+    else:
+        muparam = None 
     coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
-                                        freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
+                                    freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale, secondparam=muparam)
     
-    # setup boundary conditions
-    initial_mesh_N = CONF_initial_mesh_N
-    mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=initial_mesh_N)
-    mu = None
-    try:
-        mu = CONF_mu
-    except:
-        pass
-    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field, mu=mu)
+    # setup boundary conditions and pde
+#    initial_mesh_N = CONF_initial_mesh_N
+    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field)
     
     # define multioperator
     A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
@@ -81,7 +78,7 @@ def run_MC(opts, conf):
     # PART B: Import Solution
     # ============================================================
     import pickle
-    LOAD_SOLUTION = os.path.join(opts.basedir, "SFEM-results")
+    LOAD_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
     logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'))
     # load solutions
     with open(os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'rb') as fin:
@@ -124,7 +121,7 @@ def run_MC(opts, conf):
     if opts.saveData:
         # save updated statistics
         import pickle
-        SAVE_SOLUTION = os.path.join(opts.basedir, "MC-results")
+        SAVE_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
         try:
             os.makedirs(SAVE_SOLUTION)
         except:
@@ -135,25 +132,14 @@ def run_MC(opts, conf):
     
     # plot residuals
     if opts.plotError and len(sim_stats) > 1:
-
-#        # figure 1
-#        plot_def1 = [('EST', '-g<', 'error estimator'), ("RES", '-.cx', 'residual part'), ("PROJ", '-.m>', 'projection part', 1)]
-#        if CONF_refine_Lambda:
-#            plot_def1.append(('NUM-MI', '--y+', 'active mi'))
-#        stats_plotter(sim_stats, plot_def1, plot_type='loglog', title='residual estimator', logger=logger, legend_loc='upper right', save_image='')
-#
-#        # figure 2
-#        plot_code2 = "for mu, v in D['RESERR-mu'].iteritems():\n  ms = str(mu)\n  ms = ms[ms.find('=') + 1:-1]\n  ax.loglog(x[-len(v):], v, '-g<', label=ms)"
-#        stats_plotter(sim_stats, title='residual contributions', logger=logger, legend_loc='upper right', save_image='', code=plot_code2)
-        
         try:
             from matplotlib.pyplot import figure, show, legend
             x = [s["DOFS"] for s in sim_stats]
             L2 = [s["L2"] for s in sim_stats]
             H1 = [s["H1"] for s in sim_stats]
             errest = [sqrt(s["EST"]) for s in sim_stats]
-            reserr = [s["RES"] for s in sim_stats]
-            projerr = [s["PROJ"] for s in sim_stats]
+            res_part = [s["RES-PART"] for s in sim_stats]
+            proj_part = [s["PROJ-PART"] for s in sim_stats]
             _reserrmu = [s["RES-mu"] for s in sim_stats]
             _projerrmu = [s["PROJ-mu"] for s in sim_stats]
             if CONF_runs > 0:
@@ -182,8 +168,8 @@ def run_MC(opts, conf):
             if CONF_refine_Lambda:
                 ax.loglog(x, num_mi, '--y+', label='active mi')
             ax.loglog(x, errest, '-g<', label='error estimator')
-            ax.loglog(x, reserr, '-.cx', label='residual part')
-            ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+            ax.loglog(x, res_part, '-.cx', label='residual part')
+            ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
             if MC_RUNS > 0:
                 ax.loglog(x, mcH1, '-b^', label='MC H1 error')
                 ax.loglog(x, mcL2, '-ro', label='MC L2 error')

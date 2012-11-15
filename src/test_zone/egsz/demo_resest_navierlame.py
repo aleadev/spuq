@@ -93,10 +93,6 @@ coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_
                                     freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale, secondparam=muparam)
 
 # setup boundary conditions and pde
-try:
-    mu = CONF_mu
-except:
-    mu = None
 pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field)
 
 # define multioperator
@@ -153,9 +149,9 @@ if len(sim_stats) > 1:
         L2 = [s["L2"] for s in sim_stats]
         H1 = [s["H1"] for s in sim_stats]
         errest = [sqrt(s["EST"]) for s in sim_stats]
-        reserr = [s["RES"] for s in sim_stats]
-        projerr = [s["PROJ"] for s in sim_stats]
-        lambdaerr = [s["LAMBDA"] for s in sim_stats]
+        res_part = [s["RES-PART"] for s in sim_stats]
+        proj_part = [s["PROJ-PART"] for s in sim_stats]
+        pcg_part = [s["PCG-PART"] for s in sim_stats]
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
         print "errest", errest
@@ -168,9 +164,9 @@ if len(sim_stats) > 1:
         if REFINEMENT["MI"]:
             ax.loglog(x, num_mi, '--y+', label='active mi')
         ax.loglog(x, errest, '-g<', label='error estimator')
-        ax.loglog(x, reserr, '-.cx', label='residual part')
-        ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
-        ax.loglog(x[1:], lambdaerr[1:], '-.b^', label='pcg part')
+        ax.loglog(x, res_part, '-.cx', label='residual part')
+        ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
+        ax.loglog(x, pcg_part, '-.b^', label='pcg part')
         legend(loc='upper right')
         # figure 2
         # --------
@@ -213,7 +209,7 @@ if PLOT_SOLUTION:
         viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
         viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
     else:
-        PLOTSCALE = 100 if CONF_boundary_type == 3 else 1
+        PLOTSCALE = 30 if CONF_boundary_type == 3 else 1
         Plotter.plotMesh(sample_sol_param._fefunc, displacement=True, scale=PLOTSCALE)
         Plotter.plotMesh(sample_sol_direct._fefunc, displacement=True, scale=PLOTSCALE)
 
