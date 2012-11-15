@@ -2,8 +2,6 @@ from __future__ import print_function
 
 import optparse
 import ConfigParser
-from run_SFEM import run_SFEM
-from run_MC import run_MC
 
 # standard options for simulation
 # types: 0=string, 1=int, 2=float, 3=bool
@@ -171,6 +169,16 @@ class ExperimentStarter(object):
         if self.opts.clear == 'MC' or self.opts.clear == 'all':
             print("clearing MC data TODO")
             # TODO
+
+        if not self.opts.typeCheck:
+            print("="*60)
+            print("disabling type checking")
+            print("="*60)
+            from spuq.utils.type_check import disable_type_check
+            disable_type_check()
+
+        from run_SFEM import run_SFEM
+        from run_MC import run_MC
 
         # start SFEM
         if self.opts.runSFEM:
