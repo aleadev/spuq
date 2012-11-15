@@ -138,9 +138,19 @@
 
 __all__ = [ "takes", "InputParameterError", "returns", "ReturnValueError",
             "optional", "nothing", "anything", "list_of", "tuple_of", "dict_of",
-            "by_regex", "with_attr", "one_of", "set_of", "sequence_of" ]
+            "by_regex", "with_attr", "one_of", "set_of", "sequence_of", "disable_type_check" ]
 
+################################################################################
 no_check = False # set this to True to turn all checks off
+decorated = False
+
+def disable_type_check(disable=True, error_if_late=True):
+    """Globally disables type checking"""
+    global no_check
+    no_check = disable
+    if decorated and error_if_late:
+        raise Exception("Functions and methods have already been decorated by 'type_check'. " + 
+                        "'disable_type_check' must be called before loading modules!")
 
 ################################################################################
 
@@ -393,6 +403,8 @@ one_of = lambda * args: OneOfChecker(*args).check
 
 def takes(*args, **kwargs):
     "Method signature checking decorator"
+    global decorated
+    decorated = True
 
     # convert decorator arguments into a list of checkers
 
@@ -462,6 +474,9 @@ class InputParameterError(TypeError): pass
 
 def returns(sometype):
     "Return type checking decorator"
+
+    global decorated
+    decorated = True
 
     # convert decorator argument into a checker
 

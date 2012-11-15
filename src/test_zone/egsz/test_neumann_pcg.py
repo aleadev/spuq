@@ -5,6 +5,11 @@ import functools
 import numpy as np
 from math import sqrt
 
+# type check must be done before loading modules that use type checking
+from spuq.utils.type_check import disable_type_check
+disable_type_check()
+
+
 from spuq.application.egsz.pcg import pcg
 from spuq.application.egsz.adaptive_solver import setup_vector
 from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator, ASSEMBLY_TYPE
@@ -27,6 +32,7 @@ except:
     print traceback.format_exc()
     print "FEniCS has to be available"
     os.sys.exit(1)
+
 
 
 # ------------------------------------------------------------
@@ -124,7 +130,7 @@ import sys
 # pcg solver
 b = prepare_rhs(A, w, coeff_field, pde)
 P = PreconditioningOperator(coeff_field.mean_func, pde.assemble_solve_operator)
-w, zeta, numit = pcg(A, b, P, w0=w, eps=CONF_pcg_eps, maxiter=CONF_pcg_maxiter)
+w, zeta, numit = pcg("A", b, P, w0=w, eps=CONF_pcg_eps, maxiter=CONF_pcg_maxiter)
 logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
 #if True:
