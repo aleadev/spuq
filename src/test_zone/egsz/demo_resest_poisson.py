@@ -134,6 +134,21 @@ logger.info("\n======================================\nMEMORY USED: " + str(reso
 
 
 if len(sim_stats) > 1:
+    errest = sqrt(sim_stats[-1]["EST"])
+    reserr = sim_stats[-1]["RES"]
+    projerr = sim_stats[-1]["PROJ"]
+
+    alpha = CONF_coeff_scale
+    beta = 1
+    factor = beta / sqrt(alpha)
+    print "Scaling behaviour of the error:"
+    print "  alpha, beta, factor:", alpha, beta, factor
+    print "  errest: ", errest, errest/factor
+    print "  reserr: ", reserr, reserr/factor
+    print "  projerr:", projerr, projerr/factor
+
+
+if len(sim_stats) > 1:
     try:
         from matplotlib.pyplot import figure, show, legend
         x = [s["DOFS"] for s in sim_stats]

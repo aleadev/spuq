@@ -168,6 +168,7 @@ if PLOT_SOLUTION:
 ##                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
 #                interactive()
 #        # ---debug
+
     mesh_param = sample_sol_param._fefunc.function_space().mesh()
     mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
 
@@ -175,6 +176,7 @@ if PLOT_SOLUTION:
     Vd = VectorFunctionSpace(V.mesh(), "DG", 0)
     gradsol=project(grad(sample_sol_param._fefunc),Vd)
     gradsolx, gradsoly=gradsol.split(deepcopy=True)
+    #grad_y = project(dolfin.inner(grad(sample_sol_param._fefunc),Constant((1.0,0.0))), V)
 
 
     MAYAVI_PLOTTING = False
