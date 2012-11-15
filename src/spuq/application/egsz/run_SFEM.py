@@ -12,6 +12,7 @@ from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.application.egsz.sampling import compute_parametric_sample_solution, compute_direct_sample_solution, compute_solution_variance
 from spuq.application.egsz.sampling import get_projection_basis
+from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
@@ -98,6 +99,9 @@ def run_SFEM(opts, conf):
         # load solutions
         with open(os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'rb') as fin:
             w_history = pickle.load(fin)
+        # convert to MultiVectorWithProjection
+        for i, mv in enumerate(w_history):
+            w_history[i] = MultiVectorWithProjection(cache_active=True, multivector=w_history[i])
         # load simulation data
         logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'))
         with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
@@ -106,8 +110,8 @@ def run_SFEM(opts, conf):
         logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
     else:
         sim_stats = None
-        w_history = []
-        w0 = w
+        w_history = [w]
+    w0 = w_history[-1]
 
     
     # ============================================================
@@ -155,7 +159,7 @@ def run_SFEM(opts, conf):
     # flag for final solution export
     if opts.saveData:
         import pickle
-        SAVE_SOLUTION = os.path.join(opts.basedir, "SFEM-results")
+        SAVE_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
         try:
             os.makedirs(SAVE_SOLUTION)
         except:
@@ -254,7 +258,7 @@ def run_SFEM(opts, conf):
                 Plotter.labels()
                 Plotter.title(str(mu))
             else:
-                viz_mesh = plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False, axes=True)
+                viz_mesh = plot(vec.basis.mesh, title="mesh " + str(mu), interactive=False)
 #                if SAVE_SOLUTION != '':
 #                    viz_mesh.write_png(SAVE_SOLUTION + '/mesh' + str(mu) + '.png')
 #                    viz_mesh.write_ps(SAVE_SOLUTION + '/mesh' + str(mu), format='pdf')
@@ -272,7 +276,7 @@ def run_SFEM(opts, conf):
         ref_maxm = w_history[-1].max_order
         sub_spaces = w[Multiindex()].basis.num_sub_spaces
         degree = w[Multiindex()].basis.degree
-        maxh = min(w[Multiindex()].basis.minh / 4, MC_HMAX)
+        maxh = min(w[Multiindex()].basis.minh / 4, CONF_max_h)
         maxh = w[Multiindex()].basis.minh
         projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
         sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
@@ -282,23 +286,23 @@ def run_SFEM(opts, conf):
         # plot
         print sub_spaces
         if sub_spaces == 0:
-            viz_p = plot(sample_sol_param._fefunc, title="parametric solution", axes=True)
-            viz_d = plot(sample_sol_direct._fefunc, title="direct solution", axes=True)
+            viz_p = plot(sample_sol_param._fefunc, title="parametric solution")
+            viz_d = plot(sample_sol_direct._fefunc, title="direct solution")
             if ref_maxm > 0:
-                viz_v = plot(sol_variance._fefunc, title="solution variance", axes=True)
+                viz_v = plot(sol_variance._fefunc, title="solution variance")
     
             # debug---
             if not True:        
                 for mu in w.active_indices():
                     for i, wi in enumerate(w_history):
                         if i == len(w_history) - 1 or True:
-                            plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+                            plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i))
     #                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
                     interactive()
             # ---debug
             
             for mu in w.active_indices():
-                plot(w[mu]._fefunc, title="parametric solution " + str(mu), axes=True)
+                plot(w[mu]._fefunc, title="parametric solution " + str(mu))
         else:
             mesh_param = sample_sol_param._fefunc.function_space().mesh()
             mesh_direct = sample_sol_direct._fefunc.function_space().mesh()

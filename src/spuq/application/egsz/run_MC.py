@@ -121,7 +121,7 @@ def run_MC(opts, conf):
     if opts.saveData:
         # save updated statistics
         import pickle
-        SAVE_SOLUTION = os.path.join(opts.basedir, "MC-results")
+        SAVE_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
         try:
             os.makedirs(SAVE_SOLUTION)
         except:

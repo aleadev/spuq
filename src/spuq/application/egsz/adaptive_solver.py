@@ -132,16 +132,14 @@ def AdaptiveSolver(A, coeff_field, pde,
 
     w = w0
     if sim_stats is None:
-        assert w_history is None or len(w_history) == 0
+        assert w_history is None or len(w_history) == 1
         sim_stats = []
-    if w_history is not None and len(w_history) == 0:
-        w_history.append(w)
 
     try:
-        start_iteration = len(w_history)
-        logger.info("CONTINUE EXPERIMENT at iteration %i", start_iteration)
+        start_iteration = len(w_history) - 1
     except:
         start_iteration = 0
+    logger.info("START/CONTINUE EXPERIMENT at iteration %i", start_iteration)
 
     # data collection
     import resource
@@ -168,7 +166,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         res_part = estparts[0]
         proj_part = estparts[1]
         pcg_part = estparts[2]
-        logger.info("Overall Estimator Error xi = %s while residual error is %s, projection error is %s, lambda error is %s", xi, res_part, proj_part, pcg_part)
+        logger.info("Overall Estimator Error xi = %s while residual error is %s, projection error is %s, pcg error is %s", xi, res_part, proj_part, pcg_part)
         stats["EST"] = xi
         stats["RES-PART"] = res_part
         stats["PROJ-PART"] = proj_part
@@ -179,9 +177,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats["RES-mu"] = reserrmu
         stats["PROJ-mu"] = projerrmu
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
-        print "SIM-STATS before", len(sim_stats), refinement
         sim_stats.append(stats)
-        print "SIM-STATS after", len(sim_stats)
         print sim_stats[refinement]
         logger.debug("squared error components: eta=%s  delta=%s  zeta=%", errors[0], errors[1], errors[2])
         # inactive mi projection error
