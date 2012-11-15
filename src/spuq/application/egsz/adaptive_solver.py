@@ -143,6 +143,7 @@ def AdaptiveSolver(A, coeff_field, pde,
 
     # data collection
     import resource
+    refinement = None
     for refinement in range(start_iteration, max_refinements + 1):
         logger.info("************* REFINEMENT LOOP iteration %i (of %i) *************", refinement, max_refinements)
         # memory usage info
@@ -229,9 +230,10 @@ def AdaptiveSolver(A, coeff_field, pde,
             
             # carry out refinement of meshes
             Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
-
-    logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
-                refinement, max_refinements, sim_stats[refinement]["DOFS"], len(sim_stats[refinement]["MI"]))
+    
+    if refinement:
+        logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
+                    refinement, max_refinements, sim_stats[refinement]["DOFS"], len(sim_stats[refinement]["MI"]))
 
 #    except Exception as ex:
 #        import pickle
