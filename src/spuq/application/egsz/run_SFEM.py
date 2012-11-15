@@ -28,43 +28,7 @@ except:
 
 # ------------------------------------------------------------
 
-
 def run_SFEM(opts, conf):
-#    option_defs = (("SFEM",
-#                     {"problem_type":1,
-#                         "domain":0,
-#                         "boundary_type":1,
-#                         "assembly_type":0,
-#                         "FEM_degree":1,
-#                         "decay_exp":1,
-#                         "coeff_type":1,
-#                         "coeff_scale":2,
-#                         "freq_scale":2,
-#                         "freq_skip":1,
-#                         "gamma":2}),
-#                   ("SFEM adaptive algorithm",
-#                     {"iterations":1,
-#                         "uniform_refinement":3,
-#                         "initial_Lambda":1,
-#                         "refine_residual":3,
-#                         "refine_projection":3,
-#                         "refine_Lambda":3,
-#                         "cQ":2,
-#                         "ceta":2,
-#                         "theta_eta":2,
-#                         "theta_zeta":2,
-#                         "min_zeta":2,
-#                         "maxh":2,
-#                         "newmi_add_maxm":1,
-#                         "theta_delta":2,
-#                         "max_Lambda_frac":2,
-#                         "quadrature_degree":1,
-#                         "projection_degree_increase":1,
-#                         "refine_projection_mesh":1,
-#                         "pcg_eps":2,
-#                         "pcg_maxiter":1,
-#                         "error_eps":2}))
-
     # propagate config values
     for sec in conf.keys():
         if sec == "LOGGING":
@@ -108,23 +72,43 @@ def run_SFEM(opts, conf):
     # define coefficient field
     # NOTE: for proper treatment of corner points, see elasticity_residual_estimator
     coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
+    from itertools import count
+    if CONF_mu is not None:
+        muparam = (CONF_mu, (0 for _ in count()))
+    else:
+        muparam = None 
     coeff_field = SampleProblem.setupCF(coeff_types[CONF_coeff_type], decayexp=CONF_decay_exp, gamma=CONF_gamma,
-                                        freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale)
-    
-    # setup boundary conditions
-    try:
-        mu = CONF_mu
-    except:
-        pass
-    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field, mu=mu)
-    
+                                    freqscale=CONF_freq_scale, freqskip=CONF_freq_skip, rvtype="uniform", scale=CONF_coeff_scale, secondparam=muparam)
+
+    # setup boundary conditions and pde
+    pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(CONF_boundary_type, CONF_domain, CONF_problem_type, boundaries, coeff_field)
+
     # define multioperator
     A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs, assembly_type=eval("ASSEMBLY_TYPE." + CONF_assembly_type))
-    
+
     # setup initial solution multivector
     w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=CONF_FEM_degree))
     logger.info("active indices of w after initialisation: %s", w.active_indices())
+
+    if opts.continueExperiment:
+        logger.info("CONTINUIING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
+        import pickle
+        LOAD_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
+        logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'))
+        # load solutions
+        with open(os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'rb') as fin:
+            w_history = pickle.load(fin)
+        # load simulation data
+        logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'))
+        with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
+            sim_stats = pickle.load(fin)
     
+        logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
+    else:
+        sim_stats = None
+        w_history = []
+        w0 = w
+
     
     # ============================================================
     # PART C: Adaptive Algorithm
@@ -132,8 +116,6 @@ def run_SFEM(opts, conf):
     
     # refinement loop
     # ===============
-    w_history = []
-    w0 = w
     w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, CONF_FEM_degree, gamma=CONF_gamma, cQ=CONF_cQ, ceta=CONF_ceta,
                         # marking parameters
                         theta_eta=CONF_theta_eta, theta_zeta=CONF_theta_zeta, min_zeta=CONF_min_zeta,
@@ -149,7 +131,8 @@ def run_SFEM(opts, conf):
                         error_eps=CONF_error_eps,
                         # refinements
                         max_refinements=CONF_iterations, do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
-                        w_history=w_history)
+                        w_history=w_history,
+                        sim_stats=sim_stats)
     
     from operator import itemgetter
     active_mi = [(mu, w[mu]._fefunc.function_space().mesh().num_cells()) for mu in w.active_indices()]
@@ -199,8 +182,8 @@ def run_SFEM(opts, conf):
             L2 = [s["L2"] for s in sim_stats]
             H1 = [s["H1"] for s in sim_stats]
             errest = [sqrt(s["EST"]) for s in sim_stats]
-            reserr = [s["RES"] for s in sim_stats]
-            projerr = [s["PROJ"] for s in sim_stats]
+            res_part = [s["RES-PART"] for s in sim_stats]
+            proj_part = [s["PROJ-PART"] for s in sim_stats]
             _reserrmu = [s["RES-mu"] for s in sim_stats]
             _projerrmu = [s["PROJ-mu"] for s in sim_stats]
             mi = [s["MI"] for s in sim_stats]
@@ -220,8 +203,8 @@ def run_SFEM(opts, conf):
             if REFINEMENT["MI"]:
                 ax.loglog(x, num_mi, '--y+', label='active mi')
             ax.loglog(x, errest, '-g<', label='error estimator')
-            ax.loglog(x, reserr, '-.cx', label='residual part')
-            ax.loglog(x[1:], projerr[1:], '-.m>', label='projection part')
+            ax.loglog(x, res_part, '-.cx', label='residual part')
+            ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
             legend(loc='upper right')
     
             # --------
