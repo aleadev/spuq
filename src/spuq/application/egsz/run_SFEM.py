@@ -91,26 +91,27 @@ def run_SFEM(opts, conf):
     w = SampleProblem.setupMultiVector(dict([(mu, m) for mu, m in zip(mis, meshes)]), functools.partial(setup_vector, pde=pde, degree=CONF_FEM_degree))
     logger.info("active indices of w after initialisation: %s", w.active_indices())
 
-    if opts.continueExperiment:
-        logger.info("CONTINUIING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
-        import pickle
-        LOAD_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
-        logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'))
-        # load solutions
-        with open(os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'rb') as fin:
-            w_history = pickle.load(fin)
-        # convert to MultiVectorWithProjection
-        for i, mv in enumerate(w_history):
-            w_history[i] = MultiVectorWithProjection(cache_active=True, multivector=w_history[i])
-        # load simulation data
-        logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'))
-        with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
-            sim_stats = pickle.load(fin)
-    
-        logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
-    else:
-        sim_stats = None
-        w_history = [w]
+    sim_stats = None
+    w_history = [w]
+    if opts.continueSFEM:
+        try:
+            logger.info("CONTINUIING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
+            import pickle
+            LOAD_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
+            logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'))
+            # load solutions
+            with open(os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'rb') as fin:
+                w_history = pickle.load(fin)
+            # convert to MultiVectorWithProjection
+            for i, mv in enumerate(w_history):
+                w_history[i] = MultiVectorWithProjection(cache_active=True, multivector=w_history[i])
+            # load simulation data
+            logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'))
+            with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
+                sim_stats = pickle.load(fin)
+            logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
+        except:
+            logger.warn("FAILED LOADING EXPERIMENT %s --- STARTING NEW DATA", CONF_experiment_name)    
     w0 = w_history[-1]
 
     
@@ -188,6 +189,7 @@ def run_SFEM(opts, conf):
             errest = [sqrt(s["EST"]) for s in sim_stats]
             res_part = [s["RES-PART"] for s in sim_stats]
             proj_part = [s["PROJ-PART"] for s in sim_stats]
+            pcg_part = [s["PCG-PART"] for s in sim_stats]
             _reserrmu = [s["RES-mu"] for s in sim_stats]
             _projerrmu = [s["PROJ-mu"] for s in sim_stats]
             mi = [s["MI"] for s in sim_stats]
@@ -209,6 +211,7 @@ def run_SFEM(opts, conf):
             ax.loglog(x, errest, '-g<', label='error estimator')
             ax.loglog(x, res_part, '-.cx', label='residual part')
             ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
+            ax.loglog(x, pcg_part, '-.b>', label='pcg part')
             legend(loc='upper right')
     
             # --------
@@ -241,6 +244,7 @@ def run_SFEM(opts, conf):
     # plot final meshes
     if opts.plotMesh:
         USE_MAYAVI = Plotter.hasMayavi() and False
+        w = w_history[-1]
         for mu, vec in w.iteritems():
             if USE_MAYAVI:
                 # mesh
@@ -271,6 +275,7 @@ def run_SFEM(opts, conf):
     
     # plot sample solution
     if opts.plotSolution:
+        w = w_history[-1]
         # get random field sample and evaluate solution (direct and parametric)
         RV_samples = coeff_field.sample_rvs()
         ref_maxm = w_history[-1].max_order

@@ -54,7 +54,7 @@ def apply_bc(fenics_obj, bc=DEFAULT_BC, V=None):
 
 
 @takes(GenericMatrix, (BoundaryCondition, sequence_of(BoundaryCondition)))
-def remove_boundary_entries(A, bcs):
+def _remove_boundary_entries(A, bcs):
     if not isinstance(bcs, BoundaryCondition):
         for bc in bcs:
             remove_boundary_entries(A, bc)
@@ -69,6 +69,18 @@ def remove_boundary_entries(A, bcs):
             cols[0] = d
             A.set(values, rows, cols)
         A.apply("insert")
+
+
+@takes(GenericMatrix, (BoundaryCondition, sequence_of(BoundaryCondition)))
+def get_dirichlet_mask(A, bcs):
+    import collections
+    if not isinstance(bcs, collections.Iterable):
+        bcs = [bcs]
+    mask = np.ones(A.size(0))
+    for bc in bcs:
+        dofs = bc.get_boundary_values().keys()
+        mask[dofs] = 0
+    return mask
 
 
 @takes(GenericVector, (BoundaryCondition, sequence_of(BoundaryCondition)), bool)

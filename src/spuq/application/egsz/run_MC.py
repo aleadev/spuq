@@ -94,8 +94,16 @@ def run_MC(opts, conf):
     # ============================================================
     # PART C: MC Error Sampling
     # ============================================================
+
+    if opts.continueSFEM:
+        try:
+            MC_start = len(sim_stats[i - 1]["MC-L2ERR"])
+            logger.info("CONTINUING MC for %s with run %s", LOAD_SOLUTION, MC_start)
+        except:
+            MC_start = 0
+            logger.info("STARTING MC for %s with run %s", LOAD_SOLUTION, MC_start)            
     
-    MC_RUNS = CONF_runs
+    MC_RUNS = CONF_runs - MC_start
     MC_N = CONF_N
     MC_HMAX = CONF_max_h
     if MC_RUNS > 0:
@@ -140,6 +148,7 @@ def run_MC(opts, conf):
             errest = [sqrt(s["EST"]) for s in sim_stats]
             res_part = [s["RES-PART"] for s in sim_stats]
             proj_part = [s["PROJ-PART"] for s in sim_stats]
+            pcg_part = [s["PCG-PART"] for s in sim_stats]
             _reserrmu = [s["RES-mu"] for s in sim_stats]
             _projerrmu = [s["PROJ-mu"] for s in sim_stats]
             if CONF_runs > 0:
@@ -170,6 +179,7 @@ def run_MC(opts, conf):
             ax.loglog(x, errest, '-g<', label='error estimator')
             ax.loglog(x, res_part, '-.cx', label='residual part')
             ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
+            ax.loglog(x, pcg_part, '-.b>', label='pcg part')
             if MC_RUNS > 0:
                 ax.loglog(x, mcH1, '-b^', label='MC H1 error')
                 ax.loglog(x, mcL2, '-ro', label='MC L2 error')

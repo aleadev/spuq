@@ -66,8 +66,10 @@ class ExperimentStarter(object):
                              dest='runSFEM', help='')
         optparser.add_option('--runMC', action='store_true', default=False,
                              dest='runMC', help='')
-        optparser.add_option('--continueExperiment', action='store_true', default=False,
-                             dest='continueExperiment', help='')
+        optparser.add_option('--continueSFEM', action='store_true', default=False,
+                             dest='continueSFEM', help='')
+        optparser.add_option('--continueMC', action='store_true', default=False,
+                             dest='continueMC', help='')
         optparser.add_option('--noSaveData', action='store_false', default=True,
                              dest='saveData', help='')
         optparser.add_option('--noTypeCheck', action='store_false', default=True,

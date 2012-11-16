@@ -136,7 +136,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         sim_stats = []
 
     try:
-        start_iteration = len(w_history) - 1
+        start_iteration = max(len(sim_stats) - 1, 0)
     except:
         start_iteration = 0
     logger.info("START/CONTINUE EXPERIMENT at iteration %i", start_iteration)
@@ -154,7 +154,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats = {}
         w, zeta = pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter)
         logger.info("DIM of w = %s", w.dim)
-        if w_history is not None:
+        if w_history is not None and (start_iteration == 0 or start_iteration < refinement):
             w_history.append(w)
 
         # error evaluation
@@ -178,7 +178,8 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats["RES-mu"] = reserrmu
         stats["PROJ-mu"] = projerrmu
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
-        sim_stats.append(stats)
+        if (start_iteration == 0 or start_iteration < refinement):
+            sim_stats.append(stats)
         print sim_stats[refinement]
         logger.debug("squared error components: eta=%s  delta=%s  zeta=%", errors[0], errors[1], errors[2])
         # inactive mi projection error
