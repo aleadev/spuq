@@ -5,7 +5,7 @@ import ConfigParser
 
 # standard options for simulation
 # types: 0=string, 1=int, 2=float, 3=bool
-std_options = (("SFEM",
+simulation_options_conf = (("SFEM",
                 {"experiment_name": (0, ""),
                     "problem_type":1,
                     "domain":0,
@@ -103,7 +103,7 @@ class ExperimentStarter(object):
         return options
 
     @classmethod        
-    def _parse_config(cls, opts=None, configfile=None):
+    def _parse_config(cls, opts, opts_conf=simulation_options_conf, additional_opts_conf=None, configfile=None):
         class _Undefined:
             pass
         try:
@@ -121,7 +121,7 @@ class ExperimentStarter(object):
         # extract options
         getter = ("get", "getint", "getfloat", "getboolean")
         conf = {}
-        for sec, optsdict in std_options:
+        for sec, optsdict in opts_conf:
             conf[sec] = {}
             for key, keytype in optsdict.iteritems():
                 try:
@@ -136,7 +136,8 @@ class ExperimentStarter(object):
                     else:
                         print("skipped", sec, key)
 
-        if opts is not None and opts.debug:
+        if additional_opts_conf is not None and opts.debug:
+            # TODO: implement...
             for sec in confparser.sections():
                 print("section", sec)
                 for opt in confparser.options(sec):

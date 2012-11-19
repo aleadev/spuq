@@ -154,7 +154,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats = {}
         w, zeta = pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter)
         logger.info("DIM of w = %s", w.dim)
-        if w_history is not None and (start_iteration == 0 or start_iteration < refinement):
+        if w_history is not None and start_iteration < refinement:
             w_history.append(w)
 
         # error evaluation

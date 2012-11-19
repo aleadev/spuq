@@ -81,7 +81,7 @@ def sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_H
     param_sol_cache = MCCache()
     direct_sol_cache = MCCache()
     for i in range(MC_RUNS):
-        logger.info("---> MC RUN %i/%i <---", i + 1, MC_RUNS)
+        logger.info("---> MC RUN %i/%i  (with N=%i) <---", i + 1, MC_RUNS, MC_N)
         run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX,
                param_sol_cache=param_sol_cache, direct_sol_cache=direct_sol_cache)
     #print "evaluated errors (L2,H1):", err
@@ -90,4 +90,4 @@ def sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_H
     L2err_a0 = sum([e[2] for e in err]) / len(err)
     H1err_a0 = sum([e[3] for e in err]) / len(err)
     logger.info("average MC ERRORS: L2 = %s   H1 = %s    [deterministic part L2 = %s    H1 = %s]", L2err, H1err, L2err_a0, H1err_a0)
-    return L2err, H1err, L2err_a0, H1err_a0
+    return L2err, H1err, L2err_a0, H1err_a0, len(err)

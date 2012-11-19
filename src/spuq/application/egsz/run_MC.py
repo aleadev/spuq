@@ -55,6 +55,9 @@ def run_MC(opts, conf):
     # ============================================================
     # PART A: Setup Problem
     # ============================================================
+    
+    # get boundaries
+    mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=CONF_initial_mesh_N)
 
     # define coefficient field
     coeff_types = ("EF-square-cos", "EF-square-sin", "monomials", "constant")
@@ -94,33 +97,47 @@ def run_MC(opts, conf):
     # ============================================================
     # PART C: MC Error Sampling
     # ============================================================
-
-    if opts.continueSFEM:
-        try:
-            MC_start = len(sim_stats[i - 1]["MC-L2ERR"])
-            logger.info("CONTINUING MC for %s with run %s", LOAD_SOLUTION, MC_start)
-        except:
-            MC_start = 0
-            logger.info("STARTING MC for %s with run %s", LOAD_SOLUTION, MC_start)            
     
-    MC_RUNS = CONF_runs - MC_start
     MC_N = CONF_N
     MC_HMAX = CONF_max_h
-    if MC_RUNS > 0:
+    if CONF_runs > 0:
         ref_maxm = w_history[-1].max_order
         for i, w in enumerate(w_history):
-            if i == 0:
-                continue
+#            if i == 0:
+#                continue
             logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
+            
             # memory usage info
             import resource
             logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
-            L2err, H1err, L2err_a0, H1err_a0 = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
-            sim_stats[i - 1]["MC-L2ERR"] = L2err
-            sim_stats[i - 1]["MC-H1ERR"] = H1err
-            sim_stats[i - 1]["MC-L2ERR_a0"] = L2err_a0
-            sim_stats[i - 1]["MC-H1ERR_a0"] = H1err_a0
-    
+            
+            MC_start = 0
+            old_stats = sim_stats[i]
+            if opts.continueMC:
+                try:
+                    MC_start = sim_stats[i]["MC-N"]
+                    logger.info("CONTINUING MC of %s for solution (iteration) %s of %s", LOAD_SOLUTION, i, len(w_history))
+                except:
+                    logger.info("STARTING MC of %s for solution (iteration) %s of %s", LOAD_SOLUTION, i, len(w_history))
+            MC_RUNS = max(CONF_runs - MC_start, 0)
+            if MC_RUNS > 0:
+                logger.info("STARTING %s MC RUNS", MC_RUNS)
+                L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
+                try:
+                    # combine current and previous results
+                    sim_stats[i]["MC-N"] = N + old_stats["MC-N"]
+                    sim_stats[i]["MC-L2ERR"] = (L2err * N + old_stats["MC-L2ERR"]) / sim_stats["MC-N"]
+                    sim_stats[i]["MC-H1ERR"] = (H1err * N + old_stats["MC-H1ERR"]) / sim_stats["MC-N"]
+                    sim_stats[i]["MC-L2ERR_a0"] = (L2err_a0 * N + old_stats["MC-L2ERR_a0"]) / sim_stats["MC-N"]
+                    sim_stats[i]["MC-H1ERR_a0"] = (H1err_a0 * N + old_stats["MC-H1ERR_a0"]) / sim_stats["MC-N"]
+                except:
+                    sim_stats[i]["MC-N"] = N
+                    sim_stats[i]["MC-L2ERR"] = L2err
+                    sim_stats[i]["MC-H1ERR"] = H1err
+                    sim_stats[i]["MC-L2ERR_a0"] = L2err_a0
+                    sim_stats[i]["MC-H1ERR_a0"] = H1err_a0
+            else:
+                logger.info("SKIPPING MC RUN since sufficiently many samples are available")
     
     # ============================================================
     # PART D: Export Updated Data and Plotting

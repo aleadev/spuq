@@ -53,9 +53,6 @@ def run_SFEM(opts, conf):
     
     # flags for residual, projection, new mi refinement 
     REFINEMENT = {"RES":CONF_refine_residual, "PROJ":CONF_refine_projection, "MI":CONF_refine_Lambda}
-    
-    # initial mesh elements
-    initial_mesh_N = CONF_initial_mesh_N
 
     
     # ============================================================
@@ -66,7 +63,7 @@ def run_SFEM(opts, conf):
     mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(CONF_initial_Lambda, 1)]
     
     # setup domain and meshes
-    mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=initial_mesh_N)
+    mesh0, boundaries, dim = SampleDomain.setupDomain(CONF_domain, initial_mesh_N=CONF_initial_mesh_N)
     #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
     meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
     
