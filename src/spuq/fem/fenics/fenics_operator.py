@@ -24,10 +24,19 @@ class FEniCSOperatorBase(Operator):
 
 
 class FEniCSOperator(FEniCSOperatorBase):
+    @takes(anything, dolfin.Matrix, FEniCSBasis, np.ndarray)
+    def __init__(self, matrix, basis, mask=None):
+        FEniCSOperatorBase.__init__(self, matrix, basis)
+        self._mask = mask
+        
     @takes(anything, FEniCSVector)
     def apply(self, vec):
         new_vec = vec.copy()
-        new_vec.coeffs = self._matrix * vec.coeffs
+        if self._mask is not None:
+            new_vec.coeffs = new_vec.coeffs * self._mask
+        new_vec.coeffs = self._matrix * new_vec.coeffs
+        if self._mask is not None:
+            new_vec.coeffs = new_vec.coeffs * self._mask
         return new_vec
 
 

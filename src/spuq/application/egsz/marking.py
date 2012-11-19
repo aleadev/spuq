@@ -157,7 +157,14 @@ class Marking(object):
         lambdaN = int(ceil(max_Lambda_frac * maxorder_Lambda))                    # max number new multiindices
         # select indices with largest projection error
         Lambda_selection = sorted(Lambda_candidates, key=itemgetter(1), reverse=True)[:min(len(Lambda_candidates), lambdaN)]
+        try:
+            lambda_max = Lambda_selection[0][1]
+        except:
+            lambda_max = -1
         # apply threshold criterion
         Lambda_selection = [l for l in Lambda_selection if l[1] >= zeta_threshold]
-        logger.info("SELECTED NEW MULTIINDICES %s", Lambda_selection)
+        if len(Lambda_selection) > 0:
+            logger.info("SELECTED NEW MULTIINDICES (zeta_thresh = %s, lambda_max = %s) %s", zeta_threshold, lambda_max, Lambda_selection)
+        else:
+            logger.info("NO NEW MULTIINDICES SELECTED")
         return dict(Lambda_selection)
