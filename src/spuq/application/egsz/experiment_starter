@@ -63,33 +63,47 @@ class ExperimentStarter(object):
         usage = "%prog [options] config_file"
         optparser = optparse.OptionParser(usage=usage)
         
-        #optparser.add_option('-f', '--config', dest='config', default='test.conf')
+        optparser.add_option('-f', '--config', 
+                             dest='add_config', action='append', default=[],
+                             help = 'specify additional config files')
         
-        optparser.add_option('--runSFEM', action='store_true', default=False,
-                             dest='runSFEM', help='')
-        optparser.add_option('--runMC', action='store_true', default=False,
-                             dest='runMC', help='')
-        optparser.add_option('--continueSFEM', action='store_true', default=False,
-                             dest='continueSFEM', help='')
-        optparser.add_option('--continueMC', action='store_true', default=False,
-                             dest='continueMC', help='')
-        optparser.add_option('--noSaveData', action='store_false', default=True,
-                             dest='saveData', help='')
-        optparser.add_option('--noTypeCheck', action='store_false', default=True,
-                             dest='typeCheck', help='disable type check')
-        optparser.add_option('--profiling', action='store_true', default=False,
-                             dest='profiling', help='enable profiling (timing)')
+        optparser.add_option('--runSFEM', '--run-sfem', 
+                             action='store_true', default=False, dest='runSFEM', 
+                             help='start the SFEM computation')
+        optparser.add_option('--runMC', '--run-mc', 
+                             action='store_true', default=False, dest='runMC', 
+                             help='start the MC computation')
+        optparser.add_option('--continueSFEM', '--continue-sfem', 
+                             action='store_true', default=False, dest='continueSFEM', 
+                             help='continue the SFEM computation')
+        optparser.add_option('--continueMC', '--continue-mc', 
+                             action='store_true', default=False, dest='continueMC', 
+                             help='continue the Monte Carlo computation')
+        optparser.add_option('--noSaveData', '--no-save-data', 
+                             action='store_false', default=True, dest='saveData', 
+                             help='do not save the computed data after the run')
+        optparser.add_option('--noTypeCheck', '--no-type-check', 
+                             action='store_false', default=True, dest='typeCheck', 
+                             help='disable type checking')
+        optparser.add_option('--profiling', 
+                             action='store_true', default=False, dest='profiling', 
+                             help='enable profiling (timing)')
         
-        optparser.add_option('--plotSolution', action='store_true', default=False,
-                             dest='plotSolution', help='')
-        optparser.add_option('--plotEstimator', action='store_true', default=False,
-                             dest='plotEstimator', help='')
-        optparser.add_option('--plotError', action='store_true', default=False,
-                             dest='plotError', help='')
-        optparser.add_option('--plotMesh', action='store_true', default=False,
-                             dest='plotMesh', help='')
+        optparser.add_option('--plotSolution', '--plot-solution', 
+                             action='store_true', default=False, dest='plotSolution', 
+                             help='Plot the solution for all multiindices.')
+        optparser.add_option('--plotEstimator', '--plot-estimator', 
+                             action='store_true', default=False, dest='plotEstimator', 
+                             help='Plot residual error estimator over all iterations.')
+        optparser.add_option('--plotError', '--plot-error', 
+                             action='store_true', default=False, dest='plotError', 
+                             help='Don\'t know')
+        optparser.add_option('--plotMesh', '--plot-mesh', 
+                             action='store_true', default=False, dest='plotMesh', 
+                             help='Plot the meshes.')
         
-        optparser.add_option('--clear', type='choice', choices=['none', 'all', 'SFEM', 'MC'], dest='clear', default='none')
+        optparser.add_option('--clear', type='choice', choices=['none', 'all', 'SFEM', 'MC'], dest='clear', default='none',
+                             help='clear data, CLEAR one of ' + repr(['none', 'all', 'SFEM', 'MC']))
         
         optparser.add_option('--debug', action='store_true', default=False,
                              dest='debug', help='')
@@ -122,7 +136,7 @@ class ExperimentStarter(object):
                 filename = configfile
             else:
                 assert opts is not None
-                filename = opts.config
+                filename = [opts.config] + opts.add_config
             if not confparser.read(filename):
                 raise ConfigParser.ParsingError("file " + filename + " not found")
         except ConfigParser.ParsingError, err:
