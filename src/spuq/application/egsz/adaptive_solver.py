@@ -12,6 +12,7 @@ from spuq.application.egsz.fem_discretisation import FEMDiscretisation
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything
+from spuq.utils.timing import timing
 
 try:
     from dolfin import (Function, FunctionSpace, cells, Constant, refine)
@@ -152,7 +153,9 @@ def AdaptiveSolver(A, coeff_field, pde,
         # pcg solve
         # ---------
         stats = {}
-        w, zeta = pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter)
+        with timing(msg="pcg_solve", logfunc=logger.info):
+            w, zeta = pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter)
+
         logger.info("DIM of w = %s", w.dim)
         if w_history is not None and start_iteration < refinement:
             w_history.append(w)
@@ -161,7 +164,10 @@ def AdaptiveSolver(A, coeff_field, pde,
         # ----------------
         # residual and projection errors
         logger.debug("evaluating ResidualEstimator.evaluateError")
-        xi, resind, projind, estparts, errors = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh, quadrature_degree, projection_degree_increase, refine_projection_mesh)
+        with timing(msg="ResidualEstimator.evaluateError", logfunc=logger.info):
+            xi, resind, projind, estparts, errors = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ, 
+                                                                                    maxh, quadrature_degree, projection_degree_increase, 
+                                                                                    refine_projection_mesh)
         reserrmu = [(mu, sqrt(sum(resind[mu].coeffs ** 2))) for mu in resind.keys()]
         projerrmu = [(mu, sqrt(sum(projind[mu].coeffs ** 2))) for mu in projind.keys()]
         res_part = estparts[0]
@@ -184,7 +190,8 @@ def AdaptiveSolver(A, coeff_field, pde,
         logger.debug("squared error components: eta=%s  delta=%s  zeta=%", errors[0], errors[1], errors[2])
         # inactive mi projection error
         logger.debug("evaluating ResidualEstimator.evaluateInactiveProjectionError")
-        mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, newmi_add_maxm) 
+        with timing(msg="ResidualEstimator.evaluateInactiveMIProjectionError", logfunc=logger.info):
+            mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, newmi_add_maxm) 
 
         # exit when either error threshold or max_refinements is reached
         if refinement > max_refinements:
@@ -230,7 +237,8 @@ def AdaptiveSolver(A, coeff_field, pde,
                 new_multiindices = {}
             
             # carry out refinement of meshes
-            Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
+            with timing(msg="Marking.refine", logfunc=logger.info):
+                Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
     
     if refinement:
         logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",

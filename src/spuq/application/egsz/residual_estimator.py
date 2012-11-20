@@ -43,6 +43,8 @@ from spuq.fem.fenics.fenics_utils import weighted_H1_norm
 from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
+from spuq.utils.timing import timing
+
 
 import logging
 
@@ -61,9 +63,14 @@ class ResidualEstimator(object):
     def evaluateError(cls, w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh=0.1, quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
         """Evaluate EGSZ Error (7.5)."""
         logger.debug("starting evaluateResidualEstimator")
-        resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
+
+        with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info):
+            resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
+
         logger.debug("starting evaluateProjectionEstimator")
-        projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
+        with timing(msg="ResidualEstimator.evaluateProjectionError", logfunc=logger.info):
+            projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
+
         eta = sum(reserror[mu] ** 2 for mu in reserror)
         delta = sum(projerror[mu] ** 2 for mu in projerror)
         est1 = ceta / sqrt(1 - gamma) * sqrt(eta)
