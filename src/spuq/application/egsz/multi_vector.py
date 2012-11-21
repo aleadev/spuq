@@ -1,3 +1,5 @@
+from __future__ import division
+
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.linalg.vector import Scalar, Vector, FlatVector, inner
 from spuq.linalg.basis import Basis
