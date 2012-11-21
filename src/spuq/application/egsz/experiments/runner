@@ -1,0 +1,21 @@
+#!/bin/bash
+
+MAX_ITER=10
+ITER_STEP=2
+
+RUN=../experiment_starter 
+PARAMS="--run-sfem --continue-sfem"
+CONFIG=A-poisson-square-2.conf
+
+for ((i=$ITER_STEP; i<=$MAX_ITER; i+=$ITER_STEP)); do
+    iterconfig=".iter$i.conf"
+    if [ ! -f $iterconfig ]; then
+	echo -en "[SFEM adaptive algorithm]\niterations = $i\n" > $iterconfig
+    fi
+    
+    echo
+    echo "============================================================"
+    echo "Starting $CONFIG with $i iterations"
+    echo "============================================================"
+    $RUN $PARAMS $CONFIG --config=$iterconfig
+done

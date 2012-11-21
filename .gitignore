@@ -5,3 +5,8 @@ doc/build
 .coverage
 *.log
 *.plog
+*.pkl
+.*
+MESH*
+EST*
+*.orig
