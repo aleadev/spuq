@@ -16,6 +16,9 @@ from collections import defaultdict
 
 __all__ = ["MultiVector", "MultiVectorWithProjection"]
 
+import logging
+logger = logging.getLogger(__name__)
+
 class MultiVector(Vector):
     """Accommodates tuples of type (MultiindexSet, Vector/Object).
     
@@ -252,6 +255,42 @@ class MultiVectorWithProjection(MultiVector):
         """Construct projection error function by projecting mu_src vector to mu_dest space of dest_degree.
         From this, the projection of mu_src onto the mu_dest space, then to the mu_dest space of dest_degree is subtracted.
         If refine_mesh > 0, the destination mesh is refined uniformly n times."""
+        from spuq.fem.fenics.fenics_utils import create_joint_mesh
+        from dolfin import refine, FunctionSpace, VectorFunctionSpace
+        from spuq.fem.fenics.fenics_basis import FEniCSBasis
+        import numpy as np
+        
+        if reference_degree > 1 or refine_mesh > 0:
+            logger.warning("new projection error evaluation on joint mesh does not support mesh/space refinement parameters!")
+        
+        # get joint mesh based on destination space
+        basis_src = self[mu_src].basis 
+        basis_dest = self[mu_dest].basis
+        mesh_reference, parents = create_joint_mesh([basis_src.mesh], basis_dest.mesh)
+
+        # create function space on destination mesh        
+        if basis_dest._fefs.num_sub_spaces() > 0:
+            fs_reference = VectorFunctionSpace(mesh_reference, basis_dest._fefs.ufl_element().family(), reference_degree)
+        else:
+            fs_reference = FunctionSpace(mesh_reference, basis_dest._fefs.ufl_element().family(), reference_degree)
+        basis_reference = FEniCSBasis(fs_reference, basis_dest._ptype)
+        
+        # project both vectors to reference space
+        w_reference = basis_reference.project_onto(self[mu_src])
+        w_dest = self.get_projection(mu_src, mu_dest)
+        w_dest = basis_reference.project_onto(w_dest)
+        
+        # define summation function to get values on original destination mesh from function space on joint mesh
+        def sum_up(vals):
+            sum_vals = [sum(vals[v]) for k, v in parents.iteritems()]
+            return np.array(sum_vals)
+        return w_dest - w_reference, sum_up
+
+    @takes(anything, Multiindex, Multiindex, int, bool)
+    def get_projection_error_function_old(self, mu_src, mu_dest, reference_degree, refine_mesh=0):
+        """Construct projection error function by projecting mu_src vector to mu_dest space of dest_degree.
+        From this, the projection of mu_src onto the mu_dest space, then to the mu_dest space of dest_degree is subtracted.
+        If refine_mesh > 0, the destination mesh is refined uniformly n times."""
         # TODO: If refine_mesh is True, the destination space of mu_dest is ensured to include the space of mu_src by mesh refinement
         # TODO: proper description
         # TODO: separation of fenics specific code
@@ -287,17 +326,6 @@ class MultiVectorWithProjection(MultiVector):
             w_dest = basis_reference.project_onto(w_dest)
             sum_up = lambda vals: np.array([sum(vals[i * 4:(i + 1) * 4]) for i in range(len(vals) / 4 ** refine_mesh)])
         return w_dest - w_reference, sum_up
-                    
-#            # ensure that source space is included in reference space by mesh refinement
-#            basis_src = self[mu_src].basis 
-#            minh = basis_src.minh
-#            basis_dest = self[mu_dest].basis.copy(dest_degree)
-#            basis_reference = basis_dest.refine_maxh(minh)
-#            w_reference = basis_reference.project_onto(self[mu_src])
-#            w_dest = self.get_projection(mu_src, mu_dest)
-#            w_dest = basis_reference.project_onto(w_dest)
-#            sum_up = lambda vals: [sum(t[i * 4:(i + 1) * 4]) for i in range(vals(t) / 4 ** refine_mesh)]
-#            return w_dest - w_reference, sum_up
 
     @property
     def cache_active(self):

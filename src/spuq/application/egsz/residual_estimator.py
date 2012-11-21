@@ -45,9 +45,7 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
 from spuq.utils.timing import timing
 
-
 import logging
-
 logger = logging.getLogger(__name__)
 
 class ResidualEstimator(object):
