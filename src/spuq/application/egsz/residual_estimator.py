@@ -448,6 +448,6 @@ class ResidualEstimator(object):
                     else:
                         Lambda_candidates[mu1] += val1
 
-        logger.info("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
+        logger.debug("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
         Lambda_candidates = sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True)
         return Lambda_candidates
