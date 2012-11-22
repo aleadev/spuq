@@ -199,7 +199,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         # inactive mi projection error
         logger.debug("evaluating ResidualEstimator.evaluateInactiveProjectionError")
         with timing(msg="ResidualEstimator.evaluateInactiveMIProjectionError", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-INACTIVE-MI", stats=stats)):
-            mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, newmi_add_maxm) 
+            mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, pde, maxh, newmi_add_maxm) 
 
         # exit when either error threshold or max_refinements is reached
         if refinement > max_refinements:
