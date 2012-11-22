@@ -1,11 +1,25 @@
 #!/bin/bash
 
-MAX_ITER=10
-ITER_STEP=2
-
 RUN=../experiment_starter 
 PARAMS="--run-sfem --continue-sfem"
-CONFIG=A-poisson-square-2.conf
+CONFIG=$1
+if [[ -z $CONFIG ]]; then
+    echo "No config file specified."
+    exit 1
+fi
+if [[ ! -f $CONFIG ]]; then
+    echo "Config file $CONFIG does not exist."
+    exit 2
+fi
+
+MAX_ITER=${2:-16}
+ITER_STEP=${3:-2}
+
+echo
+echo "============================================================"
+echo "Runner: $CONFIG maxiter: $MAX_ITER step: $ITER_STEP"
+echo "============================================================"
+
 
 for ((i=$ITER_STEP; i<=$MAX_ITER; i+=$ITER_STEP)); do
     iterconfig=".iter$i.conf"
