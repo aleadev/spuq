@@ -67,7 +67,7 @@ class ResidualEstimator(object):
 
         logger.debug("starting evaluateProjectionEstimator")
         with timing(msg="ResidualEstimator.evaluateProjectionError", logfunc=logger.info):
-            projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, True, projection_degree_increase, refine_projection_mesh)
+            projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, pde, maxh, True, projection_degree_increase, refine_projection_mesh)
 
         eta = sum(reserror[mu] ** 2 for mu in reserror)
         delta = sum(projerror[mu] ** 2 for mu in projerror)
@@ -206,8 +206,8 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, CoefficientField, optional(float), optional(bool), optional(int))
-    def evaluateProjectionError(cls, w, coeff_field, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=1):
+    @takes(anything, MultiVectorWithProjection, CoefficientField, anything, optional(float), optional(bool), optional(int))
+    def evaluateProjectionError(cls, w, coeff_field, pde, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=1):
         """Evaluate the projection error according to EGSZ (4.8).
 
         The global projection error
@@ -238,7 +238,7 @@ class ResidualEstimator(object):
                     logger.warning("insufficient length of coefficient field for MultiVector (%i < %i)",
                         len(coeff_field), maxm)
                     maxm = len(coeff_field)
-                zeta_mu = [cls.evaluateLocalProjectionError(w, mu, m, coeff_field, Lambda, maxh, local, projection_degree_increase, refine_mesh)
+                zeta_mu = [cls.evaluateLocalProjectionError(w, mu, m, coeff_field, pde, Lambda, maxh, local, projection_degree_increase, refine_mesh)
                                 for m in range(maxm)]
                 dmu = sum(zeta_mu)
                 if local:
@@ -259,9 +259,9 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, list_of(Multiindex), optional(float),
+    @takes(anything, MultiVectorWithProjection, Multiindex, int, CoefficientField, anything, list_of(Multiindex), optional(float),
         optional(bool), optional(int))
-    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, Lambda, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=1):
+    def evaluateLocalProjectionError(cls, w, mu, m, coeff_field, pde, Lambda, maxh=0.0, local=True, projection_degree_increase=1, refine_mesh=1):
         """Evaluate the local projection error according to EGSZ (6.4).
 
         Localisation of the global projection error (4.8) by (6.4)
@@ -324,11 +324,17 @@ class ResidualEstimator(object):
             # evaluate H1 semi-norm of projection error
             error1, sum_up = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
-            pe = weighted_H1_norm(a0_f, error1, local)  # TODO: this should be the energy error!
-            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
+#            pe = weighted_H1_norm(a0_f, error1, local)  # TODO: this should be the energy error!
+#            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
+                energynorm = pde.get_norm(mesh=error1._fefunc.function_space().mesh())
+                pe = energynorm(error1._fefunc)
+                pe = np.array([e ** 2 for e in pe])     # square norms
+                pe = sum_up(pe)                         # summation for cells according to reference mesh refinement
+                pe = np.sqrt(pe)                        # take square root again for summed norm
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:
+                pe = pde.norm(error1._fefunc)
                 logger.debug("global projection error: %s", pe)
             zeta1 = beta[1] * pe
         else:
@@ -363,11 +369,17 @@ class ResidualEstimator(object):
             # evaluate H1 semi-norm of projection error
             error2, sum_up = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
-            pe = weighted_H1_norm(a0_f, error2, local)  # TODO: this should be the energy error!
-            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
+#            pe = weighted_H1_norm(a0_f, error2, local)  # TODO: this should be the energy error!
+#            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
+                energynorm = pde.get_norm(mesh=error2._fefunc.function_space().mesh())
+                pe = energynorm(error2._fefunc)
+                pe = np.array([e ** 2 for e in pe])     # square norms
+                pe = sum_up(pe)                         # summation for cells according to reference mesh refinement
+                pe = np.sqrt(pe)                        # take square root again for summed norm
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
             else:
+                pe = pde.norm(error2._fefunc)
                 logger.debug("global projection error: %s", pe)
             zeta2 = beta[-1] * pe
         else:
@@ -382,8 +394,8 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, optional(float), optional(int), optional(bool))
-    def evaluateInactiveMIProjectionError(cls, w, coeff_field, maxh=1 / 10, add_maxm=10, accumulate=True):
+    @takes(anything, MultiVector, CoefficientField, anything, optional(float), optional(int), optional(bool))
+    def evaluateInactiveMIProjectionError(cls, w, coeff_field, pde, maxh=1 / 10, add_maxm=10, accumulate=True):
         """Estimate projection error for inactive indices."""
         def prepare_ainfty(Lambda, M):
             ainfty = []
@@ -410,16 +422,14 @@ class ResidualEstimator(object):
             return ainfty
         
         # determine possible new indices
+        energynorm = pde.norm
         Lambda_candidates = {}
         Lambda = w.active_indices()
         M = min(w.max_order + add_maxm, len(coeff_field))
         ainfty = prepare_ainfty(Lambda, M)
         for mu in Lambda:
             # evaluate energy norm of w[mu]
-            a0_f = coeff_field.mean_func
-            if isinstance(a0_f, tuple):
-                a0_f = a0_f[0]
-            norm_w = weighted_H1_norm(a0_f, w[mu])
+            norm_w = energynorm(w[mu]._fefunc)
             logger.debug("NEW MI with mu = %s    norm(w) = %s", mu, norm_w)
             # iterate multiindex extensions
             for m in range(M):

@@ -46,11 +46,6 @@ def run_MC(opts, conf):
     # determine path of this module
     path = os.path.dirname(__file__)
 
-    
-#    # NOTE: for Cook's membrane, the mesh refinement gets stuck for some reason...
-#    if domaintype == 2:
-#        maxh = 0.0
-#        MC_HMAX = 0
 
     # ============================================================
     # PART A: Setup Problem

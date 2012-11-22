@@ -1,6 +1,6 @@
 """FEniCS FEM discretisation implementation for Poisson model problem"""
 from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSpace, Identity, Measure, FacetFunction,
-                    dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC, assemble_system)
+                    dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC, assemble_system, cells)
 
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
 from spuq.fem.fenics.fenics_utils import get_dirichlet_mask, set_dirichlet_bc_entries
@@ -95,8 +95,23 @@ class FEMPoisson(FEMDiscretisationBase):
 
     @property
     def norm(self):
+        return self.get_norm()
+
+    def get_norm(self, mesh=None):
         '''Energy norm wrt operator.'''
-        return lambda v: np.sqrt(assemble(self._a0 * inner(nabla_grad(v), nabla_grad(v)) * dx))
+        if mesh is None:
+            return lambda v: np.sqrt(assemble(self._a0 * inner(nabla_grad(v), nabla_grad(v)) * dx))
+        else:
+            DG = FunctionSpace(mesh, "DG", 0)
+            s = TestFunction(DG)
+            def energy_norm(v):
+                ae = np.sqrt(assemble(self._a0 * inner(nabla_grad(v), nabla_grad(v)) * s * dx))
+                norm_vec = np.array([np.sqrt(e) for e in ae])
+                # reorder DG dofs wrt cell indices
+                dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
+                norm_vec = norm_vec[dofs]
+                return norm_vec
+            return energy_norm
 
     def function_space(self, mesh, degree=1):
         return FunctionSpace(mesh, "CG", degree=degree)
@@ -236,8 +251,23 @@ class FEMNavierLame(FEMDiscretisationBase):
 
     @property
     def norm(self):
+        return self.get_norm()
+    
+    def get_norm(self, mesh=None):
         '''Energy norm wrt operator, i.e. (\sigma(v),\eps(v))=||C^{1/2}\eps(v)||.'''
-        return lambda v: np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu0, v), sym(nabla_grad(v))) * dx))
+        if mesh is None:
+            return lambda v: np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu0, v), sym(nabla_grad(v))) * dx))
+        else:
+            DG = FunctionSpace(mesh, "DG", 0)
+            s = TestFunction(DG)
+            def energy_norm(v):
+                ae = np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu0, v), sym(nabla_grad(v))) * s * dx))
+                norm_vec = np.array([sqrt(e) for e in ae])
+                # reorder DG dofs wrt cell indices
+                dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
+                norm_vec = norm_vec[dofs]
+                return norm_vec
+            return energy_norm
 
     def function_space(self, mesh, degree=1):
         return VectorFunctionSpace(mesh, "CG", degree=degree)

@@ -74,7 +74,7 @@ class MultiOperator(Operator):
                                  str(mu), str(mus))
 
                     meshes = [w[m].basis.mesh for m in mus]
-                    mesh = create_joint_mesh(meshes)
+                    mesh, _ = create_joint_mesh(meshes)
                     Vfine = w[mu].basis.copy(mesh=mesh)
                 else:
                     Vfine = w[mu].basis
