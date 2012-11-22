@@ -129,6 +129,11 @@ def AdaptiveSolver(A, coeff_field, pde,
                     do_uniform_refinement=False,
                     w_history=None,
                     sim_stats=None):
+    
+    from functools import partial
+    def _store_stats(val, key, stats):
+        stats[key] = val
+    
     f = pde.f
 
     w = w0
@@ -153,7 +158,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         # pcg solve
         # ---------
         stats = {}
-        with timing(msg="pcg_solve", logfunc=logger.info):
+        with timing(msg="pcg_solve", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-PCG", stats=stats)):
             w, zeta = pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter)
 
         logger.info("DIM of w = %s", w.dim)
@@ -164,9 +169,9 @@ def AdaptiveSolver(A, coeff_field, pde,
         # ----------------
         # residual and projection errors
         logger.debug("evaluating ResidualEstimator.evaluateError")
-        with timing(msg="ResidualEstimator.evaluateError", logfunc=logger.info):
-            xi, resind, projind, estparts, errors = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ, 
-                                                                                    maxh, quadrature_degree, projection_degree_increase, 
+        with timing(msg="ResidualEstimator.evaluateError", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-ESTIMATOR", stats=stats)):
+            xi, resind, projind, estparts, errors = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ,
+                                                                                    maxh, quadrature_degree, projection_degree_increase,
                                                                                     refine_projection_mesh)
         reserrmu = [(mu, sqrt(sum(resind[mu].coeffs ** 2))) for mu in resind.keys()]
         projerrmu = [(mu, sqrt(sum(projind[mu].coeffs ** 2))) for mu in projind.keys()]
@@ -183,6 +188,9 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats["ZETA-ERR"] = errors[2]
         stats["RES-mu"] = reserrmu
         stats["PROJ-mu"] = projerrmu
+        stats["PROJ-MAX-ZETA"] = 0
+        stats["PROJ-MAX-INACTIVE-ZETA"] = 0
+        stats["TIME-MARKING"] = 0
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
         if (start_iteration == 0 or start_iteration < refinement):
             sim_stats.append(stats)
@@ -190,7 +198,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         logger.debug("squared error components: eta=%s  delta=%s  zeta=%", errors[0], errors[1], errors[2])
         # inactive mi projection error
         logger.debug("evaluating ResidualEstimator.evaluateInactiveProjectionError")
-        with timing(msg="ResidualEstimator.evaluateInactiveMIProjectionError", logfunc=logger.info):
+        with timing(msg="ResidualEstimator.evaluateInactiveMIProjectionError", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-INACTIVE-MI", stats=stats)):
             mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, newmi_add_maxm) 
 
         # exit when either error threshold or max_refinements is reached
@@ -206,9 +214,13 @@ def AdaptiveSolver(A, coeff_field, pde,
         if refinement < max_refinements:
             if not do_uniform_refinement:        
                 logger.debug("starting Marking.mark")
-                mesh_markers_R, mesh_markers_P, new_multiindices = Marking.mark(resind, projind, mierr, w.max_order,
+                mesh_markers_R, mesh_markers_P, new_multiindices, proj_zeta = Marking.mark(resind, projind, mierr, w.max_order,
                                                                                 theta_eta, theta_zeta, theta_delta,
                                                                                 min_zeta, maxh, max_Lambda_frac)
+                sim_stats[-1]["PROJ-MAX-ZETA"] = proj_zeta[0]
+                sim_stats[-1]["PROJ-MAX-INACTIVE-ZETA"] = proj_zeta[1]
+                logger.info("PROJECTION error values: max_zeta = %s  and  max_inactive_zeta = %s  with threshold factor theta_zeta = %s  (=%s)",
+                            proj_zeta[0], proj_zeta[1], theta_zeta, theta_zeta * proj_zeta[0])
                 logger.info("MARKING will be carried out with %s (res) + %s (proj) cells and %s new multiindices",
                             sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()]),
                             sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
@@ -237,7 +249,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                 new_multiindices = {}
             
             # carry out refinement of meshes
-            with timing(msg="Marking.refine", logfunc=logger.info):
+            with timing(msg="Marking.refine", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARKING", stats=stats)):
                 Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
     
     if refinement:

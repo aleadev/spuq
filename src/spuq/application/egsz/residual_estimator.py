@@ -45,9 +45,7 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
 from spuq.utils.timing import timing
 
-
 import logging
-
 logger = logging.getLogger(__name__)
 
 class ResidualEstimator(object):
@@ -326,7 +324,7 @@ class ResidualEstimator(object):
             # evaluate H1 semi-norm of projection error
             error1, sum_up = w.get_projection_error_function(mu1, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error1._fefunc, "L2"), norm(error1._fefunc, "H1"))
-            pe = weighted_H1_norm(a0_f, error1, local)
+            pe = weighted_H1_norm(a0_f, error1, local)  # TODO: this should be the energy error!
             pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
@@ -365,7 +363,7 @@ class ResidualEstimator(object):
             # evaluate H1 semi-norm of projection error
             error2, sum_up = w.get_projection_error_function(mu2, mu, 1 + projection_degree_increase, refine_mesh=refine_mesh)
             logger.debug("global projection error norms: L2 = %s and H1 = %s", norm(error2._fefunc, "L2"), norm(error2._fefunc, "H1"))
-            pe = weighted_H1_norm(a0_f, error2, local)
+            pe = weighted_H1_norm(a0_f, error2, local)  # TODO: this should be the energy error!
             pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
@@ -450,6 +448,6 @@ class ResidualEstimator(object):
                     else:
                         Lambda_candidates[mu1] += val1
 
-        logger.info("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
+        logger.debug("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
         Lambda_candidates = sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True)
         return Lambda_candidates

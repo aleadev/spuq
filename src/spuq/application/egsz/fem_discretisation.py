@@ -168,8 +168,7 @@ class FEMPoisson(FEMDiscretisationBase):
             g = [g]
         if len(g) == 1:
             g *= len(boundary)
-        parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
-        parts.set_all(0)
+        parts = FacetFunction("sizet", mesh, 0)
         for j, bnd in enumerate(boundary):
             bnd.mark(parts, j + 1)
         # evaluate boundary flux terms
@@ -316,8 +315,7 @@ class FEMNavierLame(FEMDiscretisationBase):
             g = [g]
         if len(g) == 1:
             g *= len(boundary)
-        parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
-        parts.set_all(0)
+        parts = FacetFunction("sizet", mesh, 0)
         for j, bnd in enumerate(boundary):
             bnd.mark(parts, j + 1)
         # evaluate boundary flux terms

@@ -80,12 +80,13 @@ class Marking(object):
         """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
         mesh_markers_R = cls.mark_residual(resind, theta_eta)
         mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh)
+        max_inactive_mi_zeta = 0
         if max_zeta >= min_zeta:
-            new_mi = cls.mark_inactive_multiindices(mierr, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac)
+            new_mi, max_inactive_mi_zeta = cls.mark_inactive_multiindices(mierr, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac)
         else:
             new_mi = {}
             logger.info("SKIPPING search for new multiindices due to very small max_zeta = %s", max_zeta)
-        return mesh_markers_R, mesh_markers_P, new_mi
+        return mesh_markers_R, mesh_markers_P, new_mi, (max_zeta, max_inactive_mi_zeta)
 
 
     @classmethod
@@ -167,4 +168,4 @@ class Marking(object):
             logger.info("SELECTED NEW MULTIINDICES (zeta_thresh = %s, lambda_max = %s) %s", zeta_threshold, lambda_max, Lambda_selection)
         else:
             logger.info("NO NEW MULTIINDICES SELECTED")
-        return dict(Lambda_selection)
+        return dict(Lambda_selection), lambda_max

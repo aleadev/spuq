@@ -1,4 +1,5 @@
-from types import NoneType
+from __future__ import division
+
 from spuq.utils.type_check import takes, anything, optional, sequence_of
 from dolfin import (FunctionSpace, Expression, dx, inner,
                     nabla_grad, TrialFunction, TestFunction,
@@ -9,6 +10,8 @@ from dolfin.cpp import BoundaryCondition
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 
+from types import NoneType
+from collections import defaultdict
 from math import sqrt
 import numpy as np
 
@@ -172,31 +175,59 @@ def weighted_H1_norm(w, vec, piecewise=False):
     return norm_vec
 
 
-# TODO: make this function readable (variable names, comments)
 @takes((list, tuple), optional(Mesh))
 def create_joint_mesh(meshes, destmesh=None):
     if destmesh is None:
         # start with finest mesh to avoid (most) refinements
-        hmin = [m.hmin() for m in meshes]
-        hi = hmin.index(min(hmin))
+#        hmin = [m.hmin() for m in meshes]
+#        hi = hmin.index(min(hmin))
+        numcells = [m.num_cells() for m in meshes]
+        mind = numcells.index(max(numcells))
         destmesh = meshes.pop(hi)
+        
+    # setup parent cells
+    parents = {}
+    for c in cells(destmesh):
+        parents[c.index()] = [c.index()]
+    PM = []
+
+    # refinement loop for destmesh    
     for m in meshes:
-        while True:
+        # loop until all cells of destmesh are finer than the respective cells in the set of meshes
+        while True: 
             cf = CellFunction("bool", destmesh)
             cf.set_all(False)
-            rc = 0
-            # get cell sizes
+            rc = 0      # counter for number of marked cells
+            # get cell sizes of current mesh
             h = [c.diameter() for c in cells(destmesh)]
-            # check all cells with destination sizes and mark for refinement
+            # check all cells with destination sizes and mark for refinement when destination mesh is coarser (=larger)
             for c in cells(m):
                 p = c.midpoint()
                 cid = destmesh.closest_cell(p)
                 if h[cid] > c.diameter():
                     cf[cid] = True
                     rc += 1
-            if rc:
+            if rc:      # carry out refinement if any cells are marked
+                # refine marked cells
                 newmesh = refine(destmesh, cf)
+                # determine parent cell association map
+                pc = newmesh.data().mesh_function("parent_cell")
+                pmap = defaultdict(list)
+                for i in range(pc.size()):
+                    pmap[pc[i]].append(i)
+                PM.append(pmap)
+                # set refined mesh as current mesh
                 destmesh = newmesh
             else:
                 break
-    return destmesh
+
+    # determine association to parent cells
+    for level in range(len(PM)):
+        for parentid, childids in parents.iteritems():
+            newchildids = []
+            for cid in childids:
+                for cid in PM[level][cid]:
+                    newchildids.append(cid)
+            parents[parentid] = newchildids
+    
+    return destmesh, parents

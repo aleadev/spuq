@@ -2,14 +2,15 @@ import time
 from spuq.utils.contextdecorator import ContextDecorator
 from collections import defaultdict
 
-def timing(msg="", logfunc=None, strformat=None):
+def timing(msg="", logfunc=None, strformat=None, store_func=None):
     class TimingCtx(object):
         @staticmethod 
         def printer(msg):
             print msg
 
-        def __init__(self, msg="", logfunc=None, strformat=None):
+        def __init__(self, msg="", logfunc=None, strformat=None, store_func=None):
             self.msg = msg
+            self.store_func = store_func
 
             if logfunc is None:
                 self.logfunc = printer
@@ -26,6 +27,8 @@ def timing(msg="", logfunc=None, strformat=None):
 
         def __exit__(self, *args):
             elapsed = time.clock() - self.start
+            if store_func is not None:
+                store_func(elapsed)
             msg = self.strformat % (elapsed, self.msg)
             self.logfunc(msg)
 
@@ -55,14 +58,14 @@ class timing2(ContextDecorator):
     def get_timings():
         from operator import itemgetter
         global _TIMINGS_
-        T = ((k,sum(v)) for k,v in _TIMINGS_.iteritems())
+        T = ((k, sum(v)) for k, v in _TIMINGS_.iteritems())
         return sorted(T, key=itemgetter(1), reverse=True)
         
     @staticmethod
     def get_timings_str():
         T = timing2.get_timings()
         s = "\n" + "*"*40 + "\nTIMINGS\n"
-        s += "\n".join(str(k)+"\t:\t"+str(v) for k,v in T)
+        s += "\n".join(str(k) + "\t:\t" + str(v) for k, v in T)
         s += "\n" + "*"*40
         return s
 

@@ -190,8 +190,14 @@ def run_SFEM(opts, conf):
             pcg_part = [s["PCG-PART"] for s in sim_stats]
             _reserrmu = [s["RES-mu"] for s in sim_stats]
             _projerrmu = [s["PROJ-mu"] for s in sim_stats]
+            proj_max_zeta = [s["PROJ-MAX-ZETA"] for s in sim_stats]
+            proj_max_inactive_zeta = [s["PROJ-MAX-INACTIVE-ZETA"] for s in sim_stats]
             mi = [s["MI"] for s in sim_stats]
             num_mi = [len(m) for m in mi]
+            time_pcg = [s["TIME-PCG"] for s in sim_stats]
+            time_estimator = [s["TIME-ESTIMATOR"] for s in sim_stats]
+            time_inactive_mi = [s["TIME-INACTIVE-MI"] for s in sim_stats]
+            time_marking = [s["TIME-MARKING"] for s in sim_stats]
             reserrmu = defaultdict(list)
             for rem in _reserrmu:
                 for mu, v in rem:
@@ -231,6 +237,28 @@ def run_SFEM(opts, conf):
                 ms = str(mu)
                 ms = ms[ms.find('=') + 1:-1]
                 ax.loglog(x[-len(v):], v, '-g<', label=ms)
+            legend(loc='upper right')
+    
+            # --------
+            # figure 4
+            # --------
+            fig4 = figure()
+            fig4.suptitle("projection zetas")
+            ax = fig4.add_subplot(111)
+            ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max zeta')
+            ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive zeta')
+            legend(loc='upper right')
+    
+            # --------
+            # figure 5
+            # --------
+            fig5 = figure()
+            fig5.suptitle("timings")
+            ax = fig5.add_subplot(111)
+            ax.loglog(x, time_pcg, '-g<', label='pcg')
+            ax.loglog(x, time_estimator, '-b^', label='estimator')
+            ax.loglog(x, time_inactive_mi, '-c+', label='inactive_mi')
+            ax.loglog(x, time_marking, '-ro', label='marking')
             legend(loc='upper right')
             
             show()  # this invalidates the figure instances...
@@ -304,8 +332,8 @@ def run_SFEM(opts, conf):
                     interactive()
             # ---debug
             
-            for mu in w.active_indices():
-                plot(w[mu]._fefunc, title="parametric solution " + str(mu))
+#            for mu in w.active_indices():
+#                plot(w[mu]._fefunc, title="parametric solution " + str(mu))
         else:
             mesh_param = sample_sol_param._fefunc.function_space().mesh()
             mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
@@ -313,6 +341,6 @@ def run_SFEM(opts, conf):
             viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
             viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
             
-            for mu in w.active_indices():
-                viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
+#            for mu in w.active_indices():
+#                viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
         interactive()
