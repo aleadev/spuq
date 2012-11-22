@@ -14,14 +14,15 @@ fi
 
 MAX_ITER=${2:-16}
 ITER_STEP=${3:-2}
+START_ITER=${4:-$ITER_STEP}
 
 echo
 echo "============================================================"
-echo "Runner: $CONFIG maxiter: $MAX_ITER step: $ITER_STEP"
+echo "Runner: $CONFIG start: $START_ITER maxiter: $MAX_ITER step: $ITER_STEP"
 echo "============================================================"
 
 
-for ((i=$ITER_STEP; i<=$MAX_ITER; i+=$ITER_STEP)); do
+for ((i=$START_ITER; i<=$MAX_ITER; i+=$ITER_STEP)); do
     iterconfig=".iter$i.conf"
     if [ ! -f $iterconfig ]; then
 	echo -en "[SFEM adaptive algorithm]\niterations = $i\n" > $iterconfig
@@ -31,5 +32,5 @@ for ((i=$ITER_STEP; i<=$MAX_ITER; i+=$ITER_STEP)); do
     echo "============================================================"
     echo "Starting $CONFIG with $i iterations"
     echo "============================================================"
-    $RUN $PARAMS $CONFIG --config=$iterconfig
+    #$RUN $PARAMS $CONFIG --config=$iterconfig
 done
