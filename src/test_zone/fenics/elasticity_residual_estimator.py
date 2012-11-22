@@ -132,9 +132,8 @@ for i in range(max_iterations):
 
     # mark Neumann boundary
     if with_Neumann:
-#        Neumann_parts = MeshFunction("uint", mesh, mesh.topology().dim() - 1)
-        Neumann_parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
-        Neumann_parts.set_all(0)
+#        Neumann_parts = MeshFunction("sizet", mesh, 0)
+        Neumann_parts = FacetFunction("sizet", mesh, 0)
         right.mark(Neumann_parts, 1)
         # TODO: write out FacetFunction to check boundaries
          

@@ -41,8 +41,7 @@ L = f * v * dx
 # add Neumann part
 bottom, top = compile_subdomains(['near(x[1], 0.) && on_boundary',
                                   'near(x[1], 1.) && on_boundary'])
-g_parts = FacetFunction("uint", mesh, mesh.topology().dim() - 1)
-g_parts.set_all(0)
+g_parts = FacetFunction("sizet", mesh, 0)
 bottom.mark(g_parts, 3)
 top.mark(g_parts, 33)
 # evaluate boundary flux terms

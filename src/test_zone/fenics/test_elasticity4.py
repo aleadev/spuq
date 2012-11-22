@@ -15,7 +15,7 @@ llc, lrc, top = compile_subdomains(['near(x[0], 0.0) && near(x[1], 0.0)', \
 lrc.length = xlength
 top.length = ylength
 
-facet_domains = FacetFunction("uint", mesh, 0)
+facet_domains = FacetFunction("sizet", mesh, 0)
 top.mark(facet_domains, 3)
 
 tr = Expression((('X1', 'X2')), X1=0.0, X2=0.0) # [N/mm]
