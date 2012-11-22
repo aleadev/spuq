@@ -36,8 +36,8 @@ def setup_logging(level, logfile=None, logfile_level=None, verbatim_filename=Fal
             logfile = basename(logfile, ".py")
             logfile = logfile + ".log"
 
-        # create a new file handler (specify mode "w" for overwriting, instead of the default "a")
-        ch = logging.FileHandler(logfile, mode="w")
+        # create a new file handler (obsolete: specify mode "w" for overwriting, instead of the default "a")
+        ch = logging.FileHandler(logfile, mode="a")
         ch.setLevel(logfile_level if logfile_level else level)
         ch.setFormatter(logging.Formatter(log_format))
 
