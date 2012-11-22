@@ -1,33 +1,50 @@
 import logging
+import dolfin
 from math import sqrt
 from collections import defaultdict
 
-def setup_logging(level):
+def basename(filename, extension):
+    if filename.endswith(extension):
+        index = filename.rfind(extension)
+        return filename[:index]
+    else:
+        return filename
+
+def setup_logging(level, logfile=None, logfile_level=None, verbatim_filename=False):
     # log level and format configuration
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=__file__[:-2] + 'log', level=level,
-                        format=log_format)
-    
+    logging.basicConfig(level=level, format=log_format)
+
     # FEniCS logging
-    from dolfin import (set_log_level, set_log_active, INFO, DEBUG, WARNING)
-    set_log_active(True)
-    set_log_level(WARNING)
+    dolfin.set_log_active(True)
+    dolfin.set_log_level(logging.WARNING)
     fenics_logger = logging.getLogger("FFC")
     fenics_logger.setLevel(logging.WARNING)
     fenics_logger = logging.getLogger("UFL")
     fenics_logger.setLevel(logging.WARNING)
     
-    # module logger
-    logger = logging.getLogger(__name__)
-    logging.getLogger("spuq.application.egsz.multi_operator").disabled = True
+    # explicitly set levels for certain loggers
+    logging.getLogger("spuq").setLevel(level)
+    logging.getLogger("spuq.application.egsz.multi_operator").setLevel(logging.WARNING)
     #logging.getLogger("spuq.application.egsz.marking").setLevel(logging.INFO)
-    # add console logging output
-    ch = logging.StreamHandler()
-    ch.setLevel(level)
-    ch.setFormatter(logging.Formatter(log_format))
-    logger.addHandler(ch)
-    logging.getLogger("spuq").addHandler(ch)
-    return logger
+
+    # output to logfile, if set
+    if logfile:
+        # replace .py or .conf with .log, if not prohibited
+        if not verbatim_filename:
+            logfile = basename(logfile, ".conf")
+            logfile = basename(logfile, ".py")
+            logfile = logfile + ".log"
+
+        # create a new file handler (specify mode "w" for overwriting, instead of the default "a")
+        ch = logging.FileHandler(logfile, mode="w")
+        ch.setLevel(logfile_level if logfile_level else level)
+        ch.setFormatter(logging.Formatter(log_format))
+
+        # add to root logger
+        root = logging.getLogger()
+        root.addHandler(ch)
+        
 
 
 def stats_plotter(sim_stats, plot_def=None, plot_type='loglog', title='stats', logger=None, legend_loc='upper right', save_image='', code=None, show_plot=True):
