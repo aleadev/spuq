@@ -1,4 +1,4 @@
-from dolfin import Function, FunctionSpace, plot, File, Mesh, MeshEditor, norm
+from dolfin import Function, FunctionSpace, VectorFunctionSpace, plot, File, Mesh, MeshEditor, norm
 
 from spuq.utils.type_check import takes, anything, sequence_of, set_of
 from spuq.linalg.vector import Scalar

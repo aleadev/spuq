@@ -180,10 +180,10 @@ def create_joint_mesh(meshes, destmesh=None):
     if destmesh is None:
         # start with finest mesh to avoid (most) refinements
 #        hmin = [m.hmin() for m in meshes]
-#        hi = hmin.index(min(hmin))
+#        mind = hmin.index(min(hmin))
         numcells = [m.num_cells() for m in meshes]
         mind = numcells.index(max(numcells))
-        destmesh = meshes.pop(hi)
+        destmesh = meshes.pop(mind)
         
     # setup parent cells
     parents = {}

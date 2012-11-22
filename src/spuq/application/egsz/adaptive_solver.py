@@ -104,10 +104,10 @@ def AdaptiveSolver(A, coeff_field, pde,
                     mis, w0, mesh0, degree,
                     gamma=0.9,
                     cQ=1.0,
-                    ceta=1.0,
+                    ceta=6.0,
                     # marking parameters
                     theta_eta=0.4, # residual marking bulk parameter
-                    theta_zeta=0.3, # projection marking threshold factor
+                    theta_zeta=0.1, # projection marking threshold factor
                     min_zeta=1e-8, # minimal projection error to be considered 
                     maxh=0.1, # maximal mesh width for projection maximum norm evaluation
                     newmi_add_maxm=10, # maximal search length for new new multiindices (to be added to max order of solution w)
@@ -124,7 +124,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     # adaptive algorithm threshold
                     error_eps=1e-2,
                     # refinements
-                    max_refinements=7,
+                    max_refinements=5,
                     do_refinement={"RES":True, "PROJ":True, "MI":False},
                     do_uniform_refinement=False,
                     w_history=None,
