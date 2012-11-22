@@ -32,5 +32,5 @@ for ((i=$START_ITER; i<=$MAX_ITER; i+=$ITER_STEP)); do
     echo "============================================================"
     echo "Starting $CONFIG with $i iterations"
     echo "============================================================"
-    #$RUN $PARAMS $CONFIG --config=$iterconfig
+    $RUN $PARAMS $CONFIG --config=$iterconfig
 done

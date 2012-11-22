@@ -1,0 +1,17 @@
+#!/bin/bash
+
+RUN=./runner
+
+$RUN A-poisson-square-2.conf 15 1
+$RUN A-poisson-square-4.conf 15 1
+$RUN B-poisson-square-2.conf 15 1
+$RUN B-poisson-square-4.conf 15 1
+$RUN C-poisson-lshape-2.conf 15 1
+$RUN C-poisson-lshape-4.conf 15 1
+$RUN D-poisson-lshape-2.conf 15 1
+$RUN D-poisson-lshape-4.conf 15 1
+$RUN E-lame-cooks-2.conf 15 1
+$RUN E-lame-cooks-4.conf 15 1
+$RUN F-lame-square-2.conf 15 1
+$RUN F-lame-square-4.conf 15 1
+
