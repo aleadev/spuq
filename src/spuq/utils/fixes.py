@@ -16,6 +16,7 @@ least for 0.7.2).
 
 
 import scipy.special
+import logging
 
 if True or scipy.version.version < "0.9.0":
     # still happens in 0.9.0 now (I thougt it was fixed there, need to check that later)
@@ -27,4 +28,4 @@ if True or scipy.version.version < "0.9.0":
             return old_btdtri(alpha, beta, q)
 
     scipy.special.btdtri = my_btdtri
-    print "INFO: scipy module patched"
+    logging.info("scipy module patched")
