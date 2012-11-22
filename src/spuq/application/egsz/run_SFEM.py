@@ -28,6 +28,7 @@ except:
     os.sys.exit(1)
 
 # ------------------------------------------------------------
+logger = logging.getLogger(__name__)
 
 def run_SFEM(opts, conf):
     # propagate config values
@@ -42,7 +43,7 @@ def run_SFEM(opts, conf):
     # setup logging
     print "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
     exec "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
-    logger = setup_logging(LOG_LEVEL)
+    setup_logging(LOG_LEVEL, logfile=CONF_experiment_name + "_SFEM")
     
     # determine path of this module
     path = os.path.dirname(__file__)
