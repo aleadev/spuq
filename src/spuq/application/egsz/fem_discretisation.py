@@ -106,10 +106,9 @@ class FEMPoisson(FEMDiscretisationBase):
             s = TestFunction(DG)
             def energy_norm(v):
                 ae = np.sqrt(assemble(self._a0 * inner(nabla_grad(v), nabla_grad(v)) * s * dx))
-                norm_vec = np.array([np.sqrt(e) for e in ae])
                 # reorder DG dofs wrt cell indices
                 dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
-                norm_vec = norm_vec[dofs]
+                norm_vec = ae[dofs]
                 return norm_vec
             return energy_norm
 
@@ -262,10 +261,9 @@ class FEMNavierLame(FEMDiscretisationBase):
             s = TestFunction(DG)
             def energy_norm(v):
                 ae = np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu0, v), sym(nabla_grad(v))) * s * dx))
-                norm_vec = np.array([np.sqrt(e) for e in ae])
                 # reorder DG dofs wrt cell indices
                 dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
-                norm_vec = norm_vec[dofs]
+                norm_vec = ae[dofs]
                 return norm_vec
             return energy_norm
 

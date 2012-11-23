@@ -333,6 +333,13 @@ class ResidualEstimator(object):
                 pe = sum_up(pe)                         # summation for cells according to reference mesh refinement
                 pe = np.sqrt(pe)                        # take square root again for summed norm
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
+#                # DEBUG---                
+#                pe2 = weighted_H1_norm(a0_f, error1, local)  # TODO: this should be the energy error!
+#                pe2 = np.array([e ** 2 for e in pe2])     # square norms
+#                pe2 = sum_up(pe2)                         # summation for cells according to reference mesh refinement
+#                pe2 = np.sqrt(pe2)                        # take square root again for summed norm
+#                logger.warn("[A] summed local projection errors: %s = %s \t weights: %s = %s", sqrt(sum([e ** 2 for e in pe])), sqrt(sum([e2 ** 2 for e2 in pe2])), a0_f((0, 0)), pde._a0((0, 0)))
+#                # ---DEBUG
             else:
                 pe = pde.norm(error1._fefunc)
                 logger.debug("global projection error: %s", pe)
@@ -378,6 +385,16 @@ class ResidualEstimator(object):
                 pe = sum_up(pe)                         # summation for cells according to reference mesh refinement
                 pe = np.sqrt(pe)                        # take square root again for summed norm
                 logger.debug("summed local projection errors: %s", sqrt(sum([e ** 2 for e in pe])))
+#                # DEBUG---
+#                from dolfin import plot
+##                plot(w[mu]._fefunc)
+##                plot(error2._fefunc, interactive=True)                
+#                pe2 = weighted_H1_norm(a0_f, error2, local)  # TODO: this should be the energy error!
+#                pe2 = np.array([e ** 2 for e in pe2])     # square norms
+#                pe2 = sum_up(pe2)                         # summation for cells according to reference mesh refinement
+#                pe2 = np.sqrt(pe2)                        # take square root again for summed norm
+#                logger.warn("[B] summed local projection errors: %s = %s \t weights: %s = %s", sqrt(sum([e ** 2 for e in pe])), sqrt(sum([e2 ** 2 for e2 in pe2])), a0_f((0, 0)), pde._a0((0, 0)))
+#                # ---DEBUG                
             else:
                 pe = pde.norm(error2._fefunc)
                 logger.debug("global projection error: %s", pe)

@@ -222,7 +222,7 @@ def run_SFEM(opts, conf):
             # figure 2
             # --------
             fig1 = figure()
-            fig1.suptitle("efficiency residual estimator")
+            fig1.suptitle("error estimator")
             ax = fig1.add_subplot(111)
             ax.loglog(x, errest, '-g<', label='error estimator')
             legend(loc='upper right')
@@ -259,6 +259,15 @@ def run_SFEM(opts, conf):
             ax.loglog(x, time_estimator, '-b^', label='estimator')
             ax.loglog(x, time_inactive_mi, '-c+', label='inactive_mi')
             ax.loglog(x, time_marking, '-ro', label='marking')
+            legend(loc='upper right')
+                
+            # --------
+            # figure 6
+            # --------
+            fig6 = figure()
+            fig6.suptitle("projection error")
+            ax = fig6.add_subplot(111)
+            ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
             legend(loc='upper right')
             
             show()  # this invalidates the figure instances...
