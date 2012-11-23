@@ -55,7 +55,7 @@ class Marking(object):
     @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, optional(float), optional(int),
            optional(int), optional(bool))
     def estimate_mark(cls, w, coeff_field, pde, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10,
-                       quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
+                       quadrature_degree= -1, projection_degree_increase=0, refine_projection_mesh=0):
         """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
         #        # testing -->
         #        if logger.isEnabledFor(logging.DEBUG):
@@ -75,14 +75,15 @@ class Marking(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, MultiVector, list, int, float, float, float, float, optional(float))
-    def mark(cls, resind, projind, mierr, maxorder_Lambda, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, max_Lambda_frac=1 / 10):
+    @takes(anything, MultiVector, MultiVector, list, int, float, float, float, float, optional(float), optional(float), optional(anything), optional(str))
+    def mark(cls, resind, projind, mierr, maxorder_Lambda, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, max_Lambda_frac=1 / 10,
+                estimator_data=None, marking_strategy="SEPARATE"):
         """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
-        mesh_markers_R = cls.mark_residual(resind, theta_eta)
-        mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh)
+        mesh_markers_R = cls.mark_residual(resind, theta_eta, estimator_data, marking_strategy)
+        mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh, estimator_data, marking_strategy)
         max_inactive_mi_zeta = 0
         if max_zeta >= min_zeta:
-            new_mi, max_inactive_mi_zeta = cls.mark_inactive_multiindices(mierr, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac)
+            new_mi, max_inactive_mi_zeta = cls.mark_inactive_multiindices(mierr, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac, estimator_data, marking_strategy)
         else:
             new_mi = {}
             logger.info("SKIPPING search for new multiindices due to very small max_zeta = %s", max_zeta)
@@ -90,8 +91,8 @@ class Marking(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, float)
-    def mark_residual(cls, resind, theta_eta):
+    @takes(anything, MultiVector, float, optional(anything), optional(str))
+    def mark_residual(cls, resind, theta_eta, estimator_data=None, marking_strategy="SEPARATE"):
         """Evaluate residual estimator and carry out Doerfler marking (bulk criterion) for elements with parameter theta."""
         # residual marking
         # ================
@@ -121,8 +122,8 @@ class Marking(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, float, optional(float), optional(float))
-    def mark_projection(cls, projind, theta_zeta, min_zeta=1e-10, maxh=1 / 10):
+    @takes(anything, MultiVector, float, optional(float), optional(float), optional(anything), optional(str))
+    def mark_projection(cls, projind, theta_zeta, min_zeta=1e-10, maxh=1 / 10, estimator_data=None, marking_strategy="SEPARATE"):
         """Evaluate projection error for active multiindices and determine multiindices to be refined."""
         # projection marking
         # ==================
@@ -149,8 +150,9 @@ class Marking(object):
 
 
     @classmethod
-    @takes(anything, list, float, float, int, optional(float))
-    def mark_inactive_multiindices(cls, Lambda_candidates, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac=1 / 10):
+    @takes(anything, list, float, float, int, optional(float), optional(anything), optional(str))
+    def mark_inactive_multiindices(cls, Lambda_candidates, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac=1 / 10,
+                                            estimator_data=None, marking_strategy="SEPARATE"):
         """Determine multiindices to be activated."""
         # new multiindex activation
         # =========================

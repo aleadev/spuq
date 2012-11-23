@@ -39,6 +39,7 @@ simulation_options_conf = (("SFEM",
                     "newmi_add_maxm":1,
                     "theta_delta":2,
                     "max_Lambda_frac":2,
+                    "marking_strategy":(0, "SEPARATE"),
                     "quadrature_degree":1,
                     "projection_degree_increase":1,
                     "refine_projection_mesh":1,
@@ -156,7 +157,11 @@ class ExperimentStarter(object):
                     exec "conf['" + sec + "']['" + key + "'] = confparser." + getter[keytype] + "('" + sec + "','" + key + "')"
                 except:
                     if not isinstance(defaultval, _Undefined):
-                        exec "conf['" + sec + "']['" + key + "'] = " + str(defaultval)
+                    	if keytype == 0:
+                    		defaultval = "'"+defaultval+"'"
+                    	else:
+                    		defaultval = str(defaultval)
+                        exec "conf['" + sec + "']['" + key + "'] = " + defaultval
                     else:
                         print("skipped", sec, key)
 

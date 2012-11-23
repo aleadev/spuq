@@ -123,7 +123,7 @@ def run_SFEM(opts, conf):
                         # marking parameters
                         theta_eta=CONF_theta_eta, theta_zeta=CONF_theta_zeta, min_zeta=CONF_min_zeta,
                         maxh=CONF_maxh, newmi_add_maxm=CONF_newmi_add_maxm, theta_delta=CONF_theta_delta,
-                        max_Lambda_frac=CONF_max_Lambda_frac,
+                        marking_strategy=CONF_marking_strategy, max_Lambda_frac=CONF_max_Lambda_frac,
                         # residual error evaluation
                         quadrature_degree=CONF_quadrature_degree,
                         # projection error evaluation

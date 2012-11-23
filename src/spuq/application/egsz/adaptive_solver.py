@@ -2,6 +2,7 @@ from __future__ import division
 from functools import partial
 from collections import defaultdict
 from math import sqrt
+from collections import namedtuple
 import logging
 import os
 
@@ -113,6 +114,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     newmi_add_maxm=10, # maximal search length for new new multiindices (to be added to max order of solution w)
                     theta_delta=0.8, # number new multiindex activation bound
                     max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
+                    marking_strategy="SEPARATE", # separate (as initially in EGSZ) or relative marking wrt overall error
                     # residual error
                     quadrature_degree= -1,
                     # projection error
@@ -130,12 +132,18 @@ def AdaptiveSolver(A, coeff_field, pde,
                     w_history=None,
                     sim_stats=None):
     
+    # define store function for timings
     from functools import partial
     def _store_stats(val, key, stats):
         stats[key] = val
+
+    # define tuple type        
+    EstimatorData = namedtuple('EstimatorData', ['xi', 'gamma', 'cQ', 'ceta'])
     
+    # get rhs
     f = pde.f
 
+    # setup w and statistics
     w = w0
     if sim_stats is None:
         assert w_history is None or len(w_history) == 1
@@ -214,9 +222,11 @@ def AdaptiveSolver(A, coeff_field, pde,
         if refinement < max_refinements:
             if not do_uniform_refinement:        
                 logger.debug("starting Marking.mark")
+                estimator_data = EstimatorData(xi=xi, gamma=gamma, cQ=cQ, ceta=ceta) 
                 mesh_markers_R, mesh_markers_P, new_multiindices, proj_zeta = Marking.mark(resind, projind, mierr, w.max_order,
                                                                                 theta_eta, theta_zeta, theta_delta,
-                                                                                min_zeta, maxh, max_Lambda_frac)
+                                                                                min_zeta, maxh, max_Lambda_frac,
+                                                                                estimator_data, marking_strategy)
                 sim_stats[-1]["PROJ-MAX-ZETA"] = proj_zeta[0]
                 sim_stats[-1]["PROJ-MAX-INACTIVE-ZETA"] = proj_zeta[1]
                 logger.info("PROJECTION error values: max_zeta = %s  and  max_inactive_zeta = %s  with threshold factor theta_zeta = %s  (=%s)",
