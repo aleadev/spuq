@@ -5,6 +5,7 @@ import numpy as np
 import os
 from math import sqrt
 from collections import defaultdict
+import matplotlib.pyplot as plt
 
 #from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
 #from spuq.application.egsz.multi_operator import MultiOperator, ASSEMBLY_TYPE
@@ -87,7 +88,6 @@ print "sim_stats has %s iterations" % len(sim_stats)
 # ==================
 if options.withFigures and len(sim_stats) > 1:
     try:
-        from matplotlib.pyplot import figure, show, legend, xlabel, ylabel
         # prepare data
         x = [s["DOFS"] for s in sim_stats]
         L2 = [s["L2"] for s in sim_stats]
@@ -115,7 +115,7 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         # figure 1
         # --------
-        fig1 = figure()
+        fig1 = plt.figure()
         fig1.suptitle("residual estimator")
         ax = fig1.add_subplot(111)
         ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
@@ -123,8 +123,8 @@ if options.withFigures and len(sim_stats) > 1:
         ax.loglog(x, res_part, '-.cx', label='residual', linewidth=1.5)
         ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection', linewidth=1.5)
         ax.loglog(x, pcg_part, '-.b>', label='pcg', linewidth=1.5)
-        xlabel("overall degrees of freedom")
-        ylabel("energy error (number active multiindices)")
+        plt.xlabel("overall degrees of freedom")
+        plt.ylabel("energy error (number active multiindices)")
             
 #        t = np.arange(1, num_mi[-1] * 2, 1)
 #        ax2 = ax.twinx()
@@ -133,76 +133,196 @@ if options.withFigures and len(sim_stats) > 1:
 ##        for tl in ax2.get_yticklabels():
 ##            tl.set_color('b')
 
-        legend(loc='upper right')
-        fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator.pdf'))
-        fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator.png'))
+        plt.axhline(y=0)
+        plt.axvline(x=0)
+        ax.grid(True)
+        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.05))
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-all.pdf'))
+        fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-all.png'))
     
         # --------
         # figure 2
         # --------
-        fig1 = figure()
-        fig1.suptitle("efficiency residual estimator")
-        ax = fig1.add_subplot(111)
+        fig2 = plt.figure()
+        fig2.suptitle("efficiency residual estimator")
+        ax = fig2.add_subplot(111)
         ax.loglog(x, errest, '-g<', label='error estimator')
         # TODO: MC ERROR and EFFICIENCY
-        xlabel("overall degrees of freedom")
-        ylabel("energy error (efficiency)")
-        legend(loc='upper right')
+        plt.xlabel("overall degrees of freedom")
+        plt.ylabel("energy error (efficiency)")
+        leg = plt.legend(loc='upper right')
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        ax.grid(True)
+        fig2.savefig(os.path.join(options.experiment_dir, 'fig2-estimator.pdf'))
+        fig2.savefig(os.path.join(options.experiment_dir, 'fig2-estimator.png'))
     
         # --------
         # figure 3
         # --------
-        fig3 = figure()
+        fig3 = plt.figure()
         fig3.suptitle("residual contributions of multiindices")
         ax = fig3.add_subplot(111)
         for mu, v in reserrmu.iteritems():
             ms = str(mu)
             ms = ms[ms.find('=') + 1:-1]
             ax.loglog(x[-len(v):], v, '-g<', label=ms)
-        xlabel("overall degrees of freedom")
-        ylabel("energy error")
-        legend(loc='upper right')
-    
+        plt.xlabel("overall degrees of freedom")
+        plt.ylabel("energy error")
+        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.1))
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        ax.grid(True)
+        fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mi-residual.pdf'))
+        fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mi-residual.png'))
+
         # --------
         # figure 4
         # --------
-        fig4 = figure()
-        fig4.suptitle("projection zetas")
+        fig4 = plt.figure()
+        fig4.suptitle("projection $\zeta$")
         ax = fig4.add_subplot(111)
         ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max zeta')
         ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive zeta')
-        xlabel("overall degrees of freedom")
-        ylabel("energy error")
-        legend(loc='upper right')
+        plt.xlabel("overall degrees of freedom")
+        plt.ylabel("energy error")
+        leg = plt.legend(loc='upper right')
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        ax.grid(True)
+        fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.pdf'))
+        fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.png'))
     
         # --------
         # figure 5
         # --------
-        fig5 = figure()
+        fig5 = plt.figure()
         fig5.suptitle("timings")
-        ax = fig5.add_subplot(111, aspect='equal')
+#        ax = fig5.add_subplot(111, aspect='equal')
+        ax = fig5.add_subplot(111)
         ax.loglog(x, time_pcg, '-g<', label='pcg')
         ax.loglog(x, time_estimator, '-b^', label='estimator')
         ax.loglog(x, time_inactive_mi, '-c+', label='inactive_mi')
         ax.loglog(x, time_marking, '-ro', label='marking')
-        xlabel("overall degrees of freedom")
-        ylabel("time in msec")
-        legend(loc='upper right')
-                 
+        plt.xlabel("overall degrees of freedom")
+        plt.ylabel("time in msec")
+        leg = plt.legend(loc='lower right')
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        ax.grid(True)
+        fig5.savefig(os.path.join(options.experiment_dir, 'fig5-timings.pdf'))
+        fig5.savefig(os.path.join(options.experiment_dir, 'fig5-timings.png'))
+        
         # --------
         # figure 6
         # --------
-        fig6 = figure()
+        fig6 = plt.figure()
         fig6.suptitle("projection error")
         ax = fig6.add_subplot(111)
         ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
-        xlabel("overall degrees of freedom")
-        ylabel("energy error")
-        legend(loc='upper right')
+        plt.xlabel("overall degrees of freedom")
+        plt.ylabel("energy error")
+        leg = plt.legend(loc='upper right')
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        ax.grid(True)
+        fig6.savefig(os.path.join(options.experiment_dir, 'fig6-projection-error.pdf'))
+        fig6.savefig(os.path.join(options.experiment_dir, 'fig6-projection-error.png'))
        
         if options.showFigures:
-            show()  # this invalidates the figure instances...
+            plt.show()  # this invalidates the figure instances...
     except:
         import traceback
         print traceback.format_exc()
         print "skipped plotting since matplotlib is not available..."
+
+
+# ==================
+# D Generate Meshes
+# ==================
+if options.withMesh:
+    from matplotlib import collections
+    print "generating meshes for iteration", options.iteration_level
+    w = w_history[options.iteration_level]
+    for mu in w.active_indices():
+        print "\t", mu
+        itnr = options.iteration_level if options.iteration_level > 0 else len(w_history) + options.iteration_level
+        mustr = str(mu).replace(' ', '')
+        mustr = mustr[mustr.find("[") + 1: mustr.find("]")]
+        fig1 = plt.figure()
+        fig1.suptitle("mesh [%s] (iteration %i)" % (mustr, itnr))
+        ax = fig1.add_subplot(111, aspect='equal')
+        plt.axis('off')
+        mesh = w[mu].mesh
+        verts = mesh.coordinates()
+        cells = mesh.cells()
+        xlist, ylist = [], []
+        for c in cells:
+            for i in c:
+                xlist.append(verts[i][0])
+                ylist.append(verts[i][1])
+            xlist.append(None)
+            ylist.append(None)
+        plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
+        fig1.savefig(os.path.join(options.experiment_dir, 'mesh%i-%s.pdf' % (itnr, mustr)))
+        fig1.savefig(os.path.join(options.experiment_dir, 'mesh%i-%s.png' % (itnr, mustr)))
+
+
+# ==================
+# E Generate MI DATA
+# ==================
+print "generating multiindex data for iteration", options.iteration_level
+w = w_history[options.iteration_level]
+print w.dim
+
+
+# ==========================
+# F Generate SAMPLE SOLUTION
+# ==========================
+#    # plot sample solution
+#    if opts.plotSolution:
+#        w = w_history[-1]
+#        # get random field sample and evaluate solution (direct and parametric)
+#        RV_samples = coeff_field.sample_rvs()
+#        ref_maxm = w_history[-1].max_order
+#        sub_spaces = w[Multiindex()].basis.num_sub_spaces
+#        degree = w[Multiindex()].basis.degree
+#        maxh = min(w[Multiindex()].basis.minh / 4, CONF_max_h)
+#        maxh = w[Multiindex()].basis.minh
+#        projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
+#        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+#        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+#        sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
+#    
+#        # plot
+#        print sub_spaces
+#        if sub_spaces == 0:
+#            viz_p = plot(sample_sol_param._fefunc, title="parametric solution")
+#            viz_d = plot(sample_sol_direct._fefunc, title="direct solution")
+#            if ref_maxm > 0:
+#                viz_v = plot(sol_variance._fefunc, title="solution variance")
+#    
+#            # debug---
+#            if not True:        
+#                for mu in w.active_indices():
+#                    for i, wi in enumerate(w_history):
+#                        if i == len(w_history) - 1 or True:
+#                            plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i))
+#    #                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
+#                    interactive()
+#            # ---debug
+#            
+##            for mu in w.active_indices():
+##                plot(w[mu]._fefunc, title="parametric solution " + str(mu))
+#        else:
+#            mesh_param = sample_sol_param._fefunc.function_space().mesh()
+#            mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
+#            wireframe = True
+#            viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+#            viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
+#            
+##            for mu in w.active_indices():
+##                viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
+#        interactive()

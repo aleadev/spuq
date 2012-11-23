@@ -1,3 +1,6 @@
+# DEPRECATED
+# TODO: clean up or remove
+
 from __future__ import division
 from math import ceil
 from operator import itemgetter
