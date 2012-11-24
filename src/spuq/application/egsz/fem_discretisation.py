@@ -1,20 +1,128 @@
 """FEniCS FEM discretisation implementation for Poisson model problem"""
 from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSpace, Identity, Measure, FacetFunction,
                     dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC, assemble_system, cells)
+import dolfin
 
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
 from spuq.fem.fenics.fenics_utils import get_dirichlet_mask, set_dirichlet_bc_entries
-from spuq.fem.fem_discretisation import FEMDiscretisation
+#from spuq.fem.fem_discretisation import FEMDiscretisation
 from spuq.utils.type_check import takes, anything
 
 import numpy as np
+import collections
+from abc import ABCMeta, abstractmethod
 
 default_Dirichlet_boundary = lambda x, on_boundary: on_boundary
 
+def make_list(x, length=None):
+    """Make a sequence type out of some item if it not already is one"""
+    if not isinstance(boundary, collections.Sequence):
+        x = [x]
+    if length is not None and len(x)==1:
+        x = x * length
+    return x
+
+
+def zero_function(V):
+    if V.num_sub_spaces():
+        d = V.mesh().geometry().dim()
+        return Constant([0] * d)
+    else:
+        return Constant(0)
+
+
+class FEMDiscretisation(object):
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def assemble_operator(self, coeff, basis, withDirichletBC=True):
+        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assemble_solve_operator(self, coeff, basis, withDirichletBC=True):
+        """Assemble the discrete problem and return a SolveOperator."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assemble_operator_inner_dofs(self, coeff, basis):
+        """Assemble the discrete problem and return as Operator
+        (projected on the inner DOFs, i.e. all Dirichlet BC entries set to zero)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assemble_rhs(self, coeff, basis, withDirichletBC=True, withNeumannBC=True, f=None):
+        """Assemble the discrete right-hand side."""
+        raise NotImplementedError
+
 
 class FEMDiscretisationBase(FEMDiscretisation):
-    def create_dirichlet_bcs(self, V, uD, boundary):
-        """Apply Dirichlet boundary conditions."""
+    def __init__(weak_form):
+        self.weak_form = weak_form
+
+    def assemble_lhs(self, coeff, basis, withDirichletBC=True):
+        """Assemble the discrete problem (i.e. the stiffness matrix)."""
+        # get FEniCS function space
+        V = basis._fefs
+
+        a = self.weak_form.bilinear_form(V, coeff)
+        L = self.weak_form.loading_linear_form(V, self.f)
+        bcs = []
+        if withDirichletBC:
+            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
+        A, _ = assemble_system(a, L, bcs)
+        return A
+
+    def assemble_rhs(self, coeff, basis, withDirichletBC=True, withNeumannBC=True, f=None):
+        """Assemble the discrete right-hand side."""
+        f = f or self._f
+        Dirichlet_boundary = self._dirichlet_boundary
+        uD = self._uD
+
+        # get FEniCS function space
+        V = basis._fefs
+        a = self.weak_form.bilinear_form(V, coeff)
+        L = self.weak_form.loading_linear_form(V, self.f)
+
+        # treat Neumann boundary
+        if withNeumannBC and self._neumann_boundary is not None:
+            g, ds = self._prepare_neumann(self._neumann_boundary, self._g, V.mesh())
+
+            for gj, dsj in zip(g, ds):
+                L += dot(gj, v) * dsj
+
+        # treat Dirichlet boundary
+        bcs = []
+        if withDirichletBC:
+            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
+
+        # assemble linear form
+        _, F = assemble_system(a, l, bcs)
+        return F
+
+    def assemble_operator(self, coeff, basis, withDirichletBC=True):
+        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
+        matrix = self.assemble_lhs(coeff, basis, withDirichletBC=withDirichletBC)
+        return FEniCSOperator(matrix, basis)
+
+    def assemble_solve_operator(self, coeff, basis, withDirichletBC=True):
+        matrix = self.assemble_lhs(coeff, basis, withDirichletBC=withDirichletBC)
+        return FEniCSSolveOperator(matrix, basis)
+
+    def assemble_operator_inner_dofs(self, coeff, basis):
+        """Assemble the discrete problem and return as Operator
+        (projected on the inner DOFs, i.e. all Dirichlet BC entries set to zero)."""
+        matrix = self.assemble_lhs(coeff, basis)
+        bcs = self.create_dirichlet_bcs(basis, self._uD, self._dirichlet_boundary)
+        mask = get_dirichlet_mask(matrix, bcs)
+        return FEniCSOperator(matrix, basis, mask)
+
+    def set_dirichlet_bc_entries(self, u, homogeneous=False):
+        bcs = self.create_dirichlet_bcs(u.basis, self._uD, self._dirichlet_boundary)
+        set_dirichlet_bc_entries(u.coeffs, bcs, homogeneous)
+
+    def create_dirichlet_bcs(self, V, uD=None, boundary=None):
+        """Create list of FEniCS boundary condition objects."""
         if uD is None:
             uD = self._uD
             if self._dirichlet_boundary is not None:
@@ -24,12 +132,8 @@ class FEMDiscretisationBase(FEMDiscretisation):
         except:
             pass
         
-        if not isinstance(boundary, (tuple, list)):
-            boundary = [boundary]
-        if not isinstance(uD, (tuple, list)):
-            uD = [uD]
-        if len(uD) == 1:
-            uD *= len(boundary)
+        boundary = make_list(boundary)
+        uD = make_list(uD, len(boundary))
         
         bcs = [DirichletBC(V, cuD, cDb) for cuD, cDb in zip(uD, boundary)]
         return bcs
@@ -50,338 +154,153 @@ class FEMDiscretisationBase(FEMDiscretisation):
             val = val[0]
         return val
 
-    def assemble_operator_inner_dofs(self, coeff, basis):
-        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-        matrix = self.assemble_lhs(coeff, basis)
-        bcs = self.create_dirichlet_bcs(basis, self._uD, self._dirichlet_boundary)
-        # remove_boundary_entries(matrix, bcs)
-        mask = get_dirichlet_mask(matrix, bcs)
-        return FEniCSOperator(matrix, basis, mask)
+    def volume_residual(self, u, coeff):
+        """Volume residual r_T."""
+        return self.weak_form.flux_derivative(u, coeff)
 
-    def set_dirichlet_bc_entries(self, u, homogeneous=False):
-        bcs = self.create_dirichlet_bcs(u.basis, self._uD, self._dirichlet_boundary)
-        set_dirichlet_bc_entries(u.coeffs, bcs, homogeneous)
+    def edge_residual(self, coeff, v, nu):
+        """Edge residual r_E."""
+        return dot(self.weak_form.flux(coeff, v), nu)
 
-    def copy_dirichlet_bc(self, d, b):
-        for mu in d.active_indices():
-            bcs = self.create_dirichlet_bcs(d[mu].basis, self._uD, self._dirichlet_boundary)
-            for bc in bcs:
-                dofs = bc.get_boundary_values().keys()
-                b[mu].coeffs[dofs] = d[mu].coeffs[dofs]
+    @staticmethod
+    def _prepare_neumann(self, boundaries, g, mesh):
+        boundaries = make_list(boundaries)
+        g = make_list(g, len(boundaries))
 
-    
+        parts = FacetFunction("sizet", mesh, 0)
+        for j, bnd_domain in enumerate(boundaries):
+            bnd_domain.mark(parts, j + 1)
+        ds = Measure("ds")[parts]
+        return g, ds
+
+    def neumann_residual(self, coeff, v, nu, mesh, homogeneous=False):
+        """Neumann boundary residual."""
+        form = []
+        boundaries = self._neumann_boundary
+        g = self._g
+        if boundaries is not None:
+            if homogeneous:
+                g = zero_function(v.function_space())
+
+            g, ds = self._prepare_neumann(boundaries, g, mesh)
+            for gj, dsj in zip(g, ds):
+                Nbres = gj - dot(self.weak_form.flux(v, coeff), nu)
+                form.append((inner(Nbres, Nbres), dsj))
+        return form
+
+
 class FEMPoisson(FEMDiscretisationBase):
-    """FEM discrete Laplace operator with coefficient :math:`a` on domain :math:`\Omega:=[0,1]^2` with homogeneous Dirichlet boundary conditions.
+    def __init__(self):
+        super(FEMPoisson, self).__init__(PoissonWeakForm()) 
 
-        ..math:: -\mathrm{div}a \nabla u = 0 \qquad\textrm{in }\Omega
-        ..math:: u = 0 \qquad\textrm{on }\partial\Omega
 
-        ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
-    """
+class FEMNavierLame(FEMDiscretisationBase):
+    def __init__(self):
+        super(FEMNavierLame, self).__init__(NavierLameWeakForm()) 
 
-    def __init__(self, f=Constant(1.0), a0=1,
-                 dirichlet_boundary=default_Dirichlet_boundary, uD=Constant(0.0),
-                 neumann_boundary=None, g=None):
-        self._f = f
-        self._a0 = a0
-        self._dirichlet_boundary = dirichlet_boundary
-        self._uD = uD
-        self._neumann_boundary = neumann_boundary
-        self._g = g
 
-    @property
-    def f(self):
-        return self._f
 
-    @property
-    def norm(self):
-        return self.get_norm()
+class WeakForm(object):
+    """Base class for WeakForms, that can be assembled into a discrete
+    form using FEMDiscretisation methods."""
+    __metaclass__ = ABCMeta
 
-    def get_norm(self, mesh=None):
-        '''Energy norm wrt operator.'''
-        if mesh is None:
-            return lambda v: np.sqrt(assemble(self._a0 * inner(nabla_grad(v), nabla_grad(v)) * dx))
-        else:
-            DG = FunctionSpace(mesh, "DG", 0)
-            s = TestFunction(DG)
-            def energy_norm(v):
-                ae = np.sqrt(assemble(self._a0 * inner(nabla_grad(v), nabla_grad(v)) * s * dx))
-                # reorder DG dofs wrt cell indices
-                dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
-                norm_vec = ae[dofs]
-                return norm_vec
-            return energy_norm
+    @abstractmethod
+    def function_space(self, mesh, degree=1):
+        """Return the FunctionSpace V used for this weak form"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def bilinear_form(self, V, coeff):
+        """Return the bilinear a(u,v) form for the operator"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def neumann_linear_form(self, V, h):
+        """Return the linear form N(v) for the Neumann boundary conditions"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def loading_linear_form(self, V, f):
+        """Return the linear form L(v) for the loading"""
+        raise NotImplementedError
+
+
+class EllipticWeakForm(WeakForm):
+    """Helper class for WeakForms, implementing some basic methods"""
+
+    @abstractmethod
+    def bilinear_form(self, V, coeff):
+        """Return the bilinear form for the operator"""
+        u = dolfin.TrialFunction(V)
+        v = dolfin.TestFunction(V)
+        return inner(self.flux(coeff, u), self.differential_op(v)) * dx
+
+    @abstractmethod
+    def differential_op(self, u):
+        """Return the differential operator (Du) for this elliptic weak form (strain?)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def flux(self, u, coeff):
+        """Return the flux term (sigma(u)) for this elliptic weak form"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def flux_derivative(self, u, coeff):
+        """First derivative of flux (Dsigma(u))."""
+        raise NotImplementedError
+
+    def loading_linear_form(self, V, f):
+        """Return the linear form L(v) for the loading"""
+        v = dolfin.TrialFunction(V)
+        return inner(f, v) * dx
+
+
+class PoissonWeakForm(EllipticWeakForm):
+    """Weak form for the Poisson problem."""
 
     def function_space(self, mesh, degree=1):
         return FunctionSpace(mesh, "CG", degree=degree)
 
-    def assemble_operator(self, coeff, basis, withDirichletBC=True):
-        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-        matrix = self.assemble_lhs(coeff, basis, withDirichletBC=withDirichletBC)
-        return FEniCSOperator(matrix, basis)
+    def differential_op(self, u):
+        return nabla_grad(u)
 
-    def assemble_solve_operator(self, coeff, basis, withDirichletBC=True):
-        matrix = self.assemble_lhs(coeff, basis, withDirichletBC=withDirichletBC)
-        return FEniCSSolveOperator(matrix, basis)
+    def flux(self, u, coeff):
+        a = coeff
+        Du = self.differential_op(u)
+        return a * Du
 
-    def assemble_lhs(self, coeff, basis, withDirichletBC=True):
-        """Assemble the discrete problem (i.e. the stiffness matrix)."""
-        # get FEniCS function space
-        V = basis._fefs
-        # setup problem, assemble and apply boundary conditions
-        u = TrialFunction(V)
-        v = TestFunction(V)
-
-        a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
-        if withDirichletBC:
-            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
-        else:
-            bcs = []
-        A, _ = assemble_system(a, v * dx, bcs)
-        return A
-
-    def assemble_rhs(self, coeff, basis, withDirichletBC=True, withNeumannBC=True, f=None):
-        """Assemble the discrete right-hand side."""
-        if f is None:
-            f = self._f
-        Dirichlet_boundary = self._dirichlet_boundary
-        uD = self._uD
-
-        # get FEniCS function space
-        V = basis._fefs
-        # assemble and apply boundary conditions
-        u = TrialFunction(V)
-        v = TestFunction(V)
-
-        l = (f * v) * dx
-        a = inner(coeff * nabla_grad(u), nabla_grad(v)) * dx
-
-        # treat Neumann boundary
-        if withNeumannBC and self._neumann_boundary is not None:
-            Ng, ds = self._prepareNeumann(V.mesh())            
-            for j in range(len(Ng)):
-                l += dot(Ng[j], v) * ds(j + 1)
-        
-        if withDirichletBC:
-            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
-        else:
-            bcs = []
-
-        # assemble linear form
-        _, F = assemble_system(a, l, bcs)
-        return F
-            
-    def _prepareNeumann(self, mesh):
-        assert self._g is not None
-        boundary = self._neumann_boundary
-        g = self._g
-        # mark boundary
-        if not isinstance(boundary, (tuple, list)):
-            boundary = [boundary]
-        if not isinstance(g, (tuple, list)):
-            g = [g]
-        if len(g) == 1:
-            g *= len(boundary)
-        parts = FacetFunction("sizet", mesh, 0)
-        for j, bnd in enumerate(boundary):
-            bnd.mark(parts, j + 1)
-        # evaluate boundary flux terms
-        ds = Measure("ds")[parts]
-        return g, ds
-
-    def sigma(self, a, v):
-        """Flux."""
-        return a * nabla_grad(v)
-    
-    def Dsigma(self, a, v):
-        """First derivative of flux."""
-        if v.ufl_element().degree() < 2:
-            return dot(nabla_grad(a), nabla_grad(v))
-        else:
-            return dot(nabla_grad(a), nabla_grad(v)) + a * div(nabla_grad(v))
-
-    def r_T(self, a, v):
-        """Volume residual."""
-        return self.Dsigma(a, v)
-
-    def r_E(self, a, v, nu):
-        """Edge residual."""
-        return a * dot(nabla_grad(v), nu)
-
-    def r_Nb(self, a, v, nu, mesh, homogeneous=False):
-        """Neumann boundary residual."""
-        form = None
-        if self._neumann_boundary is not None:
-            form = []
-            g, ds = self._prepareNeumann(mesh)
-            for j, gj in enumerate(g):
-                if not homogeneous:
-                    Nbres = gj - a * dot(nabla_grad(v), nu)
-                else:
-                    Nbres = Constant(0) - a * dot(nabla_grad(v), nu)
-                form.append((inner(Nbres, Nbres), ds(j + 1)))
-        return form
+    def flux_derivative(self, u, coeff):
+        a = coeff
+        Du = self.differential_op(u)
+        Dsigma = dot(nabla_grad(a), Du)
+        if v.ufl_element().degree() >= 2:
+            Dsigma += a * div(Du)
+        return Dsigma
 
 
-class FEMNavierLame(FEMDiscretisationBase):
-    """FEM discrete Navier-Lame equation (linearised elasticity) with parameters :math:`E` and :math:`\nu` with provided boundary conditions.
-
-        ..math:: -\mathrm{div}a \nabla u = 0 \qquad\textrm{in }\Omega
-        ..math:: u = 0 \qquad\textrm{on }\partial\Omega
-
-        ..math:: \int_D a\nabla \varphi_i\cdot\nabla\varphi_j\;dx
-    """
-
-    def __init__(self, mu0, lmbda0,
-                 f=Constant(1.0),
-                 dirichlet_boundary=default_Dirichlet_boundary, uD=None,
-                 neumann_boundary=None, g=None):
-        self.lmbda0 = lmbda0
-        self.mu0 = mu0
-        self._f = f
-        self._dirichlet_boundary = dirichlet_boundary
-        self._uD = uD
-        self._neumann_boundary = neumann_boundary
-        self._g = g
-
-    @property
-    def f(self):
-        return self._f
-
-    @property
-    def norm(self):
-        return self.get_norm()
-    
-    def get_norm(self, mesh=None):
-        '''Energy norm wrt operator, i.e. (\sigma(v),\eps(v))=||C^{1/2}\eps(v)||.'''
-        if mesh is None:
-            return lambda v: np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu0, v), sym(nabla_grad(v))) * dx))
-        else:
-            DG = FunctionSpace(mesh, "DG", 0)
-            s = TestFunction(DG)
-            def energy_norm(v):
-                ae = np.sqrt(assemble(inner(self.sigma(self.lmbda0, self.mu0, v), sym(nabla_grad(v))) * s * dx))
-                # reorder DG dofs wrt cell indices
-                dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
-                norm_vec = ae[dofs]
-                return norm_vec
-            return energy_norm
+class NavierLameWeakForm(EllipticWeakForm):
+    """Weak form for the Navier-Lame problem."""
 
     def function_space(self, mesh, degree=1):
         return VectorFunctionSpace(mesh, "CG", degree=degree)
 
-    def assemble_operator(self, lmbdamu, basis, withDirichletBC=True):
-        """Assemble the discrete problem and return as Operator."""
-        matrix = self.assemble_lhs(lmbdamu, basis, withDirichletBC=withDirichletBC)
-        return FEniCSOperator(matrix, basis)
+    def differential_op(self, u):
+        return sym(nabla_grad(u))
 
-    def assemble_solve_operator(self, lmbdamu, basis, withDirichletBC=True):
-        matrix = self.assemble_lhs(lmbdamu, basis, withDirichletBC=withDirichletBC)
-        return FEniCSSolveOperator(matrix, basis)
+    def flux(self, u, coeff):
+        lmbda, mu = coeff
+        Du = self.differential_op(u)
+        I = Identity(u.cell().d)
+        return 2.0 * mu * Du + lmbda * tr(Du)
 
-    def assemble_lhs(self, lmbdamu, basis, withDirichletBC=True):
-        """Assemble the discrete operator."""
-        f = self._f
-        # get FEniCS function space
-        V = basis._fefs
-        # setup problem, assemble and apply boundary conditions
-        u = TrialFunction(V)
-        v = TestFunction(V)
-
-        lmbda, mu = lmbdamu[0], lmbdamu[1]
-        a = inner(self.sigma(lmbda, mu, u), sym(nabla_grad(v))) * dx
-        l = inner(f, v) * dx
-
-        if withDirichletBC:
-            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
-        else:
-            bcs = []
-        A, _ = assemble_system(a, l, bcs)
-        return A
-
-    def assemble_rhs(self, lmbdamu, basis, withDirichletBC=True, withNeumannBC=True, f=None):
-        """Assemble the discrete right-hand side."""
-        if f is None:
-            f = self._f
-        Dirichlet_boundary = self._dirichlet_boundary
-        uD = self._uD
-
-        # get FEniCS function space
-        V = basis._fefs
-        # define linear form
-        u = TrialFunction(V)
-        v = TestFunction(V)
-
-        lmbda = lmbdamu[0] 
-        mu = lmbdamu[1]
-        a = inner(self.sigma(lmbda, mu, u), sym(nabla_grad(v))) * dx
-        l = inner(f, v) * dx
-        
-        # treat Neumann boundary
-        if withNeumannBC and self._neumann_boundary is not None:
-            Ng, ds = self._prepareNeumann(V.mesh())            
-            for j in range(len(Ng)):
-                l += dot(Ng[j], v) * ds(j + 1)
-                        
-        if withDirichletBC:
-            bcs = self.create_dirichlet_bcs(V, self._uD, self._dirichlet_boundary)
-        else:
-            bcs = []
-
-        # assemble linear form
-        _, F = assemble_system(a, l, bcs)
-        return F
-            
-    def _prepareNeumann(self, mesh):
-        assert self._g is not None
-        boundary = self._neumann_boundary
-        g = self._g
-        # mark boundary
-        if not isinstance(boundary, (tuple, list)):
-            boundary = [boundary]
-        if not isinstance(g, (tuple, list)):
-            g = [g]
-        if len(g) == 1:
-            g *= len(boundary)
-        parts = FacetFunction("sizet", mesh, 0)
-        for j, bnd in enumerate(boundary):
-            bnd.mark(parts, j + 1)
-        # evaluate boundary flux terms
-        ds = Measure("ds")[parts]
-        return g, ds
-
-    def sigma(self, lmbda, mu, v):
-        """Flux."""
-        return 2.0 * mu * sym(nabla_grad(v)) + lmbda * tr(sym(nabla_grad(v))) * Identity(v.cell().d)
-    
-    def Dsigma(self, lmbda, mu, v):
+    def flux_derivative(self, u, coeff):
         """First derivative of flux."""
-        if v.ufl_element().degree() < 2:
-            return 2.0 * mu * div(sym(nabla_grad(v))) + dot(nabla_grad(lmbda), tr(sym(nabla_grad(v))) * Identity(v.cell().d))
-        else:
-            return 2.0 * mu * div(sym(nabla_grad(v))) + dot(nabla_grad(lmbda), tr(sym(nabla_grad(v))) * Identity(v.cell().d)) + lmbda * div(tr(sym(nabla_grad(v))) * Identity(v.cell().d))
-
-    def r_T(self, lmbdamu, v):
-        """Volume residual."""
-        lmbda, mu = lmbdamu[0], lmbdamu[1]
-        return self.Dsigma(lmbda, mu, v)
-
-    def r_E(self, lmbdamu, v, nu):
-        """Edge residual."""
-        lmbda, mu = lmbdamu[0], lmbdamu[1]
-        return dot(self.sigma(lmbda, mu, v), nu)
-
-    def r_Nb(self, lmbdamu, v, nu, mesh, homogeneous=False):
-        """Neumann boundary residual."""
-        form = None
-        lmbda, mu = lmbdamu[0], lmbdamu[1]
-        if self._neumann_boundary is not None:
-            form = []
-            g, ds = self._prepareNeumann(mesh)
-            for j, gj in enumerate(g):
-                if not homogeneous:
-                    Nbres = gj - dot(self.sigma(lmbda, mu, v), nu)
-                else:
-                    Nbres = Constant((0, 0)) - dot(self.sigma(lmbda, mu, v), nu)
-                form.append((inner(Nbres, Nbres), ds(j + 1)))
-        return form
+        lmbda, mu = coeff
+        Du = self.differential_op(u)
+        I = Identity(u.cell().d)
+        Dsigma = 2.0 * mu * div(Du) + dot(nabla_grad(lmbda), tr(Du) * I)
+        if v.ufl_element().degree() >= 2:
+            Dsigma += lmbda * div(tr(Du) * I)
+        return Dsigma
