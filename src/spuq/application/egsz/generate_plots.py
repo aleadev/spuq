@@ -110,7 +110,11 @@ if options.withFigures and len(sim_stats) > 1:
         for rem in _reserrmu:
             for mu, v in rem:
                 reserrmu[mu].append(v)
-        print "errest", errest
+        projerrmu = defaultdict(list)
+        for rem in _projerrmu:
+            for mu, v in rem:
+                projerrmu[mu].append(v)
+        print "ERROR ESTIMATOR", errest
             
         # --------
         # figure 1
@@ -177,6 +181,28 @@ if options.withFigures and len(sim_stats) > 1:
         ax.grid(True)
         fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mi-residual.pdf'))
         fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mi-residual.png'))
+    
+        # --------
+        # figure 3b
+        # --------
+        fig3b = plt.figure()
+        fig3b.suptitle("projection contributions")
+        ax = fig3b.add_subplot(111)
+        for mu, v in projerrmu.iteritems():
+            ms = str(mu)
+            ms = ms[ms.find('=') + 1:-1]
+            try:
+                ax.loglog(x[-len(v):], v, '-g<', label=ms)
+            except:
+                print "projection data for", mu, "is faulty... skipping..."
+        plt.xlabel("overall degrees of freedom")
+        plt.ylabel("energy error")
+        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.1))
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        ax.grid(True)
+        fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.pdf'))
+        fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.png'))
 
         # --------
         # figure 4

@@ -199,9 +199,6 @@ def run_MC(opts, conf):
     #        ax.loglog(x, H1, '-b^', label='H1 residual')
     #        ax.loglog(x, L2, '-ro', label='L2 residual')
             legend(loc='upper right')
-#            if SAVE_SOLUTION != "":
-#                fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.png'))
-#                fig2.savefig(os.path.join(SAVE_SOLUTION, 'EST.eps'))
     
             # --------
             # figure 3
@@ -214,24 +211,18 @@ def run_MC(opts, conf):
                 ax.loglog(x, mcH1, '-b^', label='MC H1 error')
                 ax.loglog(x, effest, '-ro', label='efficiency')        
             legend(loc='upper right')
-#            if SAVE_SOLUTION != "":
-#                fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.png'))
-#                fig3.savefig(os.path.join(SAVE_SOLUTION, 'ESTEFF.eps'))
     
-            # --------
-            # figure 4
-            # --------
-            fig4 = figure()
-            fig4.suptitle("residual contributions")
-            ax = fig4.add_subplot(111)
-            for mu, v in reserrmu.iteritems():
-                ms = str(mu)
-                ms = ms[ms.find('=') + 1:-1]
-                ax.loglog(x[-len(v):], v, '-g<', label=ms)
-            legend(loc='upper right')
-    #        if SAVE_SOLUTION != "":
-    #            fig4.savefig(os.path.join(SAVE_SOLUTION, 'RESCONTRIB.png'))
-    #            fig4.savefig(os.path.join(SAVE_SOLUTION, 'RESCONTRIB.eps'))
+#            # --------
+#            # figure 4
+#            # --------
+#            fig4 = figure()
+#            fig4.suptitle("residual contributions")
+#            ax = fig4.add_subplot(111)
+#            for mu, v in reserrmu.iteritems():
+#                ms = str(mu)
+#                ms = ms[ms.find('=') + 1:-1]
+#                ax.loglog(x[-len(v):], v, '-g<', label=ms)
+#            legend(loc='upper right')
             
             show()  # this invalidates the figure instances...
         except:

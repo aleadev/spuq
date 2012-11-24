@@ -202,6 +202,10 @@ def run_SFEM(opts, conf):
             for rem in _reserrmu:
                 for mu, v in rem:
                     reserrmu[mu].append(v)
+            projerrmu = defaultdict(list)
+            for rem in _projerrmu:
+                for mu, v in rem:
+                    projerrmu[mu].append(v)
             print "errest", errest
                 
             # --------
@@ -228,7 +232,7 @@ def run_SFEM(opts, conf):
             legend(loc='upper right')
     
             # --------
-            # figure 3
+            # figure 3a
             # --------
             fig3 = figure()
             fig3.suptitle("residual contributions")
@@ -237,6 +241,21 @@ def run_SFEM(opts, conf):
                 ms = str(mu)
                 ms = ms[ms.find('=') + 1:-1]
                 ax.loglog(x[-len(v):], v, '-g<', label=ms)
+            legend(loc='upper right')
+    
+            # --------
+            # figure 3b
+            # --------
+            fig3b = figure()
+            fig3b.suptitle("projection contributions")
+            ax = fig3b.add_subplot(111)
+            for mu, v in projerrmu.iteritems():
+                ms = str(mu)
+                ms = ms[ms.find('=') + 1:-1]
+                try:
+                    ax.loglog(x[-len(v):], v, '-g<', label=ms)
+                except:
+                    print "projection data for", mu, "is faulty... skipping..."
             legend(loc='upper right')
     
             # --------
