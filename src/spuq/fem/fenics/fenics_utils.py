@@ -176,7 +176,7 @@ def weighted_H1_norm(w, vec, piecewise=False):
 
 
 @takes((list, tuple), optional(Mesh))
-def create_joint_mesh(meshes, destmesh=None):
+def create_joint_mesh(meshes, destmesh=None, additional_refine=0):
     if destmesh is None:
         # start with finest mesh to avoid (most) refinements
 #        hmin = [m.hmin() for m in meshes]
@@ -207,7 +207,8 @@ def create_joint_mesh(meshes, destmesh=None):
                 if h[cid] > c.diameter():
                     cf[cid] = True
                     rc += 1
-            if rc:      # carry out refinement if any cells are marked
+            # carry out refinement if any cells are marked
+            if rc:
                 # refine marked cells
                 newmesh = refine(destmesh, cf)
                 # determine parent cell association map
@@ -220,6 +221,19 @@ def create_joint_mesh(meshes, destmesh=None):
                 destmesh = newmesh
             else:
                 break
+
+        # carry out additional uniform refinements
+        for _ in range(additional_refine):
+            # refine uniformly
+            newmesh = refine(destmesh)
+            # determine parent cell association map
+            pc = newmesh.data().mesh_function("parent_cell")
+            pmap = defaultdict(list)
+            for i in range(pc.size()):
+                pmap[pc[i]].append(i)
+            PM.append(pmap)
+            # set refined mesh as current mesh
+            destmesh = newmesh
 
     # determine association to parent cells
     for level in range(len(PM)):

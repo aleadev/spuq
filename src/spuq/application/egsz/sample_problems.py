@@ -112,7 +112,7 @@ class SampleProblem(object):
 
     # definitions for random variables
     UNIFORM = "uniform"
-    NORMAL  = "normal"
+    NORMAL = "normal"
 
     rv_defs = dict()
     rv_defs[UNIFORM] = lambda i: UniformRV(a= -1, b=1)
@@ -186,14 +186,15 @@ class SampleProblem(object):
         if amptype == "decay-inf":
             start = SampleProblem.get_decay_start(decayexp, gamma)
             amp = gamma / zeta(decayexp, start)
-            logger.info("type is decay_inf with start = " + str(start) + " and amp = " + str(amp))
             ampfunc = lambda i: amp / (float(i) + start) ** decayexp
+            logger.info("type is decay_inf with start = " + str(start) + " and amp = " + str(amp))
         elif amptype == "constant": 
             amp = gamma / N
             ampfunc = lambda i: gamma * (i < N)
         else:
             raise ValueError("Unknown amplitude type %s", amptype)
 
+        logger.info("amp function: %s", str([ampfunc(i) for i in range(10)]))
         element = FiniteElement('Lagrange', ufl.triangle, 1)
         # NOTE: the explicit degree of the expression should influence the quadrature order during assembly
         degree = 3
@@ -245,10 +246,10 @@ class SampleProblem(object):
         try:
             for bc_def in cls.boundary_defs[(pde_type, boundary_type)]:
                 type, where, func = bc_def
-                if type==cls.NEUMANN:
+                if type == cls.NEUMANN:
                     Neumann_boundary.append(boundaries[where])
                     g.append(func)
-                elif type==cls.DIRICHLET:
+                elif type == cls.DIRICHLET:
                     Dirichlet_boundary.append(boundaries[where])
                     uD.append(func)
                 else:

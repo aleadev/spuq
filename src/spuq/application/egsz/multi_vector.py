@@ -260,9 +260,6 @@ class MultiVectorWithProjection(MultiVector):
         from spuq.fem.fenics.fenics_basis import FEniCSBasis
         import numpy as np
         
-        if refine_mesh > 0:
-            logger.warning("new projection error evaluation on joint mesh does not support mesh/space refinement parameters!")
-        
         # get joint mesh based on destination space
         basis_src = self[mu_src].basis 
         basis_dest = self[mu_dest].basis
