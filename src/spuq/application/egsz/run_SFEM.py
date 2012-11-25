@@ -236,7 +236,7 @@ def run_SFEM(opts, conf):
             # --------
             # figure 3a
             # --------
-            max_mu_plottig = 10
+            max_mu_plotting = 7
             fig3 = figure()
             fig3.suptitle("residual contributions")
             ax = fig3.add_subplot(111)
@@ -255,7 +255,8 @@ def run_SFEM(opts, conf):
             fig3b = figure()
             fig3b.suptitle("projection contributions")
             ax = fig3b.add_subplot(111)
-            for i, mu, v in enumerate(projerrmu.iteritems()):
+            for i, muv in enumerate(projerrmu.iteritems()):
+                mu, v = muv
                 if max(v) > 1e-10 and i < max_mu_plotting:
                     ms = str(mu)
                     ms = ms[ms.find('=') + 1:-1]

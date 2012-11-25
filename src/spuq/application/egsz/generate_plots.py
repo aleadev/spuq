@@ -64,7 +64,7 @@ elif len(args) > 2:
 else:
     options.experiment_dir = args[0]
     if len(args) > 1:
-        options.iteration_level = args[1]
+        options.iteration_level = int(args[1])
     else:
         options.iteration_level = -1
 
@@ -154,7 +154,7 @@ if options.withFigures and len(sim_stats) > 1:
         plt.axhline(y=0)
         plt.axvline(x=0)
         ax.grid(True)
-        leg = plt.legend(ncol=1, loc='center right', bbox_to_anchor=(1.05, 0.5))
+        leg = plt.legend(ncol=1, loc='center right', bbox_to_anchor=(1.05, 0.2))
         ltext = leg.get_texts()  # all the text.Text instance in the legend
         plt.setp(ltext, fontsize='small')    # the legend text fontsize
         fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-all.pdf'))
@@ -182,7 +182,7 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         # figure 3
         # --------
-        max_plot_mu = 10
+        max_plot_mu = 6
         fig3 = plt.figure()
         fig3.suptitle("residual contributions of multiindices")
         ax = fig3.add_subplot(111)
@@ -302,14 +302,25 @@ if options.withMesh:
         mesh = w[mu].mesh
         verts = mesh.coordinates()
         cells = mesh.cells()
-        xlist, ylist = [], []
-        for c in cells:
-            for i in c:
-                xlist.append(verts[i][0])
-                ylist.append(verts[i][1])
-            xlist.append(None)
-            ylist.append(None)
-        plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
+        
+        plot_method = 1
+        if plot_method == 0:    # NOTE: this was proposed as a faster method - which in fact does not work properly!
+            xlist, ylist = [], []
+            for c in cells:
+                for i in c:
+                    xlist.append(verts[i][0])
+                    ylist.append(verts[i][1])
+                xlist.append(None)
+                ylist.append(None)
+            plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
+        elif plot_method == 1:
+            for c in cells:
+                xlist, ylist = [], []
+                for i in c:
+                    xlist.append(verts[i][0])
+                    ylist.append(verts[i][1])
+                plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
+
         fig1.savefig(os.path.join(options.experiment_dir, 'mesh%i-%s.pdf' % (itnr, mustr)))
         fig1.savefig(os.path.join(options.experiment_dir, 'mesh%i-%s.png' % (itnr, mustr)))
 
@@ -320,7 +331,20 @@ if options.withMesh:
 print "generating multiindex data for iteration", options.iteration_level
 w = w_history[options.iteration_level]
 print w.dim
-
+if options.withMI:
+    level = options.iteration_level if options.iteration_level >= 0 else len(w_history) - 1 
+    print "# multiindices and dimensions for '" + options.experiment_dir + "' at iteration " + str(level)
+    with file(os.path.join(options.experiment_dir, 'MI.txt'), 'w') as f:
+        dofs = 0
+        for mu in w.active_indices():
+            ms = str(mu)
+            ms = ms[ms.find('=') + 1:-1]
+            mis = '{0:2s} {1:3d}'.format(ms, w[mu].dim)
+            dofs += w[mu].dim
+            print mis
+            f.write(mis + "\n")
+        f.write("overall dofs = %i and %i active multiindices" % (dofs, len(w.active_indices())))
+    print "overall dofs =", dofs
 
 # ==========================
 # F Generate SAMPLE SOLUTION

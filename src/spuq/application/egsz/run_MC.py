@@ -104,7 +104,7 @@ def run_MC(opts, conf):
         # determine reference mesh
         w = w_history[-1]
         ref_mesh, _ = create_joint_mesh([w[mu].mesh for mu in w.active_indices()])        
-        for _ in range(CONF_MC_ref_mesh_refine):
+        for _ in range(CONF_ref_mesh_refine):
             ref_mesh = refine(ref_mesh)
         ref_maxm = w.max_order
         for i, w in enumerate(w_history):
