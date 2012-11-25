@@ -1,6 +1,7 @@
 from __future__ import division
 import os
 import logging
+from spuq.utils.timing import timing
 
 try:
     from dolfin import (Function, VectorFunctionSpace, FunctionSpace, Constant, refine,
@@ -17,10 +18,8 @@ except Exception, e:
 logger = logging.getLogger(__name__)
 
 # create reference mesh and function space
-def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1, sub_spaces=None, family=None):
-    if family is None:
-        family = 'CG'
-    if not(mesh_refinements is None):
+def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1, sub_spaces=None, family='CG'):
+    if mesh_refinements is not None:
         mesh = mesh0
         for _ in range(mesh_refinements):
             mesh = refine(mesh)
@@ -31,7 +30,7 @@ def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1, sub_
             assert V.num_sub_spaces() == sub_spaces
         return FEniCSBasis(V)
     else:
-        assert not(maxh is None)
+        assert maxh is not None
         if sub_spaces is None or sub_spaces == 0:
             V = FunctionSpace(mesh0, family, degree)
         else:
@@ -46,7 +45,9 @@ def get_projected_solution(w, mu, proj_basis):
 #    print "sampling.get_projected_solution"
 #    print w[mu].num_sub_spaces
 #    print proj_basis.num_sub_spaces
-    return w.project(w[mu], proj_basis)
+    with timing(msg="get_projected_solution (%s --- %i)" % (str(mu), w[mu].dim), logfunc=logger.debug):
+        w_proj = w.project(w[mu], proj_basis)
+    return w_proj
 
 
 def prepare_w_projections(w, proj_basis):
@@ -117,6 +118,7 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
         A, b = pde.apply_dirichlet_bc(proj_basis, A, b)
     with timing(msg="direct Solve", logfunc=logger.info):
         X = 0 * b
+        logger.info("compute_direct_sample_solution with %i dofs" % b.size())
         solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X))
 

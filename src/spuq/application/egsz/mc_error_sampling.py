@@ -26,8 +26,9 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
     from spuq.utils.timing import timing
     sub_spaces = w[Multiindex()].basis.num_sub_spaces
     degree = w[Multiindex()].basis.degree
-    projection_basis = get_projection_basis(mesh0, maxh=min(w[Multiindex()].basis.minh / 4, MC_HMAX), degree=degree, sub_spaces=sub_spaces)
-    logger.debug("hmin of mi[0] = %s, reference mesh = (%s, %s)", w[Multiindex()].basis.minh, projection_basis.minh, projection_basis.maxh)
+#    projection_basis = get_projection_basis(mesh0, maxh=min(w[Multiindex()].basis.minh, MC_HMAX), degree=degree, sub_spaces=sub_spaces)
+    projection_basis = get_projection_basis(mesh0, mesh_refinements=0, degree=degree, sub_spaces=sub_spaces)
+    logger.info("projection_basis dim = %i \t hmin of mi[0] = %s, reference mesh = (%s, %s)", projection_basis.dim, w[Multiindex()].basis.minh, projection_basis.minh, projection_basis.maxh)
 
     # get realization of coefficient field
     err_L2, err_H1 = 0, 0
@@ -55,7 +56,8 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
         
         if i + 1 == MC_N:
             # deterministic part
-            sample_sol_direct_a0 = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, 0, projection_basis, direct_sol_cache)
+            with timing(msg="direct a0", logfunc=logger.info):
+                sample_sol_direct_a0 = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, 0, projection_basis, direct_sol_cache)
             with timing(msg="L2_err_2", logfunc=logger.info):
                 L2_a0 = error_norm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "L2")
             with timing(msg="H1_err_2", logfunc=logger.info):

@@ -12,12 +12,13 @@ from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
 from spuq.application.egsz.sampling import compute_parametric_sample_solution, compute_direct_sample_solution, compute_solution_variance
 from spuq.application.egsz.sampling import get_projection_basis
+from spuq.fem.fenics.fenics_utils import create_joint_mesh
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.plot.plotter import Plotter
 try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
-                        plot, interactive, set_log_level, set_log_active)
+                        plot, interactive, set_log_level, set_log_active, refine)
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.application.egsz.egsz_utils import setup_logging, stats_plotter
 except:
@@ -31,17 +32,20 @@ logger = logging.getLogger(__name__)
 
 def run_MC(opts, conf):
     # propagate config values
+    _G = globals()
     for sec in conf.keys():
         if sec == "LOGGING":
             continue
         secconf = conf[sec]
         for key, val in secconf.iteritems():
             print "CONF_" + key + "= secconf['" + key + "'] =", secconf[key]
-            exec "CONF_" + key + "= secconf['" + key + "']"
+            _G["CONF_" + key] = secconf[key]
+#            exec "CONF_" + key + "= secconf['" + key + "']"
 
     # setup logging
-    print "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
-    exec "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
+    _G["LOG_LEVEL"] = eval("logging." + conf["LOGGING"]["level"])
+    print "LOG_LEVEL = logging." + conf["LOGGING"]["level"]    
+#    exec "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
     setup_logging(LOG_LEVEL, logfile=CONF_experiment_name + "_MC")
     
     # determine path of this module
@@ -97,7 +101,13 @@ def run_MC(opts, conf):
     MC_N = CONF_N
     MC_HMAX = CONF_max_h
     if CONF_runs > 0:
-        ref_maxm = w_history[-1].max_order
+        # determine reference mesh
+        w = w_history[-1]
+        ref_mesh, _ = create_joint_mesh([w[mu].mesh for mu in w.active_indices()])
+        REF_MESH_REFINE = 2
+        for _ in range(REF_MESH_REFINE):
+            ref_mesh = refine(ref_mesh)
+        ref_maxm = w.max_order
         for i, w in enumerate(w_history):
 #            if i == 0:
 #                continue
@@ -118,7 +128,9 @@ def run_MC(opts, conf):
             MC_RUNS = max(CONF_runs - MC_start, 0)
             if MC_RUNS > 0:
                 logger.info("STARTING %s MC RUNS", MC_RUNS)
-                L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
+                mesh_refinements = None
+#                L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
+                L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, ref_mesh, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
                 try:
                     # combine current and previous results
                     sim_stats[i]["MC-N"] = N + old_stats["MC-N"]
