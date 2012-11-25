@@ -183,14 +183,16 @@ def AdaptiveSolver(A, coeff_field, pde,
                                                                                     refine_projection_mesh)
         reserrmu = [(mu, sqrt(sum(resind[mu].coeffs ** 2))) for mu in resind.keys()]
         projerrmu = [(mu, sqrt(sum(projind[mu].coeffs ** 2))) for mu in projind.keys()]
-        res_part = estparts[0]
-        proj_part = estparts[1]
-        pcg_part = estparts[2]
+        res_part, proj_part, pcg_part = estparts[0], estparts[1], estparts[2]
+        err_res, err_proj, err_pcg = errors[0], errors[1], errors[2]
         logger.info("Overall Estimator Error xi = %s while residual error is %s, projection error is %s, pcg error is %s", xi, res_part, proj_part, pcg_part)
         stats["EST"] = xi
         stats["RES-PART"] = res_part
         stats["PROJ-PART"] = proj_part
         stats["PCG-PART"] = pcg_part
+        stats["ERR-RES"] = err_res
+        stats["ERR-PROJ"] = err_proj
+        stats["ERR-PCG"] = err_pcg
         stats["ETA-ERR"] = errors[0]
         stats["DELTA-ERR"] = errors[1]
         stats["ZETA-ERR"] = errors[2]

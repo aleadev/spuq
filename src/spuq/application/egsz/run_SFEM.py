@@ -236,13 +236,17 @@ def run_SFEM(opts, conf):
             # --------
             # figure 3a
             # --------
+            max_mu_plottig = 10
             fig3 = figure()
             fig3.suptitle("residual contributions")
             ax = fig3.add_subplot(111)
-            for mu, v in reserrmu.iteritems():
-                ms = str(mu)
-                ms = ms[ms.find('=') + 1:-1]
-                ax.loglog(x[-len(v):], v, '-g<', label=ms)
+            for i, muv in enumerate(reserrmu.iteritems()):
+                mu, v = muv
+                if i < max_mu_plotting:
+                    mu, v = muv
+                    ms = str(mu)
+                    ms = ms[ms.find('=') + 1:-1]
+                    ax.loglog(x[-len(v):], v, '-g<', label=ms)
             legend(loc='upper right')
     
             # --------
@@ -251,8 +255,8 @@ def run_SFEM(opts, conf):
             fig3b = figure()
             fig3b.suptitle("projection contributions")
             ax = fig3b.add_subplot(111)
-            for mu, v in projerrmu.iteritems():
-                if max(v) > 1e-10:
+            for i, mu, v in enumerate(projerrmu.iteritems()):
+                if max(v) > 1e-10 and i < max_mu_plotting:
                     ms = str(mu)
                     ms = ms[ms.find('=') + 1:-1]
                     ax.loglog(x[-len(v):], v, '-g<', label=ms)

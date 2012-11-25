@@ -44,7 +44,7 @@ optparser.add_option('--showFigures', '--show-figures',
                      action='store_true', default=False, dest='showFigures',
                      help='show several figures')
 
-optparser.add_option('--withMesh', '--with-mesh',
+optparser.add_option('--withMeshes', '--with-meshes',
                      action='store_true', default=False, dest='withMesh',
                      help='export meshes')
 
@@ -154,7 +154,7 @@ if options.withFigures and len(sim_stats) > 1:
         plt.axhline(y=0)
         plt.axvline(x=0)
         ax.grid(True)
-        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.05))
+        leg = plt.legend(ncol=1, loc='center right', bbox_to_anchor=(1.05, 0.5))
         ltext = leg.get_texts()  # all the text.Text instance in the legend
         plt.setp(ltext, fontsize='small')    # the legend text fontsize
         fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-all.pdf'))
@@ -182,13 +182,16 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         # figure 3
         # --------
+        max_plot_mu = 10
         fig3 = plt.figure()
         fig3.suptitle("residual contributions of multiindices")
         ax = fig3.add_subplot(111)
-        for mu, v in reserrmu.iteritems():
-            ms = str(mu)
-            ms = ms[ms.find('=') + 1:-1]
-            ax.loglog(x[-len(v):], v, '-g<', label=ms)
+        for i, muv in enumerate(reserrmu.iteritems()):
+            if i < max_plot_mu:
+                mu, v = muv
+                ms = str(mu)
+                ms = ms[ms.find('=') + 1:-1]
+                ax.loglog(x[-len(v):], v, '-g<', label=ms)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
         leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.1))
@@ -204,8 +207,9 @@ if options.withFigures and len(sim_stats) > 1:
         fig3b = plt.figure()
         fig3b.suptitle("projection contributions")
         ax = fig3b.add_subplot(111)
-        for mu, v in projerrmu.iteritems():
-            if max(v) > 1e-10:
+        for i, muv in enumerate(projerrmu.iteritems()):
+            mu, v = muv
+            if max(v) > 1e-10 and i < max_plot_mu:
                 ms = str(mu)
                 ms = ms[ms.find('=') + 1:-1]
                 ax.loglog(x[-len(v):], v, '-g<', label=ms)
