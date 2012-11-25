@@ -189,12 +189,10 @@ if options.withFigures and len(sim_stats) > 1:
         fig3b.suptitle("projection contributions")
         ax = fig3b.add_subplot(111)
         for mu, v in projerrmu.iteritems():
-            ms = str(mu)
-            ms = ms[ms.find('=') + 1:-1]
-            try:
+            if max(v) > 1e-10:
+                ms = str(mu)
+                ms = ms[ms.find('=') + 1:-1]
                 ax.loglog(x[-len(v):], v, '-g<', label=ms)
-            except:
-                print "projection data for", mu, "is faulty... skipping..."
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
         leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.1))
