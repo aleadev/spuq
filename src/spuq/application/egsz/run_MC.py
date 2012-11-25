@@ -128,7 +128,6 @@ def run_MC(opts, conf):
             MC_RUNS = max(CONF_runs - MC_start, 0)
             if MC_RUNS > 0:
                 logger.info("STARTING %s MC RUNS", MC_RUNS)
-                mesh_refinements = None
 #                L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
                 L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, ref_mesh, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
                 try:
@@ -144,6 +143,7 @@ def run_MC(opts, conf):
                     sim_stats[i]["MC-H1ERR"] = H1err
                     sim_stats[i]["MC-L2ERR_a0"] = L2err_a0
                     sim_stats[i]["MC-H1ERR_a0"] = H1err_a0
+                print sim_stats[i]["MC-H1ERR"]
             else:
                 logger.info("SKIPPING MC RUN since sufficiently many samples are available")
     

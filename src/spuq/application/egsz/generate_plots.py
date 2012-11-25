@@ -100,6 +100,15 @@ if options.withFigures and len(sim_stats) > 1:
         _projerrmu = [s["PROJ-mu"] for s in sim_stats]
         proj_max_zeta = [s["PROJ-MAX-ZETA"] for s in sim_stats]
         proj_max_inactive_zeta = [s["PROJ-MAX-INACTIVE-ZETA"] for s in sim_stats]
+        try:
+            mcL2 = [s["MC-L2ERR"] for s in sim_stats]
+            mcH1 = [s["MC-H1ERR"] for s in sim_stats]
+            mcL2_a0 = [s["MC-L2ERR_a0"] for s in sim_stats]
+            mcH1_a0 = [s["MC-H1ERR_a0"] for s in sim_stats]
+            effest = [est / err for est, err in zip(errest, mcH1)]
+            with_mc_data = True
+        except:
+            with_mc_data = False
         mi = [s["MI"] for s in sim_stats]
         num_mi = [len(m) for m in mi]
         time_pcg = [s["TIME-PCG"] for s in sim_stats]
@@ -115,6 +124,8 @@ if options.withFigures and len(sim_stats) > 1:
             for mu, v in rem:
                 projerrmu[mu].append(v)
         print "ERROR ESTIMATOR", errest
+        if with_mc_data:
+            print "efficiency", [est / err for est, err in zip(errest, mcH1)]
             
         # --------
         # figure 1
@@ -127,6 +138,9 @@ if options.withFigures and len(sim_stats) > 1:
         ax.loglog(x, res_part, '-.cx', label='residual', linewidth=1.5)
         ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection', linewidth=1.5)
         ax.loglog(x, pcg_part, '-.b>', label='pcg', linewidth=1.5)
+        if with_mc_data:
+            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+            ax.loglog(x, mcL2, '-ro', label='MC L2 error')
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error (number active multiindices)")
             
@@ -153,7 +167,9 @@ if options.withFigures and len(sim_stats) > 1:
         fig2.suptitle("efficiency residual estimator")
         ax = fig2.add_subplot(111)
         ax.loglog(x, errest, '-g<', label='error estimator')
-        # TODO: MC ERROR and EFFICIENCY
+        if with_mc_data:
+            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
+            ax.loglog(x, effest, '-ro', label='efficiency')        
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error (efficiency)")
         leg = plt.legend(loc='upper right')

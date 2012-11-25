@@ -90,7 +90,7 @@ def run_SFEM(opts, conf):
     logger.info("active indices of w after initialisation: %s", w.active_indices())
 
     sim_stats = None
-    w_history = [w]
+    w_history = []
     if opts.continueSFEM:
         try:
             logger.info("CONTINUIING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
@@ -110,7 +110,9 @@ def run_SFEM(opts, conf):
             logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
         except:
             logger.warn("FAILED LOADING EXPERIMENT %s --- STARTING NEW DATA", CONF_experiment_name)    
-    w0 = w_history[-1]
+        w0 = w_history[-1]
+    else:
+        w0 = w
 
     
     # ============================================================
