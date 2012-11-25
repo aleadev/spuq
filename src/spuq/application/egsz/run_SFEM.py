@@ -108,9 +108,10 @@ def run_SFEM(opts, conf):
             with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
                 sim_stats = pickle.load(fin)
             logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
+            w0 = w_history[-1]
         except:
-            logger.warn("FAILED LOADING EXPERIMENT %s --- STARTING NEW DATA", CONF_experiment_name)    
-        w0 = w_history[-1]
+            logger.warn("FAILED LOADING EXPERIMENT %s --- STARTING NEW DATA", CONF_experiment_name)
+            w0 = w    
     else:
         w0 = w
 
