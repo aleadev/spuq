@@ -233,7 +233,7 @@ if options.withFigures and len(sim_stats) > 1:
         ax.loglog(x, time_inactive_mi, '-c+', label='inactive_mi')
         ax.loglog(x, time_marking, '-ro', label='marking')
         plt.xlabel("overall degrees of freedom")
-        plt.ylabel("time in msec")
+        plt.ylabel("time in seconds")
         leg = plt.legend(loc='lower right')
         ltext = leg.get_texts()  # all the text.Text instance in the legend
         plt.setp(ltext, fontsize='small')    # the legend text fontsize
@@ -261,7 +261,7 @@ if options.withFigures and len(sim_stats) > 1:
         # figure 7
         # --------
         fig7 = plt.figure()
-        fig7.suptitle("inactive multiindex $\zeta$")
+        fig7.suptitle("inactive multiindex $\zeta$ for iteration %s" % str(len(w_history) - 2))
         ax = fig7.add_subplot(111)
         ax.loglog(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
         plt.legend(loc='lower right')
