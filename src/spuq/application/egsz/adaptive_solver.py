@@ -226,12 +226,14 @@ def AdaptiveSolver(A, coeff_field, pde,
             if not do_uniform_refinement:        
                 logger.debug("starting Marking.mark")
                 estimator_data = EstimatorData(xi=xi, gamma=gamma, cQ=cQ, ceta=ceta) 
-                mesh_markers_R, mesh_markers_P, new_multiindices, proj_zeta = Marking.mark(resind, projind, mierr, w.max_order,
+                mesh_markers_R, mesh_markers_P, new_multiindices, proj_zeta, new_multiindices_all = Marking.mark(resind, projind, mierr, w.max_order,
                                                                                 theta_eta, theta_zeta, theta_delta,
                                                                                 min_zeta, maxh, max_Lambda_frac,
                                                                                 estimator_data, marking_strategy)
                 sim_stats[-1]["PROJ-MAX-ZETA"] = proj_zeta[0]
                 sim_stats[-1]["PROJ-MAX-INACTIVE-ZETA"] = proj_zeta[1]
+                sim_stats[-1]["PROJ-INACTIVE-ZETA"] = new_multiindices_all
+#                assert len(new_multiindices_all) == 0 or proj_zeta[1] == max([v for v in new_multiindices_all.values()])
                 logger.info("PROJECTION error values: max_zeta = %s  and  max_inactive_zeta = %s  with threshold factor theta_zeta = %s  (=%s)",
                             proj_zeta[0], proj_zeta[1], theta_zeta, theta_zeta * proj_zeta[0])
                 logger.info("MARKING will be carried out with %s (res) + %s (proj) cells and %s new multiindices",

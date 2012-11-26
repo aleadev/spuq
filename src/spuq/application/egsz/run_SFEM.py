@@ -184,7 +184,8 @@ def run_SFEM(opts, conf):
     if opts.plotEstimator and len(sim_stats) > 1:
         try:
             from matplotlib.pyplot import figure, show, legend
-            x = [s["DOFS"] for s in sim_stats]
+            X = [s["DOFS"] for s in sim_stats]
+            print "DOFS", X
             L2 = [s["L2"] for s in sim_stats]
             H1 = [s["H1"] for s in sim_stats]
             errest = [sqrt(s["EST"]) for s in sim_stats]
@@ -195,6 +196,10 @@ def run_SFEM(opts, conf):
             _projerrmu = [s["PROJ-mu"] for s in sim_stats]
             proj_max_zeta = [s["PROJ-MAX-ZETA"] for s in sim_stats]
             proj_max_inactive_zeta = [s["PROJ-MAX-INACTIVE-ZETA"] for s in sim_stats]
+            try:
+                proj_inactive_zeta = sorted([v for v in sim_stats[-2]["PROJ-INACTIVE-ZETA"].values()], reverse=True)
+            except:
+                proj_inactive_zeta = None
             mi = [s["MI"] for s in sim_stats]
             num_mi = [len(m) for m in mi]
             time_pcg = [s["TIME-PCG"] for s in sim_stats]
@@ -210,6 +215,90 @@ def run_SFEM(opts, conf):
                 for mu, v in pem:
                     projerrmu[mu].append(v)
             print "errest", errest
+    
+            # --------
+            # figure 2
+            # --------
+            fig2 = figure()
+            fig2.suptitle("error estimator")
+            ax = fig2.add_subplot(111)
+            ax.loglog(X, errest, '-g<', label='error estimator')
+            legend(loc='upper right')
+    
+            # --------
+            # figure 3a
+            # --------
+            if opts.plotEstimatorAll:
+                max_mu_plotting = 7
+                fig3 = figure()
+                fig3.suptitle("residual contributions")
+                ax = fig3.add_subplot(111)
+                for i, muv in enumerate(reserrmu.iteritems()):
+                    mu, v = muv
+                    if i < max_mu_plotting:
+                        mu, v = muv
+                        ms = str(mu)
+                        ms = ms[ms.find('=') + 1:-1]
+                        ax.loglog(X[-len(v):], v, '-g<', label=ms)
+                legend(loc='upper right')
+    
+            # --------
+            # figure 3b
+            # --------
+            if opts.plotEstimatorAll:
+                fig3b = figure()
+                fig3b.suptitle("projection contributions")
+                ax = fig3b.add_subplot(111)
+                for i, muv in enumerate(projerrmu.iteritems()):
+                    mu, v = muv
+                    if max(v) > 1e-10 and i < max_mu_plotting:
+                        ms = str(mu)
+                        ms = ms[ms.find('=') + 1:-1]
+                        ax.loglog(X[-len(v):], v, '-g<', label=ms)
+                legend(loc='upper right')
+    
+            # --------
+            # figure 4
+            # --------
+            if opts.plotEstimatorAll:
+                fig4 = figure()
+                fig4.suptitle("projection $\zeta$")
+                ax = fig4.add_subplot(111)
+                ax.loglog(X[1:], proj_max_zeta[1:], '-g<', label='max active $\zeta$')
+                ax.loglog(X[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive $\zeta$')
+                legend(loc='upper right')
+    
+            # --------
+            # figure 5
+            # --------
+            fig5 = figure()
+            fig5.suptitle("timings")
+            ax = fig5.add_subplot(111)
+            ax.loglog(X, time_pcg, '-g<', label='pcg')
+            ax.loglog(X, time_estimator, '-b^', label='estimator')
+            ax.loglog(X, time_inactive_mi, '-c+', label='inactive_mi')
+            ax.loglog(X, time_marking, '-ro', label='marking')
+            legend(loc='upper right')
+                
+            # --------
+            # figure 6
+            # --------
+            if opts.plotEstimatorAll:
+                fig6 = figure()
+                fig6.suptitle("projection error")
+                ax = fig6.add_subplot(111)
+                ax.loglog(X[1:], proj_part[1:], '-.m>', label='projection part')
+                legend(loc='upper right')
+                
+            # --------
+            # figure 7
+            # --------
+            if opts.plotEstimatorAll and proj_inactive_zeta is not None:
+                fig7 = figure()
+                fig7.suptitle("inactive multiindex $\zeta$")
+                ax = fig7.add_subplot(111)
+                ax.loglog(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
+                legend(loc='lower right')
                 
             # --------
             # figure 1
@@ -218,81 +307,11 @@ def run_SFEM(opts, conf):
             fig1.suptitle("residual estimator")
             ax = fig1.add_subplot(111)
             if REFINEMENT["MI"]:
-                ax.loglog(x, num_mi, '--y+', label='active mi')
-            ax.loglog(x, errest, '-g<', label='error estimator')
-            ax.loglog(x, res_part, '-.cx', label='residual part')
-            ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
-            ax.loglog(x, pcg_part, '-.b>', label='pcg part')
-            legend(loc='upper right')
-    
-            # --------
-            # figure 2
-            # --------
-            fig2 = figure()
-            fig2.suptitle("error estimator")
-            ax = fig2.add_subplot(111)
-            ax.loglog(x, errest, '-g<', label='error estimator')
-            legend(loc='upper right')
-    
-            # --------
-            # figure 3a
-            # --------
-            max_mu_plotting = 7
-            fig3 = figure()
-            fig3.suptitle("residual contributions")
-            ax = fig3.add_subplot(111)
-            for i, muv in enumerate(reserrmu.iteritems()):
-                mu, v = muv
-                if i < max_mu_plotting:
-                    mu, v = muv
-                    ms = str(mu)
-                    ms = ms[ms.find('=') + 1:-1]
-                    ax.loglog(x[-len(v):], v, '-g<', label=ms)
-            legend(loc='upper right')
-    
-            # --------
-            # figure 3b
-            # --------
-            fig3b = figure()
-            fig3b.suptitle("projection contributions")
-            ax = fig3b.add_subplot(111)
-            for i, muv in enumerate(projerrmu.iteritems()):
-                mu, v = muv
-                if max(v) > 1e-10 and i < max_mu_plotting:
-                    ms = str(mu)
-                    ms = ms[ms.find('=') + 1:-1]
-                    ax.loglog(x[-len(v):], v, '-g<', label=ms)
-            legend(loc='upper right')
-    
-            # --------
-            # figure 4
-            # --------
-            fig4 = figure()
-            fig4.suptitle("projection zetas")
-            ax = fig4.add_subplot(111)
-            ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max zeta')
-            ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive zeta')
-            legend(loc='upper right')
-    
-            # --------
-            # figure 5
-            # --------
-            fig5 = figure()
-            fig5.suptitle("timings")
-            ax = fig5.add_subplot(111)
-            ax.loglog(x, time_pcg, '-g<', label='pcg')
-            ax.loglog(x, time_estimator, '-b^', label='estimator')
-            ax.loglog(x, time_inactive_mi, '-c+', label='inactive_mi')
-            ax.loglog(x, time_marking, '-ro', label='marking')
-            legend(loc='upper right')
-                
-            # --------
-            # figure 6
-            # --------
-            fig6 = figure()
-            fig6.suptitle("projection error")
-            ax = fig6.add_subplot(111)
-            ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
+                ax.loglog(X, num_mi, '--y+', label='active mi')
+            ax.loglog(X, errest, '-g<', label='error estimator')
+            ax.loglog(X, res_part, '-.cx', label='residual part')
+            ax.loglog(X[1:], proj_part[1:], '-.m>', label='projection part')
+            ax.loglog(X, pcg_part, '-.b>', label='pcg part')
             legend(loc='upper right')
             
             show()  # this invalidates the figure instances...

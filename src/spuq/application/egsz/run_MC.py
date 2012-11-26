@@ -163,7 +163,7 @@ def run_MC(opts, conf):
             pickle.dump(sim_stats, fout)
     
     # plot residuals
-    if opts.plotError and len(sim_stats) > 1:
+    if opts.plotEstimator and len(sim_stats) > 1:
         try:
             from matplotlib.pyplot import figure, show, legend
             x = [s["DOFS"] for s in sim_stats]

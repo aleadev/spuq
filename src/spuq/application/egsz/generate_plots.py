@@ -7,29 +7,6 @@ from math import sqrt
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
-#from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
-#from spuq.application.egsz.multi_operator import MultiOperator, ASSEMBLY_TYPE
-#from spuq.application.egsz.sample_problems import SampleProblem
-#from spuq.application.egsz.sample_domains import SampleDomain
-#from spuq.application.egsz.mc_error_sampling import sample_error_mc
-#from spuq.application.egsz.sampling import compute_parametric_sample_solution, compute_direct_sample_solution, compute_solution_variance
-#from spuq.application.egsz.sampling import get_projection_basis
-#from spuq.math_utils.multiindex import Multiindex
-#from spuq.math_utils.multiindex_set import MultiindexSet
-#from spuq.utils.plot.plotter import Plotter
-#try:
-#    from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
-#                        plot, interactive, set_log_level, set_log_active)
-#    from spuq.fem.fenics.fenics_vector import FEniCSVector
-#    from spuq.application.egsz.egsz_utils import setup_logging, stats_plotter
-#except:
-#    import traceback
-#    print traceback.format_exc()
-#    print "FEniCS has to be available"
-#    os.sys.exit(1)
-
-# ------------------------------------------------------------
-
 # ==================
 # A Parse Arguments
 # ==================
@@ -100,6 +77,10 @@ if options.withFigures and len(sim_stats) > 1:
         _projerrmu = [s["PROJ-mu"] for s in sim_stats]
         proj_max_zeta = [s["PROJ-MAX-ZETA"] for s in sim_stats]
         proj_max_inactive_zeta = [s["PROJ-MAX-INACTIVE-ZETA"] for s in sim_stats]
+        try:
+            proj_inactive_zeta = sorted([v for v in sim_stats[-2]["PROJ-INACTIVE-ZETA"].values()], reverse=True)
+        except:
+            proj_inactive_zeta = None
         try:
             mcL2 = [s["MC-L2ERR"] for s in sim_stats]
             mcH1 = [s["MC-H1ERR"] for s in sim_stats]
@@ -275,6 +256,18 @@ if options.withFigures and len(sim_stats) > 1:
         ax.grid(True)
         fig6.savefig(os.path.join(options.experiment_dir, 'fig6-projection-error.pdf'))
         fig6.savefig(os.path.join(options.experiment_dir, 'fig6-projection-error.png'))
+                
+        # --------
+        # figure 7
+        # --------
+        fig7 = plt.figure()
+        fig7.suptitle("inactive multiindex $\zeta$")
+        ax = fig7.add_subplot(111)
+        ax.loglog(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
+        plt.legend(loc='lower right')
+        ax.grid(True)
+        fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.pdf'))
+        fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.png'))
        
         if options.showFigures:
             plt.show()  # this invalidates the figure instances...

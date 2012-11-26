@@ -97,9 +97,9 @@ class ExperimentStarter(object):
         optparser.add_option('--plotEstimator', '--plot-estimator',
                              action='store_true', default=False, dest='plotEstimator',
                              help='Plot residual error estimator over all iterations.')
-        optparser.add_option('--plotError', '--plot-error',
-                             action='store_true', default=False, dest='plotError',
-                             help='Don\'t know')
+        optparser.add_option('--plotEstimatorAll', '--plot-estimator-all',
+                             action='store_true', default=False, dest='plotEstimatorAll',
+                             help='Plot additional figures.')
         optparser.add_option('--plotMesh', '--plot-mesh',
                              action='store_true', default=False, dest='plotMesh',
                              help='Plot the meshes.')
@@ -117,6 +117,14 @@ class ExperimentStarter(object):
             optparser.error('More than one config file specified (use -h/--help for help)')
         else:
             options.config = args[0]
+
+        # handle some dependencies
+        if options.plotEstimatorAll:
+            options.plotEstimator = True
+        if options.continueSFEM:
+            options.runSFEM = True
+        if options.continueMC:
+            options.runMC = True
 
         from os.path import dirname
         basedir = dirname(options.config)

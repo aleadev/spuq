@@ -83,11 +83,11 @@ class Marking(object):
         mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh, estimator_data, marking_strategy)
         max_inactive_mi_zeta = 0
         if max_zeta >= min_zeta:
-            new_mi, max_inactive_mi_zeta = cls.mark_inactive_multiindices(mierr, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac, estimator_data, marking_strategy)
+            new_mi, max_inactive_mi_zeta, new_mi_all = cls.mark_inactive_multiindices(mierr, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac, estimator_data, marking_strategy)
         else:
-            new_mi = {}
+            new_mi, new_mi_all = {}, {}
             logger.info("SKIPPING search for new multiindices due to very small max_zeta = %s", max_zeta)
-        return mesh_markers_R, mesh_markers_P, new_mi, (max_zeta, max_inactive_mi_zeta)
+        return mesh_markers_R, mesh_markers_P, new_mi, (max_zeta, max_inactive_mi_zeta), new_mi_all
 
 
     @classmethod
@@ -107,7 +107,6 @@ class Marking(object):
         allresind = sorted(allresind, key=itemgetter(0), reverse=True)
         global_res = sum([res[0] for res in allresind])
         logger.info("(mark_residual) global residual is %f, want to mark for %f", global_res, theta_eta * global_res)
-        # TODO: check that indexing and cell ids are consistent (it would be safer to always work with cell indices) 
         # setup marking sets
         mesh_markers = defaultdict(set)
         marked_res = 0.0
@@ -159,9 +158,11 @@ class Marking(object):
         zeta_threshold = theta_delta * max_zeta
         lambdaN = int(ceil(max_Lambda_frac * maxorder_Lambda))                    # max number new multiindices
         # select indices with largest projection error
-        Lambda_selection = sorted(Lambda_candidates, key=itemgetter(1), reverse=True)[:min(len(Lambda_candidates), lambdaN)]
+        Lambda_selection_all = sorted(Lambda_candidates, key=itemgetter(1), reverse=True)
+        Lambda_selection = Lambda_selection_all[:min(len(Lambda_candidates), lambdaN)]
         try:
             lambda_max = Lambda_selection[0][1]
+#            assert lambda_max == max([v for v in Lambda_selection.values()])
         except:
             lambda_max = -1
         # apply threshold criterion
@@ -170,4 +171,4 @@ class Marking(object):
             logger.info("SELECTED NEW MULTIINDICES (zeta_thresh = %s, lambda_max = %s) %s", zeta_threshold, lambda_max, Lambda_selection)
         else:
             logger.info("NO NEW MULTIINDICES SELECTED")
-        return dict(Lambda_selection), lambda_max
+        return dict(Lambda_selection), lambda_max, dict(Lambda_selection_all)
