@@ -10,3 +10,4 @@ doc/build
 MESH*
 EST*
 *.orig
+*-save.conf
