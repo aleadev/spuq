@@ -34,8 +34,8 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
     err_L2, err_H1 = 0, 0
 
     # setup caches for sample solutions
-    param_sol_cache = None #param_sol_cache or MCCache()
-    direct_sol_cache = None #direct_sol_cache or MCCache()
+#    param_sol_cache = None #param_sol_cache or MCCache()
+#    direct_sol_cache = None #direct_sol_cache or MCCache()
     logger.info("---- MC caches %s/%s ----", param_sol_cache, direct_sol_cache)
     for i in range(MC_N):
         logger.info("---- MC Iteration %i/%i ----", i + 1 , MC_N)

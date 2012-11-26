@@ -6,6 +6,7 @@ import os
 from math import sqrt
 from collections import defaultdict
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 # ==================
 # A Parse Arguments
@@ -33,6 +34,10 @@ optparser.add_option('--withMI', '--with-mi',
                      action='store_true', default=False, dest='withMI',
                      help='export multiindex statistics')
 
+optparser.add_option('--noTitles', '--no-titles',
+                     action='store_false', default=True, dest='withTitles',
+                     help='set titles on graphs')
+
 options, args = optparser.parse_args()
 if len(args) < 1:
     optparser.error('No experiment directory specified (use -h/--help for help)')
@@ -58,6 +63,7 @@ print "loading statistics from %s" % os.path.join(options.experiment_dir, 'SIM-S
 with open(os.path.join(options.experiment_dir, 'SIM-STATS.pkl'), 'rb') as fin:
     sim_stats = pickle.load(fin)
 print "sim_stats has %s iterations" % len(sim_stats)
+itnr = options.iteration_level if options.iteration_level > 0 else len(w_history) + options.iteration_level
 
 
 # ==================
@@ -112,7 +118,8 @@ if options.withFigures and len(sim_stats) > 1:
         # figure 1
         # --------
         fig1 = plt.figure()
-        fig1.suptitle("residual estimator")
+        if options.withTitles:
+            fig1.suptitle("residual estimator")
         ax = fig1.add_subplot(111)
         ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
         ax.loglog(x, errest, '-g<', label='estimator', linewidth=1.5)
@@ -123,7 +130,7 @@ if options.withFigures and len(sim_stats) > 1:
             ax.loglog(x, mcH1, '-b^', label='MC H1 error')
             ax.loglog(x, mcL2, '-ro', label='MC L2 error')
         plt.xlabel("overall degrees of freedom")
-        plt.ylabel("energy error (number active multiindices)")
+        plt.ylabel("energy error (number active multi-indices)")
             
 #        t = np.arange(1, num_mi[-1] * 2, 1)
 #        ax2 = ax.twinx()
@@ -145,7 +152,8 @@ if options.withFigures and len(sim_stats) > 1:
         # figure 2
         # --------
         fig2 = plt.figure()
-        fig2.suptitle("efficiency residual estimator")
+        if options.withTitles:
+            fig2.suptitle("efficiency residual estimator")
         ax = fig2.add_subplot(111)
         ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
         ax.loglog(x, errest, '-g<', label='error estimator', linewidth=1.5)
@@ -166,7 +174,8 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         max_plot_mu = 6
         fig3 = plt.figure()
-        fig3.suptitle("residual contributions of multiindices")
+        if options.withTitles:
+            fig3.suptitle("residual contributions of multi-indices")
         ax = fig3.add_subplot(111)
         for i, muv in enumerate(reserrmu.iteritems()):
             if i < max_plot_mu:
@@ -208,7 +217,8 @@ if options.withFigures and len(sim_stats) > 1:
         # figure 4
         # --------
         fig4 = plt.figure()
-        fig4.suptitle("projection $\zeta$")
+        if options.withTitles:
+            fig4.suptitle("projection $\zeta$")
         ax = fig4.add_subplot(111)
         ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max zeta')
         ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive zeta')
@@ -225,7 +235,8 @@ if options.withFigures and len(sim_stats) > 1:
         # figure 5
         # --------
         fig5 = plt.figure()
-        fig5.suptitle("timings")
+        if options.withTitles:
+            fig5.suptitle("timings")
 #        ax = fig5.add_subplot(111, aspect='equal')
         ax = fig5.add_subplot(111)
         ax.loglog(x, time_pcg, '-g<', label='pcg')
@@ -245,7 +256,8 @@ if options.withFigures and len(sim_stats) > 1:
         # figure 6
         # --------
         fig6 = plt.figure()
-        fig6.suptitle("projection error")
+        if options.withTitles:
+            fig6.suptitle("projection error")
         ax = fig6.add_subplot(111)
         ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
         plt.xlabel("overall degrees of freedom")
@@ -261,13 +273,46 @@ if options.withFigures and len(sim_stats) > 1:
         # figure 7
         # --------
         fig7 = plt.figure()
-        fig7.suptitle("inactive multiindex $\zeta$ for iteration %s" % str(len(w_history) - 2))
+        if options.withTitles:
+            fig7.suptitle("inactive multi-index $\zeta$ for iteration %s" % str(len(w_history) - 2))
         ax = fig7.add_subplot(111)
         ax.loglog(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
         plt.legend(loc='lower right')
         ax.grid(True)
         fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.pdf'))
         fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.png'))
+                
+        # --------
+        # figure 8
+        # --------
+        w = w_history[options.iteration_level]
+        N = len(w.active_indices())
+        fig8 = plt.figure(figsize=(8, N / 2 + 1))
+        plt.plot([0, 0], 'r')
+        plt.grid(False)
+        plt.axis([0, 3, 0, (N + 1) / 2])
+        fig8.suptitle("active multi-indices and dofs (%s MI for iteration %s, dim = %s)" % (str(len(w.active_indices())), str(itnr), str(sum(w.dim.values()))))
+        ax = fig8.add_subplot(111)
+        for i, mu in enumerate(w.active_indices()):
+            ms = str(mu)
+            ms = ms[ms.find('=') + 1:-1]
+            ms = '{:<40}'.format(ms) + str(w[mu].dim)
+            plt.text(0.5, (1 + i) / 2, ms, fontsize=12)
+        fig8.savefig(os.path.join(options.experiment_dir, 'fig8-active-mi.pdf'))
+        fig8.savefig(os.path.join(options.experiment_dir, 'fig8-active-mi.png'))
+
+        # save single pdf
+        pp = PdfPages(os.path.join(options.experiment_dir, 'all-figures.pdf'))
+        pp.savefig(fig1)
+        pp.savefig(fig2)
+        pp.savefig(fig3)
+        pp.savefig(fig3b)
+        pp.savefig(fig4)
+        pp.savefig(fig5)
+        pp.savefig(fig6)
+        pp.savefig(fig7)
+        pp.savefig(fig8)
+        pp.close()
        
         if options.showFigures:
             plt.show()  # this invalidates the figure instances...
@@ -282,11 +327,10 @@ if options.withFigures and len(sim_stats) > 1:
 # ==================
 if options.withMesh:
     from matplotlib import collections
-    print "generating meshes for iteration", options.iteration_level
+    print "generating meshes for iteration", itnr
     w = w_history[options.iteration_level]
     for mu in w.active_indices():
         print "\t", mu
-        itnr = options.iteration_level if options.iteration_level > 0 else len(w_history) + options.iteration_level
         mustr = str(mu).replace(' ', '')
         mustr = mustr[mustr.find("[") + 1: mustr.find("]")]
         fig1 = plt.figure()
@@ -322,13 +366,13 @@ if options.withMesh:
 # ==================
 # E Generate MI DATA
 # ==================
-print "generating multiindex data for iteration", options.iteration_level
+print "generating multi-index data for iteration", options.iteration_level
 w = w_history[options.iteration_level]
 print w.dim
 if options.withMI:
     level = options.iteration_level if options.iteration_level >= 0 else len(w_history) - 1 
-    print "# multiindices and dimensions for '" + options.experiment_dir + "' at iteration " + str(level)
-    with file(os.path.join(options.experiment_dir, 'MI.txt'), 'w') as f:
+    print "# multi-indices and dimensions for '" + options.experiment_dir + "' at iteration " + str(level)
+    with file(os.path.join(options.experiment_dir, 'MI-%i.txt' % itnr), 'w') as f:
         dofs = 0
         for mu in w.active_indices():
             ms = str(mu)
@@ -337,7 +381,7 @@ if options.withMI:
             dofs += w[mu].dim
             print mis
             f.write(mis + "\n")
-        f.write("overall dofs = %i and %i active multiindices" % (dofs, len(w.active_indices())))
+        f.write("overall dofs = %i and %i active multi-indices for iteration %i\n" % (dofs, len(w.active_indices()), itnr))
     print "overall dofs =", dofs
 
 # ==========================
