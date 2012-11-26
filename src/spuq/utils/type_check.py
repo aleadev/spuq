@@ -187,13 +187,28 @@ def method_name(m):
 
 ################################################################################
 
+from abc import ABCMeta, abstractmethod
+
 class Checker(object):
+    __metaclass__ = ABCMeta
 
     def __init__(self, reference):
         self.reference = reference
 
+    @abstractmethod
     def check(self, value): # abstract
         pass
+
+    @abstractmethod
+    def __str__(self):
+        return "Checker(%s)" % str(self.reference)
+
+    def format_arg(self, arg, verbose=False):
+        if not verbose:
+            return "%s" % type(arg)
+        else:
+            return "%s (%r)" % (type(arg), arg)
+            
 
     _registered = [] # a list of registered descendant class factories
 
@@ -204,6 +219,13 @@ class Checker(object):
                 return t(value)
         else:
             return None
+
+class ValueChecker(Checker):
+    def format_arg(self, arg, verbose=False):
+        if not verbose:
+            return "%r" % arg
+        else:
+            return "%r (%s)" % (arg, type(arg))
 
 ################################################################################
 
@@ -228,7 +250,7 @@ class StrChecker(Checker):
         return self.reference in value_base_names or "instance" in value_base_names
 
     def __str__(self):
-        return "%s" % str(self.reference)
+        return "<type '%s'>" % str(self.reference)
 
 Checker._registered.append((lambda x: isinstance(x, str), StrChecker))
 
@@ -241,6 +263,10 @@ class TupleChecker(Checker):
 
     def check(self, value):
         return reduce(lambda r, c: r or c.check(value), self.reference, False)
+
+    def __str__(self):
+        return "(" + ", ".join(str(r) for r in self.reference) + ")"
+        
 
 Checker._registered.append((lambda x: isinstance(x, tuple) and not
                                       filter(lambda y: Checker.create(y) is None,
@@ -262,6 +288,9 @@ class CallableChecker(Checker):
     def check(self, value):
         return self.reference(value)
 
+    def __str__(self):
+        return "callable" + str(self.reference)
+
 # note that the callable check is the most relaxed of all, therefore it should
 # be registered last, after all the more specific cases have been registered
 
@@ -271,10 +300,13 @@ anything = lambda * args: True
 
 ################################################################################
 
-class ListOfChecker(Checker):
-
+class ListOfCheckerMarker(object):
     def __init__(self, reference):
         self.reference = Checker.create(reference)
+
+class ListOfChecker(Checker):
+    def __init__(self, marker):
+        self.reference = marker.reference
 
     def check(self, value):
         return isinstance(value, list) and \
@@ -283,14 +315,18 @@ class ListOfChecker(Checker):
     def __str__(self):
         return "list_of(%s)" % str(self.reference)
 
-list_of = lambda * args: ListOfChecker(*args).check
+list_of = lambda * args: ListOfCheckerMarker(*args)
+Checker._registered.append((lambda x: isinstance(x, ListOfCheckerMarker), ListOfChecker))
 
 ################################################################################
 
-class TupleOfChecker(Checker):
-
+class TupleOfCheckerMarker(object):
     def __init__(self, reference):
         self.reference = Checker.create(reference)
+
+class TupleOfChecker(Checker):
+    def __init__(self, marker):
+        self.reference = marker.reference
 
     def check(self, value):
         return isinstance(value, tuple) and \
@@ -299,14 +335,18 @@ class TupleOfChecker(Checker):
     def __str__(self):
         return "tuple_of(%s)" % str(self.reference)
 
-tuple_of = lambda * args: TupleOfChecker(*args).check
+tuple_of = lambda *args: TupleOfCheckerMarker(*args)
+Checker._registered.append((lambda x: isinstance(x, TupleOfCheckerMarker), TupleOfChecker))
 
 ################################################################################
 
-class SetOfChecker(Checker):
-
+class SetOfCheckerMarker(object):
     def __init__(self, reference):
         self.reference = Checker.create(reference)
+
+class SetOfChecker(Checker):
+    def __init__(self, marker):
+        self.reference = marker.reference
 
     def check(self, value):
         return isinstance(value, set) and \
@@ -315,14 +355,18 @@ class SetOfChecker(Checker):
     def __str__(self):
         return "set_of(%s)" % str(self.reference)
 
-set_of = lambda * args: SetOfChecker(*args).check
+set_of = lambda * args: SetOfCheckerMarker(*args)
+Checker._registered.append((lambda x: isinstance(x, SetOfCheckerMarker), SetOfChecker))
 
 ################################################################################
 
-class SequenceOfChecker(Checker):
-
+class SequenceOfCheckerMarker(object):
     def __init__(self, reference):
         self.reference = Checker.create(reference)
+
+class SequenceOfChecker(Checker):
+    def __init__(self, marker):
+        self.reference = marker.reference
 
     def check(self, value):
         return isinstance(value, collections.Sequence) and \
@@ -332,16 +376,21 @@ class SequenceOfChecker(Checker):
         return "sequence_of(%s)" % str(self.reference)
         
 
-sequence_of = lambda * args: SequenceOfChecker(*args).check
+sequence_of = lambda * args: SequenceOfCheckerMarker(*args)
+Checker._registered.append((lambda x: isinstance(x, SequenceOfCheckerMarker), SequenceOfChecker))
 
 
 ################################################################################
 
-class DictOfChecker(Checker):
-
+class DictOfCheckerMarker(object):
     def __init__(self, key_reference, value_reference):
         self.key_reference = Checker.create(key_reference)
         self.value_reference = Checker.create(value_reference)
+
+class DictOfChecker(Checker):
+    def __init__(self, marker):
+        self.key_reference = marker.key_reference
+        self.value_reference = marker.value_reference
 
     def check(self, value):
         return isinstance(value, dict) and \
@@ -351,29 +400,39 @@ class DictOfChecker(Checker):
     def __str__(self):
         return "dict_of(%s:%s)" % (str(self.key_reference), str(self.value_reference))
 
-dict_of = lambda * args: DictOfChecker(*args).check
+dict_of = lambda * args: DictOfCheckerMarker(*args)
+Checker._registered.append((lambda x: isinstance(x, DictOfCheckerMarker), DictOfChecker))
 
 ################################################################################
 
-class RegexChecker(Checker):
-
+class RegexCheckerMarker(object):
     def __init__(self, reference):
-        self.reference = regex(reference)
+        self.reference = reference
+
+class RegexChecker(ValueChecker):
+    def __init__(self, marker):
+        self.reference = regex(marker.reference)
+        self.refstr = marker.reference
 
     def check(self, value):
         return isinstance(value, basestring) and self.reference.match(value)
 
     def __str__(self):
-        return "by_regex(%s)" % str(self.reference)
+        return "by_regex(%s)" % str(self.refstr)
 
-by_regex = lambda * args: RegexChecker(*args).check
+by_regex = lambda * args: RegexCheckerMarker(*args)
+Checker._registered.append((lambda x: isinstance(x, RegexCheckerMarker), RegexChecker))
+
 
 ################################################################################
 
-class AttrChecker(Checker):
-
+class AttrCheckerMarker(object):
     def __init__(self, *attrs):
         self.attrs = attrs
+
+class AttrChecker(Checker):
+    def __init__(self, marker):
+        self.attrs = marker.attrs
 
     def check(self, value):
         return reduce(lambda r, c: r and c, map(lambda a: hasattr(value, a), self.attrs), True)
@@ -382,26 +441,37 @@ class AttrChecker(Checker):
         return "with_attr(%s)" % str(self.attrs)
 
 
-with_attr = lambda * args: AttrChecker(*args).check
+with_attr = lambda * args: AttrCheckerMarker(*args)
+Checker._registered.append((lambda x: isinstance(x, AttrCheckerMarker), AttrChecker))
 
 ################################################################################
 
-class OneOfChecker(Checker):
-
+class OneOfCheckerMarker(object):
     def __init__(self, *values):
         self.values = values
+
+class OneOfChecker(ValueChecker):
+    def __init__(self, marker):
+        self.values = marker.values
 
     def check(self, value):
         return value in self.values
 
     def __str__(self):
-        return "one_of(%s)" % str(self.values)
+        return "one_of%s" % str(self.values)
 
-one_of = lambda * args: OneOfChecker(*args).check
+one_of = lambda * args: OneOfCheckerMarker(*args)
+Checker._registered.append((lambda x: isinstance(x, OneOfCheckerMarker), OneOfChecker))
+
 
 ################################################################################
-
 def takes(*args, **kwargs):
+    return _takes(False, *args, **kwargs)
+
+def takes_verbose(*args, **kwargs):
+    return _takes(True, *args, **kwargs)
+
+def _takes(verbose, *args, **kwargs):
     "Method signature checking decorator"
     global decorated
     decorated = True
@@ -435,7 +505,7 @@ def takes(*args, **kwargs):
 
             method_args, method_defaults = getargspec(method)[0::3]
 
-            def takes_invocation_proxy(*args, **kwargs):
+            def parameter_type_checker(*args, **kwargs):
 
                 # append the default parameters
 
@@ -444,27 +514,22 @@ def takes(*args, **kwargs):
                     args += method_defaults[len(args) - len(method_args):]
 
                 # check the types of the actual call parameters
+                def format_msg(method, param, arg, checker):
+                    return "%s() got invalid parameter %s of %s instead of %s" % (
+                        method_name(method), param, checker.format_arg(arg, verbose), str(checker))                    
 
                 for i, (arg, checker) in enumerate(zip(args, checkers)):
                     if not checker.check(arg):
-                        raise InputParameterError("%s() got invalid parameter "
-                                                  "%d of type %s "
-                                                  "instead of type %s" % 
-                                                  (method_name(method), i + 1,
-                                                   type(arg), str(checker)))
+                        raise InputParameterError(format_msg(method, i + 1, arg, checker))
 
                 for kwname, checker in kwcheckers.iteritems():
                     if not checker.check(kwargs.get(kwname, None)):
-                        raise InputParameterError("%s() got invalid parameter "
-                                                  "%d of type %s "
-                                                  "instead of type %s" % 
-                                                  (method_name(method), kwname,
-                                                   type(kwargs.get(kwname, None)), str(checker)))
+                        raise InputParameterError(format_msg(method, kwname, kwargs.get(kwname, None), checker))
 
                 return method(*args, **kwargs)
 
-            takes_invocation_proxy.__name__ = method.__name__
-            return takes_invocation_proxy
+            parameter_type_checker.__name__ = method.__name__
+            return parameter_type_checker
 
     return takes_proxy
 
@@ -494,20 +559,20 @@ def returns(sometype):
 
         def returns_proxy(method):
 
-            def returns_invocation_proxy(*args, **kwargs):
+            def return_type_checker(*args, **kwargs):
 
                 result = method(*args, **kwargs)
 
                 if not checker.check(result):
                     raise ReturnValueError("%s() has returned an invalid "
-                                           "value %d of type %s "
-                                           "instead of type %s" % 
-                                           (method_name(method), result, type(result), str(checker)))
+                                           "value %d of %s "
+                                           "instead of %s" % 
+                                           (method_name(method), result, checker.format_arg(result), str(checker)))
                 
                 return result
 
-            returns_invocation_proxy.__name__ = method.__name__
-            return returns_invocation_proxy
+            return_type_checker.__name__ = method.__name__
+            return return_type_checker
 
     return returns_proxy
 
