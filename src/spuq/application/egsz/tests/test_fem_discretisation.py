@@ -100,13 +100,26 @@ def test_poisson_construct():
     u = dolfin.TrialFunction(V)
 
     basis = FEniCSBasis(V)
-    pde.assemble_rhs(a, basis)
-    pde.assemble_lhs(a, basis)
-    pde.assemble_operator(a, basis)
+    pde.assemble_rhs(basis)
+    pde.assemble_lhs(basis)
+    pde.assemble_operator(basis)
 
 
 def test_navierlame_construct():
-    pde = fem.FEMNavierLame(2400, 400)
+    lmbda = dolfin.Constant(2400)
+    mu = dolfin.Constant(400)
+    pde = fem.FEMNavierLame(lmbda, mu)
+
+    N = 25
+    mesh = UnitSquare(N, N)
+    V = pde.weak_form.function_space(mesh, 1)
+    u = dolfin.TrialFunction(V)
+
+    coeff = (lmbda, mu)
+    basis = FEniCSBasis(V)
+    pde.assemble_rhs(basis, coeff)
+    pde.assemble_lhs(basis, coeff)
+    pde.assemble_operator(basis, coeff)
 
 
 logging.getLogger("spuq").setLevel(logging.WARNING)

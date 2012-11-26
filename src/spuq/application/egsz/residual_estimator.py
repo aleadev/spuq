@@ -112,9 +112,9 @@ class ResidualEstimator(object):
         logger.debug("residual quadrature order = " + str(quadrature_degree))
     
         # get pde residual terms
-        r_T = pde.r_T
-        r_E = pde.r_E
-        r_Nb = pde.r_Nb
+        r_T = pde.volume_residual
+        r_E = pde.edge_residual
+        r_Nb = pde.neumann_residual
         
         # get mean field of coefficient
         a0_f = coeff_field.mean_func
@@ -327,7 +327,7 @@ class ResidualEstimator(object):
 #            pe = weighted_H1_norm(a0_f, error1, local)  # TODO: this should be the energy error!
 #            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
-                energynorm = pde.get_norm(mesh=error1._fefunc.function_space().mesh())
+                energynorm = pde.get_energy_norm(mesh=error1._fefunc.function_space().mesh())
                 pe = energynorm(error1._fefunc)
                 pe = np.array([e ** 2 for e in pe])     # square norms
                 pe = sum_up(pe)                         # summation for cells according to reference mesh refinement
@@ -341,7 +341,7 @@ class ResidualEstimator(object):
 #                logger.warn("[A] summed local projection errors: %s = %s \t weights: %s = %s", sqrt(sum([e ** 2 for e in pe])), sqrt(sum([e2 ** 2 for e2 in pe2])), a0_f((0, 0)), pde._a0((0, 0)))
 #                # ---DEBUG
             else:
-                pe = pde.norm(error1._fefunc)
+                pe = pde.energy_norm(error1._fefunc)
                 logger.debug("global projection error: %s", pe)
             zeta1 = beta[1] * pe
         else:
@@ -379,7 +379,7 @@ class ResidualEstimator(object):
 #            pe = weighted_H1_norm(a0_f, error2, local)  # TODO: this should be the energy error!
 #            pe = sum_up(pe)     # summation for cells according to reference mesh refinement
             if local:
-                energynorm = pde.get_norm(mesh=error2._fefunc.function_space().mesh())
+                energynorm = pde.get_energy_norm(mesh=error2._fefunc.function_space().mesh())
                 pe = energynorm(error2._fefunc)
                 pe = np.array([e ** 2 for e in pe])     # square norms
                 pe = sum_up(pe)                         # summation for cells according to reference mesh refinement
@@ -396,7 +396,7 @@ class ResidualEstimator(object):
 #                logger.warn("[B] summed local projection errors: %s = %s \t weights: %s = %s", sqrt(sum([e ** 2 for e in pe])), sqrt(sum([e2 ** 2 for e2 in pe2])), a0_f((0, 0)), pde._a0((0, 0)))
 #                # ---DEBUG                
             else:
-                pe = pde.norm(error2._fefunc)
+                pe = pde.energy_norm(error2._fefunc)
                 logger.debug("global projection error: %s", pe)
             zeta2 = beta[-1] * pe
         else:
@@ -439,7 +439,7 @@ class ResidualEstimator(object):
             return ainfty
         
         # determine possible new indices
-        energynorm = pde.norm
+        energynorm = pde.energy_norm
         Lambda_candidates = {}
         Lambda = w.active_indices()
         M = min(w.max_order + add_maxm, len(coeff_field))

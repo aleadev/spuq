@@ -4,10 +4,11 @@ from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSp
 import dolfin
 
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
+from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.fem.fenics.fenics_operator import FEniCSOperator, FEniCSSolveOperator
 from spuq.fem.fenics.fenics_utils import get_dirichlet_mask, set_dirichlet_bc_entries
 #from spuq.fem.fem_discretisation import FEMDiscretisation
-from spuq.utils.type_check import takes, anything, optional, returns
+from spuq.utils.type_check import takes, anything, optional, returns, tuple_of, takes_verbose, sequence_of
 
 import numpy as np
 import collections
@@ -15,8 +16,15 @@ from abc import ABCMeta, abstractmethod
 
 default_Dirichlet_boundary = lambda x, on_boundary: on_boundary
 
-CoefficientFunction = (dolfin.Expression, dolfin.GenericFunction)
+CoefficientFunction = (dolfin.Expression, dolfin.GenericFunction, tuple_of((dolfin.Expression, dolfin.GenericFunction, float, int)))
 FormFunction = (dolfin.Argument, dolfin.Function)
+LoadingFunction = (dolfin.Coefficient)
+BoundaryType = (anything)
+BoundaryFunction = (dolfin.Coefficient)
+
+###################################################
+# Helper functions
+###################################################
 
 @takes(anything, optional(int))
 def make_list(x, length=None):
@@ -42,199 +50,14 @@ def element_degree(u):
     """Returns true if u has an ufl_element and at least element degree 2"""
     return u.function_space().ufl_element().degree()
 
-
-class FEMDiscretisation(object):
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def assemble_operator(self, coeff, basis, withDirichletBC=True):
-        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def assemble_solve_operator(self, coeff, basis, withDirichletBC=True):
-        """Assemble the discrete problem and return a SolveOperator."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def assemble_operator_inner_dofs(self, coeff, basis):
-        """Assemble the discrete problem and return as Operator
-        (projected on the inner DOFs, i.e. all Dirichlet BC entries set to zero)."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def assemble_rhs(self, coeff, basis, withDirichletBC=True, withNeumannBC=True, f=None):
-        """Assemble the discrete right-hand side."""
-        raise NotImplementedError
+def get_default(x, default_x):
+    """Returns the first parameter if not None, otherwise the second."""
+    return x if x is not None else default_x
 
 
-class FEMDiscretisationBase(FEMDiscretisation):
-    def __init__(self, weak_form, coeff, f,
-                 dirichlet_boundary, uD,
-                 neumann_boundary, g):
-        self.weak_form = weak_form
-        self.coeff = coeff
-        self.f = f
-        self.dirichlet_boundary = dirichlet_boundary
-        self.uD = uD
-        self.neumann_boundary = neumann_boundary
-        self.g = g
-
-    @takes(anything, dolfin.Mesh, int)
-    def function_space(self, mesh, degree=1):
-        """Return the FunctionSpace V used from the weak form"""
-        return self.weak_form.function_space(mesh, degree)
-        
-
-    @takes(anything, CoefficientFunction, FEniCSBasis, optional(bool))
-    def assemble_lhs(self, coeff, basis, withDirichletBC=True):
-        """Assemble the discrete problem (i.e. the stiffness matrix)."""
-        # get FEniCS function space
-        V = basis._fefs
-
-        a = self.weak_form.bilinear_form(V, coeff)
-        L = self.weak_form.loading_linear_form(V, self.f)
-        bcs = []
-        if withDirichletBC:
-            bcs = self.create_dirichlet_bcs(V, self.uD, self.dirichlet_boundary)
-        A, _ = assemble_system(a, L, bcs)
-        return A
-
-    @takes(anything, CoefficientFunction, FEniCSBasis, optional(bool), optional(bool), optional(FormFunction))
-    def assemble_rhs(self, coeff, basis, withDirichletBC=True, withNeumannBC=True, f=None):
-        """Assemble the discrete right-hand side."""
-        f = f or self.f
-        Dirichlet_boundary = self.dirichlet_boundary
-        uD = self.uD
-
-        # get FEniCS function space
-        V = basis._fefs
-        a = self.weak_form.bilinear_form(V, coeff)
-        L = self.weak_form.loading_linear_form(V, self.f)
-
-        # treat Neumann boundary
-        if withNeumannBC and self.neumann_boundary is not None:
-            g, ds = self._prepare_neumann(self.neumann_boundary, self.g, V.mesh())
-
-            for gj, dsj in zip(g, ds):
-                L += dot(gj, v) * dsj
-
-        # treat Dirichlet boundary
-        bcs = []
-        if withDirichletBC:
-            bcs = self.create_dirichlet_bcs(V, self.uD, self.dirichlet_boundary)
-
-        # assemble linear form
-        _, F = assemble_system(a, L, bcs)
-        return F
-
-    def assemble_operator(self, coeff, basis, withDirichletBC=True):
-        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
-        matrix = self.assemble_lhs(coeff, basis, withDirichletBC=withDirichletBC)
-        return FEniCSOperator(matrix, basis)
-
-    def assemble_solve_operator(self, coeff, basis, withDirichletBC=True):
-        matrix = self.assemble_lhs(coeff, basis, withDirichletBC=withDirichletBC)
-        return FEniCSSolveOperator(matrix, basis)
-
-    def assemble_operator_inner_dofs(self, coeff, basis):
-        """Assemble the discrete problem and return as Operator
-        (projected on the inner DOFs, i.e. all Dirichlet BC entries set to zero)."""
-        matrix = self.assemble_lhs(coeff, basis)
-        bcs = self.create_dirichlet_bcs(basis, self.uD, self.dirichlet_boundary)
-        mask = get_dirichlet_mask(matrix, bcs)
-        return FEniCSOperator(matrix, basis, mask)
-
-    def set_dirichlet_bc_entries(self, u, homogeneous=False):
-        bcs = self.create_dirichlet_bcs(u.basis, self.uD, self.dirichlet_boundary)
-        set_dirichlet_bc_entries(u.coeffs, bcs, homogeneous)
-
-    def create_dirichlet_bcs(self, V, uD=None, boundary=None):
-        """Create list of FEniCS boundary condition objects."""
-        if uD is None:
-            uD = self.uD
-            if self.dirichlet_boundary is not None:
-                boundary = self.dirichlet_boundary
-        try:
-            V = V._fefs
-        except:
-            pass
-        
-        boundary = make_list(boundary)
-        uD = make_list(uD, len(boundary))
-        
-        bcs = [DirichletBC(V, cuD, cDb) for cuD, cDb in zip(uD, boundary)]
-        return bcs
-
-    def apply_dirichlet_bc(self, V, A=None, b=None, uD=None, Dirichlet_boundary=default_Dirichlet_boundary):
-        """Apply Dirichlet boundary conditions."""
-        bcs = self.create_dirichlet_bcs(V, uD, Dirichlet_boundary)
-        val = []
-        if not A is None:
-            for bc in bcs:
-                bc.apply(A)
-            val.append(A)
-        if not b is None:
-            for bc in bcs:
-                bc.apply(b)
-            val.append(b)
-        if len(val) == 1:
-            val = val[0]
-        return val
-
-    def volume_residual(self, u, coeff):
-        """Volume residual r_T."""
-        return self.weak_form.flux_derivative(u, coeff)
-
-    def edge_residual(self, coeff, v, nu):
-        """Edge residual r_E."""
-        return dot(self.weak_form.flux(v, coeff), nu)
-
-    @staticmethod
-    def _prepare_neumann(self, boundaries, g, mesh):
-        boundaries = make_list(boundaries)
-        g = make_list(g, len(boundaries))
-
-        parts = FacetFunction("sizet", mesh, 0)
-        for j, bnd_domain in enumerate(boundaries):
-            bnd_domain.mark(parts, j + 1)
-        ds = Measure("ds")[parts]
-        return g, ds
-
-    def neumann_residual(self, coeff, v, nu, mesh, homogeneous=False):
-        """Neumann boundary residual."""
-        form = []
-        boundaries = self.neumann_boundary
-        g = self.g
-        if boundaries is not None:
-            if homogeneous:
-                g = zero_function(v.function_space())
-
-            g, ds = self.prepare_neumann(boundaries, g, mesh)
-            for gj, dsj in zip(g, ds):
-                Nbres = gj - dot(self.weak_form.flux(v, coeff), nu)
-                form.append((inner(Nbres, Nbres), dsj))
-        return form
-
-
-class FEMPoisson(FEMDiscretisationBase):
-    def __init__(self, a0=Constant(1.0), f=Constant(1.0), 
-                 dirichlet_boundary=default_Dirichlet_boundary, uD=Constant(0.0),
-                 neumann_boundary=None, g=None):
-        super(FEMPoisson, self).__init__(PoissonWeakForm(), a0, f, 
-                                         dirichlet_boundary, uD,
-                                         neumann_boundary, g)
-
-
-class FEMNavierLame(FEMDiscretisationBase):
-    def __init__(self, mu, lmbda, f=Constant(1.0),
-                 dirichlet_boundary=default_Dirichlet_boundary, uD=None,
-                 neumann_boundary=None, g=None):
-        super(FEMNavierLame, self).__init__(NavierLameWeakForm(), (mu, lmbda), f, 
-                                            dirichlet_boundary, uD,
-                                            neumann_boundary, g)
-        
-
+###################################################
+# Weak Forms
+###################################################
 
 class WeakForm(object):
     """Base class for WeakForms, that can be assembled into a discrete
@@ -253,11 +76,34 @@ class WeakForm(object):
         """Return the bilinear a(u,v) form for the operator"""
         raise NotImplementedError
 
-    @abstractmethod
-    @takes(anything, dolfin.FunctionSpaceBase, FormFunction)
+    @takes(anything, dolfin.FunctionSpaceBase, CoefficientFunction)
     def loading_linear_form(self, V, f):
         """Return the linear form L(v) for the loading"""
-        raise NotImplementedError
+        v = dolfin.TrialFunction(V)
+        return inner(f, v) * dx
+
+    @takes(anything, dolfin.FunctionSpaceBase, collections.Sequence, collections.Sequence)
+    def neumann_linear_form(self, V, neumann_boundary, g, L=None):
+        """Return or add up the linear form L(v) coming from the Neumann boundary"""
+        g, ds = self.neumann_form_list(neumann_boundary, g, V.mesh())
+        v = dolfin.TrialFunction(V)
+        for j, gj in enumerate(g):
+            if L is None:
+                L = dot(gj, v) * ds(j)
+            else:
+                L += dot(gj, v) * ds(j)
+        return L
+
+    def neumann_form_list(self, boundaries, g, mesh):
+        boundaries = make_list(boundaries)
+        g = make_list(g, len(boundaries))
+        
+        # TODO: this needs desparately an explanation
+        parts = FacetFunction("sizet", mesh, 0)
+        for j, bnd_domain in enumerate(boundaries):
+            bnd_domain.mark(parts, j + 1)
+        ds = Measure("ds")[parts]
+        return g, ds
 
 
 class EllipticWeakForm(WeakForm):
@@ -287,12 +133,6 @@ class EllipticWeakForm(WeakForm):
     def flux_derivative(self, u, coeff):
         """First derivative of flux (Dsigma(u))."""
         raise NotImplementedError
-
-    @takes(anything, dolfin.FunctionSpaceBase, CoefficientFunction)
-    def loading_linear_form(self, V, f):
-        """Return the linear form L(v) for the loading"""
-        v = dolfin.TrialFunction(V)
-        return inner(f, v) * dx
 
 
 class PoissonWeakForm(EllipticWeakForm):
@@ -338,7 +178,7 @@ class NavierLameWeakForm(EllipticWeakForm):
         lmbda, mu = coeff
         Du = self.differential_op(u)
         I = Identity(u.cell().d)
-        return 2.0 * mu * Du + lmbda * tr(Du)
+        return 2.0 * mu * Du + lmbda * tr(Du) * I
 
     @takes(anything, FormFunction, CoefficientFunction)
     def flux_derivative(self, u, coeff):
@@ -350,3 +190,220 @@ class NavierLameWeakForm(EllipticWeakForm):
         if element_degree(u)>=2:
             Dsigma += lmbda * div(tr(Du) * I)
         return Dsigma
+
+
+###################################################
+# FEM Discrisation
+###################################################
+
+class FEMDiscretisation(object):
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def assemble_operator(self, basis, coeff, withDirichletBC=True):
+        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assemble_solve_operator(self, basis, coeff, withDirichletBC=True):
+        """Assemble the discrete problem and return a SolveOperator."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assemble_operator_inner_dofs(self, basis, coeff):
+        """Assemble the discrete problem and return as Operator
+        (projected on the inner DOFs, i.e. all Dirichlet BC entries set to zero)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assemble_rhs(self, basis, coeff, withDirichletBC=True, withNeumannBC=True, f=None):
+        """Assemble the discrete right-hand side."""
+        raise NotImplementedError
+
+
+class FEMDiscretisationBase(FEMDiscretisation):
+    @takes_verbose(anything, WeakForm, CoefficientFunction, optional(LoadingFunction),
+           optional(sequence_of(BoundaryType)), optional(sequence_of(BoundaryFunction)),
+           optional(sequence_of(BoundaryType)), optional(sequence_of(BoundaryFunction)))
+    def __init__(self, weak_form, coeff, f,
+                 dirichlet_boundary, uD,
+                 neumann_boundary, g):
+        self.weak_form = weak_form
+        self.coeff = coeff
+        self.f = f
+        self.dirichlet_boundary = dirichlet_boundary
+        self.uD = uD
+        self.neumann_boundary = neumann_boundary
+        self.g = g
+
+    @takes(anything, dolfin.Mesh, int)
+    def function_space(self, mesh, degree=1):
+        """Return the FunctionSpace V used from the weak form"""
+        return self.weak_form.function_space(mesh, degree)
+
+    @takes(anything, FEniCSBasis, optional(CoefficientFunction), optional(bool))
+    def assemble_lhs(self, basis, coeff=None, withDirichletBC=True):
+        """Assemble the discrete problem (i.e. the stiffness matrix)."""
+        # get FEniCS function space
+        V = basis._fefs
+        coeff = get_default(coeff, self.coeff)
+
+        a = self.weak_form.bilinear_form(V, coeff)
+        L = self.weak_form.loading_linear_form(V, self.f)
+        bcs = []
+        if withDirichletBC:
+            bcs = self.create_dirichlet_bcs(V, self.uD, self.dirichlet_boundary)
+        A, _ = assemble_system(a, L, bcs)
+        return A
+
+    @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction), optional(bool), optional(bool), optional(FormFunction))
+    def assemble_rhs(self, basis, coeff=None, withDirichletBC=True, withNeumannBC=True, f=None):
+        """Assemble the discrete right-hand side."""
+        coeff = get_default(coeff, self.coeff)
+        f = get_default(f, self.f)
+        Dirichlet_boundary = self.dirichlet_boundary
+        uD = self.uD
+
+        # get FEniCS function space
+        V = basis._fefs
+        a = self.weak_form.bilinear_form(V, coeff)
+        L = self.weak_form.loading_linear_form(V, f)
+
+        # treat Neumann boundary
+        if withNeumannBC and self.neumann_boundary:
+            L += self.weak_form.neumann_linear_form(V, self.neumann_boundary, self.g)
+
+        # treat Dirichlet boundary
+        bcs = []
+        if withDirichletBC:
+            bcs = self.create_dirichlet_bcs(V, self.uD, self.dirichlet_boundary)
+
+        # assemble linear form
+        _, F = assemble_system(a, L, bcs)
+        return F
+
+    @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction), optional(bool))
+    def assemble_operator(self, basis, coeff=None, withDirichletBC=True):
+        """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
+        coeff = get_default(coeff, self.coeff)
+        matrix = self.assemble_lhs(basis, coeff, withDirichletBC=withDirichletBC)
+        return FEniCSOperator(matrix, basis)
+
+    @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction), optional(bool))
+    def assemble_solve_operator(self, basis, coeff=None, withDirichletBC=True):
+        coeff = get_default(coeff, self.coeff)
+        matrix = self.assemble_lhs(basis, coeff, withDirichletBC=withDirichletBC)
+        return FEniCSSolveOperator(matrix, basis)
+
+    @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction))
+    def assemble_operator_inner_dofs(self, basis, coeff=None):
+        """Assemble the discrete problem and return as Operator
+        (projected on the inner DOFs, i.e. all Dirichlet BC entries set to zero)."""
+        coeff = get_default(coeff, self.coeff)
+        matrix = self.assemble_lhs(basis, coeff)
+        bcs = self.create_dirichlet_bcs(basis._fefs, self.uD, self.dirichlet_boundary)
+        mask = get_dirichlet_mask(matrix, bcs)
+        return FEniCSOperator(matrix, basis, mask)
+
+    @takes_verbose(anything, FEniCSVector, optional(bool))
+    def set_dirichlet_bc_entries(self, u, homogeneous=False):
+        bcs = self.create_dirichlet_bcs(u.basis._fefs, self.uD, self.dirichlet_boundary)
+        set_dirichlet_bc_entries(u.coeffs, bcs, homogeneous)
+
+    @takes_verbose(anything, dolfin.FunctionSpaceBase, optional(list), optional(list))
+    def create_dirichlet_bcs(self, V, uD=None, boundary=None):
+        """Create list of FEniCS boundary condition objects."""
+        if uD is None:
+            uD = self.uD
+            if self.dirichlet_boundary is not None:
+                boundary = self.dirichlet_boundary
+        
+        boundary = make_list(boundary)
+        uD = make_list(uD, len(boundary))
+        
+        bcs = [DirichletBC(V, cuD, cDb) for cuD, cDb in zip(uD, boundary)]
+        return bcs
+
+    def apply_dirichlet_bc(self, V, A=None, b=None, uD=None, Dirichlet_boundary=None):
+        """Apply Dirichlet boundary conditions."""
+        bcs = self.create_dirichlet_bcs(V, uD, Dirichlet_boundary)
+        val = []
+        if not A is None:
+            for bc in bcs:
+                bc.apply(A)
+            val.append(A)
+        if not b is None:
+            for bc in bcs:
+                bc.apply(b)
+            val.append(b)
+        if len(val) == 1:
+            val = val[0]
+        return val
+
+    @takes(anything, CoefficientFunction, FormFunction)
+    def volume_residual(self, coeff, u):
+        """Volume residual r_T."""
+        return self.weak_form.flux_derivative(u, coeff)
+
+    @takes(anything, CoefficientFunction, FormFunction)
+    def edge_residual(self, coeff, v, nu):
+        """Edge residual r_E."""
+        return dot(self.weak_form.flux(v, coeff), nu)
+
+    @takes(anything, CoefficientFunction, FormFunction)
+    def neumann_residual(self, coeff, v, nu, mesh, homogeneous=False):
+        """Neumann boundary residual."""
+        form = []
+        boundaries = self.neumann_boundary
+        g = self.g
+        if boundaries is not None:
+            if homogeneous:
+                g = zero_function(v.function_space())
+
+            g, ds = self.weak_form.neumann_form_list(boundaries, g, mesh)
+            for j, gj in enumerate(g):
+                Nbres = gj - dot(self.weak_form.flux(v, coeff), nu)
+                form.append((inner(Nbres, Nbres), ds(j)))
+        return form
+
+    @property
+    def energy_norm(self):
+        return self.get_energy_norm()
+
+    def get_energy_norm(self, mesh=None):
+        '''Energy norm wrt operator, i.e. (\sigma(v),\eps(v))=||C^{1/2}\eps(v)||.'''
+        if mesh is None:
+            def energy_norm(v):
+                return np.sqrt(assemble(inner(self.weak_form.flux(v, self.coeff), self.weak_form.differential_op(v)) * dx))
+            return energy_norm
+        else:
+            DG = FunctionSpace(mesh, "DG", 0)
+            s = TestFunction(DG)
+            def energy_norm(v):
+                ae = np.sqrt(assemble(inner(self.weak_form.flux(v, self.coeff), self.weak_form.differential_op(v)) * s * dx))
+                # reorder DG dofs wrt cell indices
+                dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
+                norm_vec = ae[dofs]
+                return norm_vec
+            return energy_norm
+
+
+class FEMPoisson(FEMDiscretisationBase):
+    def __init__(self, a=Constant(1.0), f=Constant(1.0), 
+                 dirichlet_boundary=[default_Dirichlet_boundary], uD=[Constant(0.0)],
+                 neumann_boundary=None, g=None):
+        super(FEMPoisson, self).__init__(PoissonWeakForm(), a, f, 
+                                         dirichlet_boundary, uD,
+                                         neumann_boundary, g)
+
+
+class FEMNavierLame(FEMDiscretisationBase):
+    def __init__(self, mu, lmbda, f=Constant((0.0, 0.0)),
+                 dirichlet_boundary=[default_Dirichlet_boundary], uD=[Constant((0.0, 0.0))],
+                 neumann_boundary=None, g=None):
+        super(FEMNavierLame, self).__init__(NavierLameWeakForm(), (mu, lmbda), f, 
+                                            dirichlet_boundary, uD,
+                                            neumann_boundary, g)
+        
+
+

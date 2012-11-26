@@ -47,7 +47,7 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
         with timing(msg="L2_err_1", logfunc=logger.info):
             cerr_L2 = error_norm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         with timing(msg="H1_err_1", logfunc=logger.info):
-            cerr_H1 = error_norm(sample_sol_param._fefunc, sample_sol_direct._fefunc, pde.norm)
+            cerr_H1 = error_norm(sample_sol_param._fefunc, sample_sol_direct._fefunc, pde.energy_norm)
 #        cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
         logger.debug("-- current error L2 = %s    H1 = %s", cerr_L2, cerr_H1)
         err_L2 += 1.0 / MC_N * cerr_L2
@@ -59,7 +59,7 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
             with timing(msg="L2_err_2", logfunc=logger.info):
                 L2_a0 = error_norm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "L2")
             with timing(msg="H1_err_2", logfunc=logger.info):
-                H1_a0 = error_norm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, pde.norm)
+                H1_a0 = error_norm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, pde.energy_norm)
 #            H1_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "H1")
             logger.debug("-- DETERMINISTIC error L2 = %s    H1 = %s", L2_a0, H1_a0)
 

@@ -81,7 +81,7 @@ class MultiOperator(Operator):
 
             # deterministic part
             a0_f = self._coeff_field.mean_func
-            A0 = self._assemble_0(a0_f, Vfine)
+            A0 = self._assemble_0(Vfine, a0_f)
             cur_v = A0 * Vfine.project_onto(w[mu])
 
             # iterate related multiindices
@@ -89,7 +89,7 @@ class MultiOperator(Operator):
                 logger.debug("with m = %i", m)
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._coeff_field[m]
-                Am = self._assemble_m(am_f, Vfine)
+                Am = self._assemble_m(Vfine, am_f)
 
 
                 # prepare polynom coefficients
@@ -128,13 +128,13 @@ class MultiOperator(Operator):
             logger.debug("apply on mu = %s", str(mu))
             # deterministic part
             a0_f = self._coeff_field.mean_func
-            A0 = self._assemble_0(a0_f, w[mu].basis)
+            A0 = self._assemble_0(w[mu].basis, a0_f)
             v[mu] = A0 * w[mu]
             for m in range(maxm):
                 logger.debug("with m = %i", m)
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._coeff_field[m]
-                Am = self._assemble_m(am_f, w[mu].basis)
+                Am = self._assemble_m(w[mu].basis, am_f)
 
                 # prepare polynom coefficients
                 beta = am_rv.orth_polys.get_beta(mu[m])
@@ -187,7 +187,7 @@ class PreconditioningOperator(Operator):
 
         for mu in Delta:
             a0_f = self._mean_func
-            A0 = self._assemble_solver(a0_f, w[mu].basis)
+            A0 = self._assemble_solver(w[mu].basis, a0_f)
             if False:
                 mat = A0._matrix
                 M = mat.array()

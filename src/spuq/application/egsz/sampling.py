@@ -96,8 +96,8 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
         b = cache.b
     except AttributeError:
         a = coeff_field.mean_func
-        A0 = pde.assemble_lhs(a, proj_basis, withDirichletBC=False)
-        b = pde.assemble_rhs(a, proj_basis, withDirichletBC=False)
+        A0 = pde.assemble_lhs(basis=proj_basis, coeff=a, withDirichletBC=False)
+        b = pde.assemble_rhs(basis=proj_basis, coeff=a, withDirichletBC=False)
         A_m = [None] * maxm
         if cache is not None:
             cache.A = A0
@@ -110,11 +110,11 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
         for m in range(maxm):
             if A_m[m] is None:
                 a_m = coeff_field[m][0]
-                A_m[m] = pde.assemble_lhs(a_m, proj_basis, withDirichletBC=False)
+                A_m[m] = pde.assemble_lhs(basis=proj_basis, coeff=a_m, withDirichletBC=False)
             A += RV_samples[m] * A_m[m]
 
     with timing(msg="direct BC", logfunc=logger.info):
-        A, b = pde.apply_dirichlet_bc(proj_basis, A, b)
+        A, b = pde.apply_dirichlet_bc(proj_basis._fefs, A, b)
     with timing(msg="direct Solve", logfunc=logger.info):
         X = 0 * b
         solve(A, X, b)
@@ -127,8 +127,8 @@ def compute_direct_sample_solution_old(pde, RV_samples, coeff_field, A, maxm, pr
         a_m = RV_samples[m] * coeff_field[m][0]
         a = a + a_m
 
-    A = pde.assemble_lhs(a, proj_basis)
-    b = pde.assemble_rhs(a, proj_basis)
+    A = pde.assemble_lhs(basis=proj_basis, coeff=a)
+    b = pde.assemble_rhs(basis=proj_basis, coeff=a)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), a
