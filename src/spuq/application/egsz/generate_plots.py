@@ -276,7 +276,7 @@ if options.withFigures and len(sim_stats) > 1:
         if options.withTitles:
             fig7.suptitle("inactive multi-index $\zeta$ for iteration %s" % str(len(w_history) - 2))
         ax = fig7.add_subplot(111)
-        ax.loglog(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
+        ax.plot(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
         plt.legend(loc='lower right')
         ax.grid(True)
         fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.pdf'))

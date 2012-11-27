@@ -52,7 +52,7 @@ simulation_options_conf = (("SFEM",
                 {"runs":1,
                     "N":1,
                     "max_h":2,
-                    "ref_mesh_refine":(1, 2)})
+                    "ref_mesh_refine":(1, 0)})
            )
 
 

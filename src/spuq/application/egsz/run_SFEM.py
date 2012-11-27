@@ -171,6 +171,8 @@ def run_SFEM(opts, conf):
         with open(os.path.join(SAVE_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'wb') as fout:
             pickle.dump(w_history, fout)
         # save simulation data
+        sim_stats[0]["OPTS"] = opts
+        sim_stats[0]["CONF"] = conf
         logger.info("saving statistics into %s" % os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'))
         with open(os.path.join(SAVE_SOLUTION, 'SIM-STATS.pkl'), 'wb') as fout:
             pickle.dump(sim_stats, fout)
