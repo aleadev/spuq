@@ -5,6 +5,7 @@ import numpy as np
 import os
 from math import sqrt
 from collections import defaultdict
+from operator import itemgetter
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -177,7 +178,8 @@ if options.withFigures and len(sim_stats) > 1:
         if options.withTitles:
             fig3.suptitle("residual contributions of multi-indices")
         ax = fig3.add_subplot(111)
-        for i, muv in enumerate(reserrmu.iteritems()):
+        reserrmu = sorted(reserrmu.iteritems(), key=itemgetter(1), reverse=True)
+        for i, muv in enumerate(reserrmu):
             if i < max_plot_mu:
                 mu, v = muv
                 ms = str(mu)
@@ -185,7 +187,7 @@ if options.withFigures and len(sim_stats) > 1:
                 ax.loglog(x[-len(v):], v, '-g<', label=ms)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
-        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.1))
+        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
         ltext = leg.get_texts()  # all the text.Text instance in the legend
         plt.setp(ltext, fontsize='small')    # the legend text fontsize
         ax.grid(True)
@@ -198,7 +200,8 @@ if options.withFigures and len(sim_stats) > 1:
         fig3b = plt.figure()
         fig3b.suptitle("projection contributions")
         ax = fig3b.add_subplot(111)
-        for i, muv in enumerate(projerrmu.iteritems()):
+        projerrmu = sorted(projerrmu.iteritems(), key=itemgetter(1), reverse=True)
+        for i, muv in enumerate(projerrmu):
             mu, v = muv
             if max(v) > 1e-10 and i < max_plot_mu:
                 ms = str(mu)
@@ -206,12 +209,47 @@ if options.withFigures and len(sim_stats) > 1:
                 ax.loglog(x[-len(v):], v, '-g<', label=ms)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
-        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.1))
+        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
         ltext = leg.get_texts()  # all the text.Text instance in the legend
         plt.setp(ltext, fontsize='small')    # the legend text fontsize
         ax.grid(True)
         fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.pdf'))
         fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.png'))
+    
+        # --------
+        # figure 3c
+        # --------
+        fig3c = plt.figure()
+        fig3c.suptitle("multi-index activation and refinement")
+        ax = fig3c.add_subplot(111)
+        w = w_history[options.iteration_level]
+        mudim = sorted([(mu, w[mu].dim) for mu in w.active_indices()], key=itemgetter(1), reverse=True)
+        
+        for i, muv in enumerate(projerrmu):
+            mu, v = muv
+            if max(v) > 1e-10 and i < max_plot_mu:
+                ms = str(mu)
+                ms = ms[ms.find('=') + 1:-1]
+                
+                d, idx = [], options.iteration_level
+                while True:
+                    try:
+                        d.append(w_history[idx][mu].dim)
+                        idx -= 1
+                    except:
+                        break
+                d = d[::-1]
+
+                itoff = len(w_history) - len(d)
+                ax.plot(range(itoff, itoff + len(d)), d, '-g<', label=ms)
+        plt.xlabel("iteration")
+        plt.ylabel("degrees of freedom")
+        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        ax.grid(True)
+        fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.pdf'))
+        fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.png'))
 
         # --------
         # figure 4
@@ -220,8 +258,8 @@ if options.withFigures and len(sim_stats) > 1:
         if options.withTitles:
             fig4.suptitle("projection $\zeta$")
         ax = fig4.add_subplot(111)
-        ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max zeta')
-        ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive zeta')
+        ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max $\zeta$')
+        ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive $\zeta$')
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
         leg = plt.legend(loc='upper right')
@@ -307,6 +345,7 @@ if options.withFigures and len(sim_stats) > 1:
         pp.savefig(fig2)
         pp.savefig(fig3)
         pp.savefig(fig3b)
+        pp.savefig(fig3c)
         pp.savefig(fig4)
         pp.savefig(fig5)
         pp.savefig(fig6)
