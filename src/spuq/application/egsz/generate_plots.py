@@ -220,18 +220,54 @@ if options.withFigures and len(sim_stats) > 1:
         # figure 3c
         # --------
         fig3c = plt.figure()
-        fig3c.suptitle("multi-index activation and refinement")
+        fig3c.suptitle("multi-index activation and refinement (iteration %i)" % itnr)
         ax = fig3c.add_subplot(111)
         w = w_history[options.iteration_level]
         mudim = sorted([(mu, w[mu].dim) for mu in w.active_indices()], key=itemgetter(1), reverse=True)
         
-        for i, muv in enumerate(projerrmu):
+        for i, muv in enumerate(mudim):
             mu, v = muv
-            if max(v) > 1e-10 and i < max_plot_mu:
+            if i < max_plot_mu:
                 ms = str(mu)
                 ms = ms[ms.find('=') + 1:-1]
                 
-                d, idx = [], options.iteration_level
+                d, idx = [], options.itnr
+                while idx >= 0:
+                    try:
+                        d.append(w_history[idx][mu].dim)
+                        idx -= 1
+                    except:
+                        break
+                d = d[::-1]
+
+                itoff = len(w_history) - len(d)
+                if len(d) > 0:
+                    ax.plot(range(itoff, itoff + len(d)), d, '-g<', label=ms)
+        plt.xlabel("iteration")
+        plt.ylabel("degrees of freedom")
+        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        ax.grid(True)
+        fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.pdf'))
+        fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.png'))
+    
+        # --------
+        # figure 3d
+        # --------
+        fig3d = plt.figure()
+        fig3d.suptitle("multi-index activation and refinement (iteration %i)" % len(w_history))
+        ax = fig3d.add_subplot(111)
+        w = w_history[-1]
+        mudim = sorted([(mu, w[mu].dim) for mu in w.active_indices()], key=itemgetter(1), reverse=True)
+        
+        for i, muv in enumerate(mudim):
+            mu, v = muv
+            if i < max_plot_mu:
+                ms = str(mu)
+                ms = ms[ms.find('=') + 1:-1]
+                
+                d, idx = [], len(w_history) - 1
                 while True:
                     try:
                         d.append(w_history[idx][mu].dim)
@@ -241,15 +277,16 @@ if options.withFigures and len(sim_stats) > 1:
                 d = d[::-1]
 
                 itoff = len(w_history) - len(d)
-                ax.plot(range(itoff, itoff + len(d)), d, '-g<', label=ms)
+                if len(d) > 0:
+                    ax.plot(range(itoff, itoff + len(d)), d, '-g<', label=ms)
         plt.xlabel("iteration")
         plt.ylabel("degrees of freedom")
         leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
         ltext = leg.get_texts()  # all the text.Text instance in the legend
         plt.setp(ltext, fontsize='small')    # the legend text fontsize
         ax.grid(True)
-        fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.pdf'))
-        fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.png'))
+        fig3d.savefig(os.path.join(options.experiment_dir, 'fig3d-mi-activation-final.pdf'))
+        fig3d.savefig(os.path.join(options.experiment_dir, 'fig3d-mi-activation-final.png'))
 
         # --------
         # figure 4
@@ -346,6 +383,7 @@ if options.withFigures and len(sim_stats) > 1:
         pp.savefig(fig3)
         pp.savefig(fig3b)
         pp.savefig(fig3c)
+        pp.savefig(fig3d)
         pp.savefig(fig4)
         pp.savefig(fig5)
         pp.savefig(fig6)
