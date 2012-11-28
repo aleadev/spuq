@@ -106,7 +106,7 @@ def run_MC(opts, conf):
         ref_mesh, _ = create_joint_mesh([w[mu].mesh for mu in w.active_indices()])        
         for _ in range(CONF_ref_mesh_refine):
             ref_mesh = refine(ref_mesh)
-        ref_maxm = w.max_order
+        ref_maxm = CONF_sampling_order if CONF_sampling_order > 0 else w.max_order + CONF_sampling_order_increase
         for i, w in enumerate(w_history):
 #            if i == 0:
 #                continue
