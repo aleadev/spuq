@@ -118,15 +118,13 @@ def run_MC(opts, conf):
             
             MC_start = 0
             old_stats = sim_stats[i]
-            continueMC = False
             if opts.continueMC:
                 try:
                     MC_start = sim_stats[i]["MC-N"]
                     logger.info("CONTINUING MC of %s for solution (iteration) %s of %s", LOAD_SOLUTION, i, len(w_history))
-                    continueMC = True
                 except:
                     logger.info("STARTING MC of %s for solution (iteration) %s of %s", LOAD_SOLUTION, i, len(w_history))
-            if not continueMC:
+            if MC_start <= 0:
                     sim_stats[i]["MC-N"] = 0
                     sim_stats[i]["MC-L2ERR"] = 0
                     sim_stats[i]["MC-H1ERR"] = 0
@@ -140,11 +138,11 @@ def run_MC(opts, conf):
                 L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, ref_mesh, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
                 # combine current and previous results
                 sim_stats[i]["MC-N"] = N + old_stats["MC-N"]
-                sim_stats[i]["MC-L2ERR"] = (L2err * N + old_stats["MC-L2ERR"]) / sim_stats["MC-N"]
-                sim_stats[i]["MC-H1ERR"] = (H1err * N + old_stats["MC-H1ERR"]) / sim_stats["MC-N"]
-                sim_stats[i]["MC-L2ERR_a0"] = (L2err_a0 * N + old_stats["MC-L2ERR_a0"]) / sim_stats["MC-N"]
-                sim_stats[i]["MC-H1ERR_a0"] = (H1err_a0 * N + old_stats["MC-H1ERR_a0"]) / sim_stats["MC-N"]
-                print sim_stats[i]["MC-H1ERR"]
+                sim_stats[i]["MC-L2ERR"] = (L2err * N + old_stats["MC-L2ERR"]) / sim_stats[i]["MC-N"]
+                sim_stats[i]["MC-H1ERR"] = (H1err * N + old_stats["MC-H1ERR"]) / sim_stats[i]["MC-N"]
+                sim_stats[i]["MC-L2ERR_a0"] = (L2err_a0 * N + old_stats["MC-L2ERR_a0"]) / sim_stats[i]["MC-N"]
+                sim_stats[i]["MC-H1ERR_a0"] = (H1err_a0 * N + old_stats["MC-H1ERR_a0"]) / sim_stats[i]["MC-N"]
+                print "MC-H1ERR (N:%i) = %f" % (sim_stats[i]["MC-N"], sim_stats[i]["MC-H1ERR"])
             else:
                 logger.info("SKIPPING MC RUN since sufficiently many samples are available")
     

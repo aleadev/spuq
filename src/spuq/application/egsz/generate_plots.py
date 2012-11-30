@@ -114,7 +114,7 @@ if options.withFigures and len(sim_stats) > 1:
         print "ERROR ESTIMATOR", errest
         if with_mc_data:
             print "efficiency", [est / err for est, err in zip(errest, mcH1)]
-            
+        
         # --------
         # figure 1
         # --------
@@ -126,7 +126,8 @@ if options.withFigures and len(sim_stats) > 1:
         ax.loglog(x, errest, '-g<', label='estimator', linewidth=1.5)
         ax.loglog(x, res_part, '-.cx', label='residual', linewidth=1.5)
         ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection', linewidth=1.5)
-        ax.loglog(x, pcg_part, '-.b>', label='pcg', linewidth=1.5)
+	pcgoff = len([1 for i in pcg_part if i < 1e-10])
+        ax.loglog(x[pcgoff:], pcg_part[pcgoff:], '-.b>', label='pcg', linewidth=1.5)
         if with_mc_data:
             ax.loglog(x, mcH1, '-b^', label='MC H1 error')
             ax.loglog(x, mcL2, '-ro', label='MC L2 error')
@@ -184,7 +185,15 @@ if options.withFigures and len(sim_stats) > 1:
                 mu, v = muv
                 ms = str(mu)
                 ms = ms[ms.find('=') + 1:-1]
-                ax.loglog(x[-len(v):], v, '-g<', label=ms)
+                
+                # NOTE: EGSZ paper specific fixes --- remove later!
+                # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                while len(v) > 0 and v[0] < 1e-10:
+                    v = v[1:]
+                # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                
+		if len(v) > 0:
+	                ax.loglog(x[-len(v):], v, '-g<', label=ms)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
         leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
@@ -209,48 +218,53 @@ if options.withFigures and len(sim_stats) > 1:
                 ax.loglog(x[-len(v):], v, '-g<', label=ms)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
-        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
-        ltext = leg.get_texts()  # all the text.Text instance in the legend
-        plt.setp(ltext, fontsize='small')    # the legend text fontsize
-        ax.grid(True)
-        fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.pdf'))
-        fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.png'))
+	try:
+	        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
+	        ltext = leg.get_texts()  # all the text.Text instance in the legend
+	        plt.setp(ltext, fontsize='small')    # the legend text fontsize
+	        ax.grid(True)
+	        fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.pdf'))
+	        fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.png'))
+		has_projection = True
+	except:
+		has_projection = False
     
         # --------
         # figure 3c
         # --------
-        fig3c = plt.figure()
-        fig3c.suptitle("multi-index activation and refinement (iteration %i)" % itnr)
-        ax = fig3c.add_subplot(111)
-        w = w_history[options.iteration_level]
-        mudim = sorted([(mu, w[mu].dim) for mu in w.active_indices()], key=itemgetter(1), reverse=True)
+        if options.iteration_level > 0:
+	        fig3c = plt.figure()
+	        fig3c.suptitle("multi-index activation and refinement (iteration %i)" % itnr)
+        	ax = fig3c.add_subplot(111)
+	        w = w_history[options.iteration_level]
+	        mudim = sorted([(mu, w[mu].dim) for mu in w.active_indices()], key=itemgetter(1), reverse=True)
         
-        for i, muv in enumerate(mudim):
-            mu, v = muv
-            if i < max_plot_mu:
-                ms = str(mu)
-                ms = ms[ms.find('=') + 1:-1]
+        	for i, muv in enumerate(mudim):
+	            mu, v = muv
+        	    if i < max_plot_mu:
+                	ms = str(mu)
+	                ms = ms[ms.find('=') + 1:-1]
                 
-                d, idx = [], options.itnr
-                while idx >= 0:
-                    try:
-                        d.append(w_history[idx][mu].dim)
-                        idx -= 1
-                    except:
-                        break
-                d = d[::-1]
+        	    	d, idx = [], itnr
+                	while idx >= 0:
+                    		try:
+                        		d.append(w_history[idx][mu].dim)
+                        		idx -= 1
+                    		except:
+                        		break
+                	d = d[::-1]
 
-                itoff = len(w_history) - len(d)
-                if len(d) > 0:
-                    ax.plot(range(itoff, itoff + len(d)), d, '-g<', label=ms)
-        plt.xlabel("iteration")
-        plt.ylabel("degrees of freedom")
-        leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
-        ltext = leg.get_texts()  # all the text.Text instance in the legend
-        plt.setp(ltext, fontsize='small')    # the legend text fontsize
-        ax.grid(True)
-        fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.pdf'))
-        fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.png'))
+                	itoff = itnr - len(d) + 1
+                	if len(d) > 0:
+                    		ax.plot(range(itoff, itoff + len(d)), d, '-g<', label=ms)
+        	plt.xlabel("iteration")
+        	plt.ylabel("degrees of freedom")
+        	leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
+       	 	ltext = leg.get_texts()  # all the text.Text instance in the legend
+        	plt.setp(ltext, fontsize='small')    # the legend text fontsize
+        	ax.grid(True)
+        	fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.pdf'))
+        	fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.png'))
     
         # --------
         # figure 3d
@@ -268,7 +282,7 @@ if options.withFigures and len(sim_stats) > 1:
                 ms = ms[ms.find('=') + 1:-1]
                 
                 d, idx = [], len(w_history) - 1
-                while True:
+                while idx >= 0:
                     try:
                         d.append(w_history[idx][mu].dim)
                         idx -= 1
@@ -291,20 +305,21 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         # figure 4
         # --------
-        fig4 = plt.figure()
-        if options.withTitles:
-            fig4.suptitle("projection $\zeta$")
-        ax = fig4.add_subplot(111)
-        ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max $\zeta$')
-        ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive $\zeta$')
-        plt.xlabel("overall degrees of freedom")
-        plt.ylabel("energy error")
-        leg = plt.legend(loc='upper right')
-        ltext = leg.get_texts()  # all the text.Text instance in the legend
-        plt.setp(ltext, fontsize='small')    # the legend text fontsize
-        ax.grid(True)
-        fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.pdf'))
-        fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.png'))
+	if has_projection:
+	        fig4 = plt.figure()
+	        if options.withTitles:
+        	    fig4.suptitle("projection $\zeta$")
+	        ax = fig4.add_subplot(111)
+        	ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max $\zeta$')
+	        ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive $\zeta$')
+	        plt.xlabel("overall degrees of freedom")
+	        plt.ylabel("energy error")
+        	leg = plt.legend(loc='upper right')
+	        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        	plt.setp(ltext, fontsize='small')    # the legend text fontsize
+	        ax.grid(True)
+        	fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.pdf'))
+	        fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.png'))
     
         # --------
         # figure 5
@@ -330,32 +345,34 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         # figure 6
         # --------
-        fig6 = plt.figure()
-        if options.withTitles:
-            fig6.suptitle("projection error")
-        ax = fig6.add_subplot(111)
-        ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
-        plt.xlabel("overall degrees of freedom")
-        plt.ylabel("energy error")
-        leg = plt.legend(loc='upper right')
-        ltext = leg.get_texts()  # all the text.Text instance in the legend
-        plt.setp(ltext, fontsize='small')    # the legend text fontsize
-        ax.grid(True)
-        fig6.savefig(os.path.join(options.experiment_dir, 'fig6-projection-error.pdf'))
-        fig6.savefig(os.path.join(options.experiment_dir, 'fig6-projection-error.png'))
+	if has_projection:
+	        fig6 = plt.figure()
+        	if options.withTitles:
+	            fig6.suptitle("projection error")
+        	ax = fig6.add_subplot(111)
+	        ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
+        	plt.xlabel("overall degrees of freedom")
+	        plt.ylabel("energy error")
+        	leg = plt.legend(loc='upper right')
+	        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        	plt.setp(ltext, fontsize='small')    # the legend text fontsize
+	        ax.grid(True)
+        	fig6.savefig(os.path.join(options.experiment_dir, 'fig6-projection-error.pdf'))
+	        fig6.savefig(os.path.join(options.experiment_dir, 'fig6-projection-error.png'))
                 
         # --------
         # figure 7
         # --------
-        fig7 = plt.figure()
-        if options.withTitles:
-            fig7.suptitle("inactive multi-index $\zeta$ for iteration %s" % str(len(w_history) - 2))
-        ax = fig7.add_subplot(111)
-        ax.plot(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
-        plt.legend(loc='lower right')
-        ax.grid(True)
-        fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.pdf'))
-        fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.png'))
+	if has_projection:
+	        fig7 = plt.figure()
+        	if options.withTitles:
+	            fig7.suptitle("inactive multi-index $\zeta$ for iteration %s" % str(len(w_history) - 2))
+        	ax = fig7.add_subplot(111)
+	        ax.plot(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
+        	plt.legend(loc='lower right')
+	        ax.grid(True)
+        	fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.pdf'))
+	        fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.png'))
                 
         # --------
         # figure 8
@@ -376,19 +393,43 @@ if options.withFigures and len(sim_stats) > 1:
         fig8.savefig(os.path.join(options.experiment_dir, 'fig8-active-mi.pdf'))
         fig8.savefig(os.path.join(options.experiment_dir, 'fig8-active-mi.png'))
 
+        # --------
+        # figure 9
+        # --------
+        fig9 = plt.figure()
+        fig9.suptitle("L2 norm for w[mu] at final iteration %i" % itnr)
+        ax = fig9.add_subplot(111)
+        w = w_history[options.iteration_level]
+        L2wmu = sorted([w[mu].norm("L2") for mu in w.active_indices()], reverse=True)
+        ax.plot(range(len(L2wmu)), L2wmu, '-g<')
+        plt.xlabel("consecutive index")
+        plt.ylabel("$||w_\mu||_{L^(D)}$")
+        ax.grid(True)
+        fig9.savefig(os.path.join(options.experiment_dir, 'fig9-wmu-L2.pdf'))
+        fig9.savefig(os.path.join(options.experiment_dir, 'fig9-wmu-L2.png'))
+        
+        # ===============
         # save single pdf
+        # ===============
         pp = PdfPages(os.path.join(options.experiment_dir, 'all-figures.pdf'))
         pp.savefig(fig1)
         pp.savefig(fig2)
         pp.savefig(fig3)
-        pp.savefig(fig3b)
-        pp.savefig(fig3c)
+	if has_projection:
+            pp.savefig(fig3b)
+            try:
+                pp.savefig(fig3c)
+            except:
+                pass
         pp.savefig(fig3d)
-        pp.savefig(fig4)
+	if has_projection:
+	        pp.savefig(fig4)
         pp.savefig(fig5)
-        pp.savefig(fig6)
-        pp.savefig(fig7)
+	if has_projection:
+	        pp.savefig(fig6)
+	        pp.savefig(fig7)
         pp.savefig(fig8)
+        pp.savefig(fig9)
         pp.close()
        
         if options.showFigures:
