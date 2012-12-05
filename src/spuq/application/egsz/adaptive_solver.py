@@ -200,6 +200,9 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats["PROJ-mu"] = projerrmu
         stats["PROJ-MAX-ZETA"] = 0
         stats["PROJ-MAX-INACTIVE-ZETA"] = 0
+        stats["MARKING-RES"] = 0
+        stats["MARKING-PROJ"] = 0
+        stats["MARKING-MI"] = 0
         stats["TIME-MARKING"] = 0
         stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
         if refinement == 0 or start_iteration < refinement:
@@ -239,6 +242,9 @@ def AdaptiveSolver(A, coeff_field, pde,
                 logger.info("MARKING will be carried out with %s (res) + %s (proj) cells and %s new multiindices",
                             sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()]),
                             sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()]), len(new_multiindices))
+                stats["MARKING-RES"] = sum([len(cell_ids) for cell_ids in mesh_markers_R.itervalues()])
+                stats["MARKING-PROJ"] = sum([len(cell_ids) for cell_ids in mesh_markers_P.itervalues()])
+                stats["MARKING-MI"] = len(new_multiindices)
                 if do_refinement["RES"]:
                     mesh_markers = mesh_markers_R.copy()
                 else:
