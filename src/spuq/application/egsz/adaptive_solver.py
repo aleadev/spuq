@@ -114,7 +114,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     newmi_add_maxm=10, # maximal search length for new new multiindices (to be added to max order of solution w)
                     theta_delta=0.8, # number new multiindex activation bound
                     max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
-                    marking_strategy="SEPARATE", # separate (as initially in EGSZ) or relative marking wrt overall error
+                    marking_strategy="SEPARATE with CELLPROJECTION", # separate (as initially in EGSZ) or relative marking wrt overall error, projection refinement based on cell or mesh errors
                     # residual error
                     quadrature_degree= -1,
                     # projection error

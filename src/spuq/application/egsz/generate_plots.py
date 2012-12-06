@@ -164,9 +164,10 @@ if options.withFigures and len(sim_stats) > 1:
             fig1.suptitle("residual estimator")
         ax = fig1.add_subplot(111)
         ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
-        ax.loglog(x, errest, '-g<', label='estimator', linewidth=1.5)
+        ax.loglog(x, errest, '-g*', label='estimator', linewidth=1.5)
         ax.loglog(x, res_part, '-.cx', label='residual', linewidth=1.5)
-        ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection', linewidth=1.5)
+        _pp = map(lambda v: v if v > 1e-6 else 0, proj_part)
+        ax.loglog(x[1:], _pp[1:], '-.m>', label='projection', linewidth=1.5)
         pcgoff = len([1 for i in pcg_part if i < 1e-10])
         ax.loglog(x[pcgoff:], pcg_part[pcgoff:], '-.b>', label='pcg', linewidth=1.5)
         if with_mc_data:
@@ -201,7 +202,7 @@ if options.withFigures and len(sim_stats) > 1:
         if with_mc_data:
             ax.loglog(x, effest, '-ro', label='efficiency', linewidth=1.5)        
         ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
-        ax.loglog(x, errest, '-g<', label='error estimator', linewidth=1.5)
+        ax.loglog(x, errest, '-g*', label='error estimator', linewidth=1.5)
         if with_mc_data:
             ax.loglog(x, mcH1, '-b^', label='MC H1 error', linewidth=1.5)
         plt.xlabel("overall degrees of freedom", fontsize=14)
@@ -257,7 +258,8 @@ if options.withFigures and len(sim_stats) > 1:
             if max(v) > 1e-10 and i < max_plot_mu:
                 ms = str(mu)
                 ms = ms[ms.find('=') + 1:-1]
-                ax.loglog(x[-len(v):], v, '-g<', label=ms)
+                _v = map(lambda v: v if v > 1e-10 else 0, v)
+                ax.loglog(x[-len(v):], _v, '-g<', label=ms)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
         try:
@@ -347,21 +349,22 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         # figure 4
         # --------
-    	if has_projection:
-	        fig4 = plt.figure()
-	        if options.withTitles:
-        	    fig4.suptitle("projection $\zeta$")
-	        ax = fig4.add_subplot(111)
-        	ax.loglog(x[1:], proj_max_zeta[1:], '-g<', label='max $\zeta$')
-	        ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive $\zeta$')
-	        plt.xlabel("overall degrees of freedom")
-	        plt.ylabel("energy error")
-        	leg = plt.legend(loc='upper right')
-	        ltext = leg.get_texts()  # all the text.Text instance in the legend
-        	plt.setp(ltext, fontsize='small')    # the legend text fontsize
-	        ax.grid(True)
-        	fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.pdf'))
-	        fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.png'))
+        if has_projection:
+            fig4 = plt.figure()
+            if options.withTitles:
+                fig4.suptitle("projection $\zeta$")
+            ax = fig4.add_subplot(111)
+            _pmz = map(lambda v: v if v > 1e-10 else 0, proj_max_zeta)
+            ax.loglog(x[1:], _pmz[1:], '-g<', label='max $\zeta$')
+            ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive $\zeta$')
+            plt.xlabel("overall degrees of freedom")
+            plt.ylabel("energy error")
+            leg = plt.legend(loc='upper right')
+            ltext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(ltext, fontsize='small')    # the legend text fontsize
+            ax.grid(True)
+            fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.pdf'))
+            fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.png'))
     
         # --------
         # figure 5
@@ -477,7 +480,7 @@ if options.withFigures and len(sim_stats) > 1:
             fig11.suptitle("degrees of freedom")
         ax = fig11.add_subplot(111)
         ax.loglog(x, x, '-.m>', label='overall dofs')
-        ax.loglog(x, mu_max_dim, '--k', label='max dim $w_\mu$', linewidth=1.5)
+        ax.loglog(x, mu_max_dim, '-k', label='max dim $w_\mu$', linewidth=1.5)
         ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
         plt.xlabel("overall degrees of freedom", fontsize=14)
         plt.ylabel("degrees of freedom (active multi-indices)", fontsize=14)

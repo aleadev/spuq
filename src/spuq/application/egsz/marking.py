@@ -77,7 +77,7 @@ class Marking(object):
     @classmethod
     @takes(anything, MultiVector, MultiVector, list, int, float, float, float, float, optional(float), optional(float), optional(anything), optional(str))
     def mark(cls, resind, projind, mierr, maxorder_Lambda, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, max_Lambda_frac=1 / 10,
-                estimator_data=None, marking_strategy="SEPARATE"):
+                estimator_data=None, marking_strategy="SEPARATE with CELLPROJECTION"):
         """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
         mesh_markers_R = cls.mark_residual(resind, theta_eta, estimator_data, marking_strategy)
         mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh, estimator_data, marking_strategy)
@@ -92,7 +92,7 @@ class Marking(object):
 
     @classmethod
     @takes(anything, MultiVector, float, optional(anything), optional(str))
-    def mark_residual(cls, resind, theta_eta, estimator_data=None, marking_strategy="SEPARATE"):
+    def mark_residual(cls, resind, theta_eta, estimator_data=None, marking_strategy="SEPARATE with CELLPROJECTION"):
         """Evaluate residual estimator and carry out Doerfler marking (bulk criterion) for elements with parameter theta."""
         # residual marking
         # ================
@@ -122,14 +122,20 @@ class Marking(object):
 
     @classmethod
     @takes(anything, MultiVector, float, optional(float), optional(float), optional(anything), optional(str))
-    def mark_projection(cls, projind, theta_zeta, min_zeta=1e-10, maxh=1 / 10, estimator_data=None, marking_strategy="SEPARATE"):
+    def mark_projection(cls, projind, theta_zeta, min_zeta=1e-10, maxh=1 / 10, estimator_data=None, marking_strategy="SEPARATE with CELLPROJECTION"):
         """Evaluate projection error for active multiindices and determine multiindices to be refined."""
         # projection marking
         # ==================
         # setup marking sets
+        from numpy import sqrt
         mesh_markers = defaultdict(set)
-        max_zeta = max([max(projind[mu].coeffs) for mu in projind.active_indices()])
-        logger.info("max_zeta = %f", max_zeta)
+        max_zeta1 = max([max(projind[mu].coeffs) for mu in projind.active_indices()])    # maximal element strategy
+        max_zeta2 = max([sqrt(sum(projind[mu].coeffs ** 2)) for mu in projind.active_indices()])     # maximal mesh strategy
+        if marking_strategy.upper().find('CELLPROJECTION') != -1:
+            max_zeta = max_zeta1
+        else:
+            max_zeta = max_zeta2
+        logger.info("max_zeta = %f \t (cell %f, mesh %f)", max_zeta, max_zeta1, max_zeta2)
 
         #        if logger.isEnabledFor(logging.DEBUG):
         #            for mu, cellproj in projind.iteritems():
@@ -151,7 +157,7 @@ class Marking(object):
     @classmethod
     @takes(anything, list, float, float, int, optional(float), optional(anything), optional(str))
     def mark_inactive_multiindices(cls, Lambda_candidates, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac=1 / 10,
-                                            estimator_data=None, marking_strategy="SEPARATE"):
+                                            estimator_data=None, marking_strategy="SEPARATE with CELLPROJECTION"):
         """Determine multiindices to be activated."""
         # new multiindex activation
         # =========================
