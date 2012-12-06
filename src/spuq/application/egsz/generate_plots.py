@@ -117,11 +117,17 @@ if options.withFigures and len(sim_stats) > 1:
         for rem in _projerrmu:
             for mu, v in rem:
                 projerrmu[mu].append(v)
-        mu_max_dim = [max(w.dim.values()) for w in w_history]
+#        mu_max_dim = [max(w.dim.values()) for w in w_history]
+        mu_max_dim = [max(w[mu]._fefunc.function_space().dim() for mu in w.active_indices()) for w in w_history]
+        dofs = [sum(w[mu]._fefunc.function_space().dim() for mu in w.active_indices()) for w in w_history]
         print "ERROR ESTIMATOR", errest
+#        print "MU MAX", mu_max_dim
+        print "DOFS", dofs
         if with_mc_data:
             print "efficiency", [est / err for est, err in zip(errest, mcH1)]
-        
+
+        # TODO: check why there is a difference!
+#        x = dofs
         
 #================    ===============================
 #character           description
@@ -395,7 +401,8 @@ if options.withFigures and len(sim_stats) > 1:
             if options.withTitles:
                 fig6.suptitle("projection error")
         	ax = fig6.add_subplot(111)
-            ax.loglog(x[1:], proj_part[1:], '-.m>', label='projection part')
+            _pp = map(lambda v: v if v > 1e-10 else 0, proj_part)
+            ax.loglog(x[1:], _pp[1:], '-.m>', label='projection part')
             plt.xlabel("overall degrees of freedom")
             plt.ylabel("energy error")
             leg = plt.legend(loc='upper right')
@@ -479,9 +486,9 @@ if options.withFigures and len(sim_stats) > 1:
         if options.withTitles:
             fig11.suptitle("degrees of freedom")
         ax = fig11.add_subplot(111)
-        ax.loglog(x, x, '-.m>', label='overall dofs')
-        ax.loglog(x, mu_max_dim, '-k', label='max dim $w_\mu$', linewidth=1.5)
-        ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
+        ax.loglog(dofs, dofs, '-.m>', label='overall dofs')
+        ax.loglog(dofs, mu_max_dim, '-k', label='max dim $w_\mu$', linewidth=1.5)
+        ax.loglog(dofs, num_mi, '--y+', label='active mi', linewidth=1.5)
         plt.xlabel("overall degrees of freedom", fontsize=14)
         plt.ylabel("degrees of freedom (active multi-indices)", fontsize=14)
         leg = plt.legend(loc='upper left')
