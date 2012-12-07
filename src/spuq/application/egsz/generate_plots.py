@@ -86,8 +86,10 @@ if options.withFigures and len(sim_stats) > 1:
         proj_max_inactive_zeta = [s["PROJ-MAX-INACTIVE-ZETA"] for s in sim_stats]
         try:
             proj_inactive_zeta = sorted([v for v in sim_stats[-2]["PROJ-INACTIVE-ZETA"].values()], reverse=True)
+            proj_inactive_zeta_all = [sum(v) for v in sim_stats[-2]["PROJ-INACTIVE-ZETA"].values()]
         except:
             proj_inactive_zeta = None
+            proj_inactive_zeta_all = None
         try:
             mcL2 = [s["MC-L2ERR"] for s in sim_stats]
             mcH1 = [s["MC-H1ERR"] for s in sim_stats]
@@ -415,16 +417,17 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         # figure 7
         # --------
-    	if has_projection:
-	        fig7 = plt.figure()
-        	if options.withTitles:
-	            fig7.suptitle("inactive multi-index $\zeta$ for iteration %s" % str(len(w_history) - 2))
-        	ax = fig7.add_subplot(111)
-	        ax.plot(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
-        	plt.legend(loc='lower right')
-	        ax.grid(True)
-        	fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.pdf'))
-	        fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.png'))
+        if has_projection:
+            fig7 = plt.figure()
+            if options.withTitles:
+                fig7.suptitle("inactive multi-index $\zeta$ for iteration %s" % str(len(w_history) - 2))
+            ax = fig7.add_subplot(111)
+            ax.plot(range(len(proj_inactive_zeta_all)), proj_inactive_zeta_all, '-ro>', label='overall inactive $\zeta$')
+            ax.plot(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
+            plt.legend(loc='lower right')
+            ax.grid(True)
+            fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.pdf'))
+            fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.png'))
                 
         # --------
         # figure 8
@@ -476,8 +479,8 @@ if options.withFigures and len(sim_stats) > 1:
             ltext = leg.get_texts()  # all the text.Text instance in the legend
             plt.setp(ltext, fontsize='small')    # the legend text fontsize
             ax.grid(True)
-            fig6.savefig(os.path.join(options.experiment_dir, 'fig10-marking.pdf'))
-            fig6.savefig(os.path.join(options.experiment_dir, 'fig10-marking.png'))
+            fig10.savefig(os.path.join(options.experiment_dir, 'fig10-marking.pdf'))
+            fig10.savefig(os.path.join(options.experiment_dir, 'fig10-marking.png'))
 
         # ---------
         # figure 11
