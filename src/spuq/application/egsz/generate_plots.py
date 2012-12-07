@@ -86,7 +86,12 @@ if options.withFigures and len(sim_stats) > 1:
         proj_max_inactive_zeta = [s["PROJ-MAX-INACTIVE-ZETA"] for s in sim_stats]
         try:
             proj_inactive_zeta = sorted([v for v in sim_stats[-2]["PROJ-INACTIVE-ZETA"].values()], reverse=True)
-            proj_inactive_zeta_all = [sum(v) for v in sim_stats[-2]["PROJ-INACTIVE-ZETA"].values()]
+            proj_inactive_zeta_all = []
+            for i in range(len(sim_stats)):
+                try:
+                        proj_inactive_zeta_all.append(sum(sim_stats[-(i + 1)]["PROJ-INACTIVE-ZETA"].values()))
+                except:
+                    pass
         except:
             proj_inactive_zeta = None
             proj_inactive_zeta_all = None
@@ -109,6 +114,8 @@ if options.withFigures and len(sim_stats) > 1:
     	    marking_proj = None
         time_pcg = [s["TIME-PCG"] for s in sim_stats]
         time_estimator = [s["TIME-ESTIMATOR"] for s in sim_stats]
+        time_residual = [s["TIME-RESIDUAL"] for s in sim_stats]
+        time_projection = [s["TIME-PROJECTION"] for s in sim_stats]
         time_inactive_mi = [s["TIME-INACTIVE-MI"] for s in sim_stats]
         time_marking = [s["TIME-MARKING"] for s in sim_stats]
         reserrmu = defaultdict(list)
@@ -239,11 +246,11 @@ if options.withFigures and len(sim_stats) > 1:
                 
                 # NOTE: EGSZ paper specific fixes --- remove later!
                 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                while len(v) > 0 and v[0] < 1e-10:
+                while len(v) > 1 and (v[0] < 1e-10 or v[0] < v[1]):
                     v = v[1:]
                 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 
-		if len(v) > 0:
+		if len(v) > 1:
 	                ax.loglog(x[-len(v):], v, '-g<', label=ms)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error")
@@ -382,9 +389,11 @@ if options.withFigures and len(sim_stats) > 1:
             fig5.suptitle("timings")
 #        ax = fig5.add_subplot(111, aspect='equal')
         ax = fig5.add_subplot(111)
-        ax.loglog(x, time_pcg, '-g<', label='pcg')
-        ax.loglog(x, time_estimator, '-b^', label='estimator')
-        ax.loglog(x, time_inactive_mi, '-c+', label='inactive_mi')
+        ax.loglog(x, time_pcg, '--g<', label='pcg')
+        ax.loglog(x, time_estimator, '-b^', label='estimator overall')
+        ax.loglog(x, time_projection, '--kd', label='projection')
+        ax.loglog(x, time_residual, '--ms', label='residual')
+        ax.loglog(x, time_inactive_mi, '--c+', label='inactive_mi')
         ax.loglog(x, time_marking, '-ro', label='marking')
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("time in seconds")
@@ -422,9 +431,12 @@ if options.withFigures and len(sim_stats) > 1:
             if options.withTitles:
                 fig7.suptitle("inactive multi-index $\zeta$ for iteration %s" % str(len(w_history) - 2))
             ax = fig7.add_subplot(111)
-            ax.plot(range(len(proj_inactive_zeta_all)), proj_inactive_zeta_all, '-ro>', label='overall inactive $\zeta$')
-            ax.plot(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$')
-            plt.legend(loc='lower right')
+            dx = len(proj_inactive_zeta) / len(proj_inactive_zeta_all)
+            ax.plot(map(lambda x: dx * x, range(len(proj_inactive_zeta_all))), proj_inactive_zeta_all, '-ro', label='sum inactive $\zeta$ (per it)')
+            ax.plot(range(len(proj_inactive_zeta)), proj_inactive_zeta, '-.m>', label='inactive $\zeta$ (last it)')
+            plt.legend(loc='upper right')
+            ltext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(ltext, fontsize='small')    # the legend text fontsize
             ax.grid(True)
             fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.pdf'))
             fig7.savefig(os.path.join(options.experiment_dir, 'fig7-inactive-zeta.png'))

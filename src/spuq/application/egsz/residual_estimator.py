@@ -57,29 +57,40 @@ class ResidualEstimator(object):
     """
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, optional(float), optional(int), optional(int), optional(int))
-    def evaluateError(cls, w, coeff_field, pde, f, zeta, gamma, ceta, cQ, maxh=0.1, quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
+    @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, int, optional(float), optional(int), optional(int), optional(int))
+    def evaluateError(cls, w, coeff_field, pde, f, zeta, gamma, ceta, cQ, newmi_add_maxm, maxh=0.1, quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
         """Evaluate EGSZ Error (7.5)."""
         logger.debug("starting evaluateResidualEstimator")
 
-        with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info):
+        # define store function for timings
+        from functools import partial
+        def _store_stats(val, key, stats):
+            stats[key] = val
+
+        timing_stats = {}
+        with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RESIDUAL", stats=timing_stats)):
             resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
 
         logger.debug("starting evaluateProjectionEstimator")
-        with timing(msg="ResidualEstimator.evaluateProjectionError", logfunc=logger.info):
+        with timing(msg="ResidualEstimator.evaluateProjectionError", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-PROJECTION", stats=timing_stats)):
             projind, projerror = ResidualEstimator.evaluateProjectionError(w, coeff_field, pde, maxh, True, projection_degree_increase, refine_projection_mesh)
+
+        logger.debug("starting evaluateInactiveProjectionError")
+        with timing(msg="ResidualEstimator.evaluateInactiveMIProjectionError", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-INACTIVE-MI", stats=timing_stats)):
+            mierror = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, pde, maxh, newmi_add_maxm) 
 
         eta = sum(reserror[mu] ** 2 for mu in reserror)
         delta = sum(projerror[mu] ** 2 for mu in projerror)
+        delta_inactive_mi = sum(v[1] ** 2 for v in mierror)
         est1 = ceta / sqrt(1 - gamma) * sqrt(eta)
-        est2 = cQ / sqrt(1 - gamma) * sqrt(delta)
+        est2 = cQ / sqrt(1 - gamma) * sqrt(delta + delta_inactive_mi)
         est3 = cQ * sqrt(zeta / (1 - gamma))
         est4 = zeta / (1 - gamma)
 #        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
 #              + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
         xi = (est1 + est2 + est3) ** 2 + est4
         logger.info("Total Residual ERROR Factors: A1=%s  A2=%s  A3=%s  A4=%s", ceta / sqrt(1 - gamma), cQ / sqrt(1 - gamma), cQ * sqrt(zeta / (1 - gamma)), zeta / (1 - gamma))
-        return (xi, resind, projind, (est1, est2, est3, est4), (eta, delta, zeta))
+        return (xi, resind, projind, mierror, (est1, est2, est3, est4), (eta, delta, zeta), timing_stats)
 
 
     @classmethod

@@ -111,8 +111,8 @@ def AdaptiveSolver(A, coeff_field, pde,
                     theta_zeta=0.1, # projection marking threshold factor
                     min_zeta=1e-8, # minimal projection error to be considered 
                     maxh=0.1, # maximal mesh width for projection maximum norm evaluation
-                    newmi_add_maxm=10, # maximal search length for new new multiindices (to be added to max order of solution w)
-                    theta_delta=0.8, # number new multiindex activation bound
+                    newmi_add_maxm=20, # maximal search length for new new multiindices (to be added to max order of solution w)
+                    theta_delta=10.0, # number new multiindex activation bound
                     max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
                     marking_strategy="SEPARATE with CELLPROJECTION", # separate (as initially in EGSZ) or relative marking wrt overall error, projection refinement based on cell or mesh errors
                     # residual error
@@ -178,14 +178,16 @@ def AdaptiveSolver(A, coeff_field, pde,
         # residual and projection errors
         logger.debug("evaluating ResidualEstimator.evaluateError")
         with timing(msg="ResidualEstimator.evaluateError", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-ESTIMATOR", stats=stats)):
-            xi, resind, projind, estparts, errors = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ,
-                                                                                    maxh, quadrature_degree, projection_degree_increase,
+            xi, resind, projind, mierror, estparts, errors, timing_stats = ResidualEstimator.evaluateError(w, coeff_field, pde, f, zeta, gamma, ceta, cQ,
+                                                                                    newmi_add_maxm, maxh, quadrature_degree, projection_degree_increase,
                                                                                     refine_projection_mesh)
         reserrmu = [(mu, sqrt(sum(resind[mu].coeffs ** 2))) for mu in resind.keys()]
         projerrmu = [(mu, sqrt(sum(projind[mu].coeffs ** 2))) for mu in projind.keys()]
         res_part, proj_part, pcg_part = estparts[0], estparts[1], estparts[2]
         err_res, err_proj, err_pcg = errors[0], errors[1], errors[2]
         logger.info("Overall Estimator Error xi = %s while residual error is %s, projection error is %s, pcg error is %s", xi, res_part, proj_part, pcg_part)
+        
+        stats.update(timing_stats)
         stats["EST"] = xi
         stats["RES-PART"] = res_part
         stats["PROJ-PART"] = proj_part
@@ -210,10 +212,6 @@ def AdaptiveSolver(A, coeff_field, pde,
 #            print "SIM_STATS:", sim_stats[refinement]
         
         logger.debug("squared error components: eta=%s  delta=%s  zeta=%", errors[0], errors[1], errors[2])
-        # inactive mi projection error
-        logger.debug("evaluating ResidualEstimator.evaluateInactiveProjectionError")
-        with timing(msg="ResidualEstimator.evaluateInactiveMIProjectionError", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-INACTIVE-MI", stats=stats)):
-            mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, pde, maxh, newmi_add_maxm) 
 
         # exit when either error threshold or max_refinements is reached
         if refinement > max_refinements:
@@ -229,7 +227,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             if not do_uniform_refinement:        
                 logger.debug("starting Marking.mark")
                 estimator_data = EstimatorData(xi=xi, gamma=gamma, cQ=cQ, ceta=ceta) 
-                mesh_markers_R, mesh_markers_P, new_multiindices, proj_zeta, new_multiindices_all = Marking.mark(resind, projind, mierr, w.max_order,
+                mesh_markers_R, mesh_markers_P, new_multiindices, proj_zeta, new_multiindices_all = Marking.mark(resind, projind, mierror, w.max_order,
                                                                                 theta_eta, theta_zeta, theta_delta,
                                                                                 min_zeta, maxh, max_Lambda_frac,
                                                                                 estimator_data, marking_strategy)
