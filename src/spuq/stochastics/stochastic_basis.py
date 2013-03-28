@@ -15,7 +15,7 @@ class StochasticBasis(FunctionBasis):
     def sample(self, n):
         """Sample from the underlying distribution(s) and evaluate at
         basis functions"""
-        return NotImplemented
+        raise NotImplementedError
 
 
 class MultiindexBasis(StochasticBasis):
@@ -42,11 +42,11 @@ class MultiindexBasis(StochasticBasis):
 
     @property
     def gramian(self):
-        return NotImplemented
+        raise NotImplementedError
 
     @property
     def dim(self):
-        return NotImplemented
+        raise NotImplementedError
 
 
 class GPCBasis(StochasticBasis):
@@ -81,7 +81,7 @@ class GPCBasis(StochasticBasis):
     @property
     def gramian(self):
         # return DiagonalMatrix( [rv.orthpoly.norm(q) for q in xrange(p+1)])
-        return NotImplemented
+        raise NotImplementedError
 
     def sample(self, n):
         rv = self._rv

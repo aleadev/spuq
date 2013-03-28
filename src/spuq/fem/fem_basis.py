@@ -16,3 +16,9 @@ class FEMBasis(FunctionBasis):
     def project_onto(self, vec):
         """Project vector onto own FEMBasis."""
         raise NotImplementedError
+
+    @abstractmethod
+    def get_dof_coordinates(self):
+        """Return coordinates of degrees of freedom."""
+        raise NotImplementedError
+    

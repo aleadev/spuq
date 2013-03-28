@@ -1,5 +1,6 @@
 from dolfin import FunctionSpace, VectorFunctionSpace, FunctionSpaceBase, Function, TestFunction, TrialFunction, CellFunction, assemble, dx, refine, cells
 import dolfin
+import numpy as np
 
 from spuq.utils.type_check import takes, anything, optional
 from spuq.utils.enum import Enum
@@ -31,7 +32,22 @@ class FEniCSBasis(FEMBasis):
                 newfs = VectorFunctionSpace(mesh, self._fefs.ufl_element().family(), degree)
             else:
                 newfs = FunctionSpace(mesh, self._fefs.ufl_element().family(), degree)
-            return FEniCSBasis(newfs, self._ptype) 
+            return FEniCSBasis(newfs, self._ptype)
+         
+    def get_dof_coordinates(self):
+        V = self._fefs
+        # degrees of freedom
+        N = V.dofmap().global_dimension()
+        c4dof = np.zeros((N, V.mesh().geometry().dim()))
+        # evaluate nodes matrix by local-to-global map on each cells
+        for c in cells(V.mesh()):
+            # coordinates of nodes in current cell
+            cell_c4dof = V.dofmap().tabulate_coordinates(c)
+            # global indices of nodes in current cell
+            nodes = V.dofmap().cell_dofs(c.index())
+            # set global nodes coordinates
+            c4dof[nodes] = cell_c4dof    
+        return c4dof
 
     def new_vector(self, sub_spaces=None):
         """Create null vector on this space."""

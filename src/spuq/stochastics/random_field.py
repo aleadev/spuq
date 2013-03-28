@@ -1,10 +1,12 @@
+from spuq.stochastics.stochastic_basis import StochasticBasis
+
 class RandomField(object):
     def __init__(self):
         # maybe this should go into TensorProductBasis
         self.Phi = SpatialBasis()
         self.Psi = StochasticBasis()
         # maybe this should go into derived classes
-        self.coeffs = GMatrix()
+        self.coeffs = GramMatrix()
 
     def __add__(self, other):
         # add only if same spatial and stochastic basis are used

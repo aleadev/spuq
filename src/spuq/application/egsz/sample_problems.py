@@ -1,7 +1,6 @@
 from __future__ import division
 
 from math import ceil
-from exceptions import NameError
 from numpy.random import random, shuffle
 from scipy.special import zeta
 from collections import namedtuple
@@ -20,7 +19,6 @@ import ufl
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 
 class SampleProblem(object):
@@ -245,11 +243,11 @@ class SampleProblem(object):
 
         try:
             for bc_def in cls.boundary_defs[(pde_type, boundary_type)]:
-                type, where, func = bc_def
-                if type == cls.NEUMANN:
+                btype, where, func = bc_def
+                if btype == cls.NEUMANN:
                     Neumann_boundary.append(boundaries[where])
                     g.append(func)
-                elif type == cls.DIRICHLET:
+                elif btype == cls.DIRICHLET:
                     Dirichlet_boundary.append(boundaries[where])
                     uD.append(func)
                 else:

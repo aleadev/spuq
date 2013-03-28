@@ -1,14 +1,11 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 
-import numpy as np
-import scipy
 import scipy.stats
 import scipy.integrate
 
 import spuq.polyquad.polynomials as polys
 from spuq.utils import strclass
-from spuq.utils.type_check import anything, takes
-
+    
 class RandomVariable(object):
     """Base class for random variables"""
     __metaclass__ = ABCMeta
@@ -25,7 +22,7 @@ class RandomVariable(object):
 
     @abstractmethod
     def invcdf(self, x):  # pragma: no cover
-        """Return the cumulative distribution function at x"""
+        """Return the inverse cumulative distribution function at x"""
         return NotImplemented
 
     @abstractproperty
@@ -276,4 +273,6 @@ class ArcsineRV(ScipyRandomVariable):
         return ("<%s a=%s b=%s>" %
                 (strclass(self.__class__), self.a, self.b))
 
+
+# define deterministic 0 as dummy random variable
 DeterministicPseudoRV = NormalRV(1, 0)
