@@ -61,7 +61,6 @@ def test_set_defaults():
     assert_equal(mv[Multiindex()], FlatVector([3, 4, 5]))
     assert_raises(KeyError, mv.__getitem__, Multiindex([1, 2, 2]))
 
-
 def test_equality():
     mv1 = MultiVector()
     mv2 = MultiVector()
@@ -90,7 +89,6 @@ def test_add():
     mv3.set_defaults(mis1, FlatVector([9, 12, 17]))
     assert_equal(mv1 + mv2, mv3)
 
-
 def test_neg():
     mv1 = MultiVector()
     mis1 = MultiindexSet.createCompleteOrderSet(3, 4)
@@ -98,7 +96,6 @@ def test_neg():
     mv = -mv1
     assert_equal(mv[Multiindex(mis1[-1])], FlatVector([-3, -4, -5]))
     assert_equal(mv1[Multiindex(mis1[-1])], FlatVector([3, 4, 5]))
-
 
 def test_mul():
     mv1 = MultiVector()
@@ -116,7 +113,6 @@ def test_mul():
     mv1 *= 2.0
     assert_equal(mv1, mv2)
 
-
 def test_sub():
     mv1 = MultiVector()
     mv2 = MultiVector()
@@ -131,12 +127,10 @@ def test_sub():
     assert_equal(mv3[mi1], FlatVector([-3, -4, -5]))
     assert_equal(mv3[mi2], FlatVector([5, 4, -7]))
 
-
 def test_mvwp_repr():
     mv = MultiVectorWithProjection()
     mv[Multiindex([1, 2, 3])] = FlatVector([3, 4, 5])
     assert_equal(str(mv), "<MultiVectorWithProjection keys=[<Multiindex inds=[1 2 3]>]>")
-
 
 def test_mvwp_copy():
     # compares equal to copied MultiVectorWP but not to MultiVector 
@@ -170,7 +164,6 @@ def test_mvwp_project():
     assert_equal(mv1.get_projection(mi1, mi2), pr(v1, v2))
     assert_equal(mv1.get_back_projection(mi1, mi2), pr(pr(v1, v2), v1))
 
-    # clearing of the cache needs to tested
-
+    # TODO: clearing of the cache needs to tested
 
 test_main()
