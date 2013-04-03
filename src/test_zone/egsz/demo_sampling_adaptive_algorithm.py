@@ -9,7 +9,7 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 
 try:
-    from dolfin import (Function, FunctionSpace, Constant, UnitSquare, compile_subdomains,
+    from dolfin import (Function, FunctionSpace, Constant, UnitSquareMesh, compile_subdomains,
                         Mesh, interactive, project, errornorm, DOLFIN_EPS)
     from spuq.application.egsz.fem_discretisation import FEMPoisson
     from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
@@ -88,7 +88,7 @@ if lshape:
     mesh0 = Mesh(lshape_xml)
     maxx, minx, maxy, miny = 1, -1, 1, -1
 else:
-    mesh0 = UnitSquare(5, 5)
+    mesh0 = UnitSquareMesh(5, 5)
     maxx, minx, maxy, miny = 1, 0, 1, 0
 #meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=10, randref=(0.4, 0.3))
 meshes = SampleProblem.setupMeshes(mesh0, len(mis), num_refine=0)
