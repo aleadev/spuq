@@ -18,8 +18,8 @@ class Covariance:
     def homogeneous(self):
         return self._ishomogeneous
     
-    def __call__(self, r):
-        return self.evaluate(r)
+    def __call__(self, x, y):
+        return self.evaluate(x, y)
 
     @abstractmethod
     def evaluate(self, r):
@@ -28,20 +28,24 @@ class Covariance:
 
 class GaussianCovariance(Covariance):
     def __init__(self, sigma, a):
+        super(True, True)
         self.sigma = sigma
         self.a = a
         
-    def evaluate(self, r):
-        return self.sigma**2*np.exp(-r**2/self.a**2)
+    def evaluate(self, x, y):
+        r = ((x - y) ** 2).sum(axis=1)
+        return self.sigma ** 2 * np.exp(-r / self.a ** 2)
     
 
 class ExponentialCovariance(Covariance):
     def __init__(self, sigma, a):
+        super(True, True)
         self.sigma = sigma
         self.a = a
         
-    def evaluate(self, r):
-        return self.sigma**2*np.exp(-np.abs(r)/self.a)
+    def evaluate(self, x, y):
+        r = np.sqrt(((x - y) ** 2).sum(axis=1))
+        return self.sigma ** 2 * np.exp(-r / self.a)
 
     
 class TransformedCovariance(Covariance):

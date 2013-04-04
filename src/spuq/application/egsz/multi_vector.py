@@ -14,7 +14,7 @@ import os
 import pickle
 from collections import defaultdict
 
-__all__ = ["MultiVector", "MultiVectorWithProjection"]
+__all__ = ["MultiVector", "MultiVectorWithProjection", "MultiVectorSharedBasis"]
 
 import logging
 logger = logging.getLogger(__name__)
@@ -421,8 +421,61 @@ class MultiVectorOperator(BaseOperator):
             return self._euclidian_to_multivec(vec)
 
 
+class MultiVectorSharedBasis(MultiVector):
+    """Specialisation of MultiVector which only allows a shared basis between all multiindices."""
+
+    @takes(anything, optional(callable))
+    def __init__(self, on_modify=lambda: None, multivector=None):
+        self.mi2vec = dict()
+        self.on_modify = on_modify
+        if multivector is not None:
+            for mu, vec in multivector.iteritems():
+                self[mu] = vec
+
+    @property
+    def basis(self):  # pragma: no cover
+        """Return basis for MultiVector"""
+        return MultiVectorBasis(self)
+
+    @takes(anything, Multiindex, Vector)
+    def __setitem__(self, mi, val):
+        self.on_modify()
+        self.mi2vec[mi] = val
+
+    def keys(self):
+        return self.mi2vec.keys()
+
+    def iteritems(self):
+        return self.mi2vec.iteritems()
+
+    def active_indices(self):
+        return sorted(self.keys())
+
+    def copy(self):
+        mv = self.__class__()
+        for mi in self.keys():
+            mv[mi] = self[mi].copy()
+        return mv
+
+    @takes(anything, MultiindexSet, Vector)
+    def set_defaults(self, multiindex_set, init_vector):
+        self.on_modify()
+        for mi in multiindex_set:
+            self[Multiindex(mi)] = init_vector.copy()
+
+    def __getstate__(self):
+        # pickling preparation
+        odict = self.__dict__.copy() # copy the dict since we change it
+        del odict['on_modify']
+        return odict
+    
+    def __setstate__(self, d):
+        # pickling restore
+        self.__dict__.update(d)
+
+
 class MultiVectorBasis(object):
-    def __init__(self, multivec):
+    def __init__(self, multivec, same_basis=False):
         self._basis = {mu:multivec[mu].basis for mu in multivec.active_indices()}
 
     @property

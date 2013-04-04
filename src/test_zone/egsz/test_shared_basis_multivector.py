@@ -34,9 +34,7 @@ def initialise_multivector(mv, M):
     
 mv = MultiVectorSharedBasis()
 initialise_multivector(mv, 2)
-B = mv.get_basis()
-v = B.new_vector()
-mv[Multiindex(2)] = v
+mv[Multiindex(2)] = mv.basis().new_vector()
 mv.refine()
 
 for mi in mv:
