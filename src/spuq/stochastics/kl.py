@@ -20,3 +20,15 @@ def solve_KL_eigenvalue_problem(cov, basis, M):
     # evaluate M largest eigenpairs of symmetric eigenvalue problem
     evals, evecs = eigh(W, M, which='LM')
     return (evals, evecs)
+
+
+class KL(object):
+    def __init__(self, cov, basis, M):
+        self.cov = cov
+        self.basis = basis
+        self.M = M
+        self.evals, self.evecs = solve_KL_eigenvalue_problem(cov, basis, M)
+         
+    def __getitem__(self, i):
+        pass
+    
