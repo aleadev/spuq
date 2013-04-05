@@ -75,6 +75,9 @@ class MultiVector(Vector):
         self.on_modify()
         self.mi2vec[mi] = val
 
+    def __len__(self):
+        return len(self.mi2vec)
+
     def keys(self):
         return self.mi2vec.keys()
 
@@ -258,7 +261,6 @@ class MultiVectorWithProjection(MultiVector):
         from spuq.fem.fenics.fenics_utils import create_joint_mesh
         from dolfin import refine, FunctionSpace, VectorFunctionSpace
         from spuq.fem.fenics.fenics_basis import FEniCSBasis
-        import numpy as np
         
         # get joint mesh based on destination space
         basis_src = self[mu_src].basis 
@@ -279,7 +281,7 @@ class MultiVectorWithProjection(MultiVector):
         
         # define summation function to get values on original destination mesh from function space on joint mesh
         def sum_up(vals):
-            sum_vals = [sum(vals[v]) for k, v in parents.iteritems()]
+            sum_vals = [sum(vals[v]) for _, v in parents.iteritems()]
             return np.array(sum_vals)
         return w_dest - w_reference, sum_up
 
@@ -293,7 +295,6 @@ class MultiVectorWithProjection(MultiVector):
         # TODO: separation of fenics specific code
         from dolfin import refine, FunctionSpace, VectorFunctionSpace
         from spuq.fem.fenics.fenics_basis import FEniCSBasis
-        import numpy as np
         if not refine_mesh:
             w_reference = self.get_projection(mu_src, mu_dest, reference_degree)
             w_dest = self.get_projection(mu_src, mu_dest)
@@ -356,7 +357,7 @@ class MultiVectorOperator(BaseOperator):
         if multvec is not None:
             self._basis = multvec.basis
         else:
-            assert dim is not None and basis is not None
+            assert basis is not None
             self._basis = basis
         self._dim = self._basis.dim
         self._dimsum = sum(self._dim.values())      # ;)
@@ -406,9 +407,9 @@ class MultiVectorOperator(BaseOperator):
 
         start = 0
         basis = self._basis
-        for mu in self._basis.active_indices():
+        for mu in basis.active_indices():
             vec_mu = new_vec[mu]
-            dim = self._basis._basis[mu].dim
+            dim = basis._basis[mu].dim
             vec_mu.coeffs = vec.coeffs[start:start + dim]
             new_vec[mu] = vec_mu
             start += dim
@@ -435,11 +436,13 @@ class MultiVectorSharedBasis(MultiVector):
     @property
     def basis(self):  # pragma: no cover
         """Return basis for MultiVector"""
-        return MultiVectorBasis(self)
+        return MultiVectorBasis(self, single_basis=True)
 
     @takes(anything, Multiindex, Vector)
     def __setitem__(self, mi, val):
         self.on_modify()
+        if len(self) > 0:
+            assert val.dim == self[self.keys()[0]].dim
         self.mi2vec[mi] = val
 
     def keys(self):
@@ -457,6 +460,13 @@ class MultiVectorSharedBasis(MultiVector):
             mv[mi] = self[mi].copy()
         return mv
 
+    def refine(self, cell_ids = None):
+        _, prolongate, _ = self.basis.basis.refine(cell_ids)
+        mv = self.__class__()
+        for mi in self.keys():
+            mv[mi] = prolongate(self[mi])
+        return mv
+        
     @takes(anything, MultiindexSet, Vector)
     def set_defaults(self, multiindex_set, init_vector):
         self.on_modify()
@@ -475,12 +485,19 @@ class MultiVectorSharedBasis(MultiVector):
 
 
 class MultiVectorBasis(object):
-    def __init__(self, multivec, same_basis=False):
-        self._basis = {mu:multivec[mu].basis for mu in multivec.active_indices()}
+    def __init__(self, multivec, single_basis=False):
+        self.single_basis = single_basis
+        if self.single_basis:
+            self.basis = multivec[multivec.active_indices()[0]].basis
+        else:
+            self.basis = { mu:multivec[mu].basis for mu in multivec.active_indices() }
 
     @property
     def dim(self):
-        return {mu:self._basis[mu].dim for mu in self._basis.keys()}
+        if self.single_basis:
+            return self._basis.dim 
+        else:
+            return {mu:self._basis[mu].dim for mu in self._basis.keys()}
 
     def active_indices(self):
         return self._basis.keys()
