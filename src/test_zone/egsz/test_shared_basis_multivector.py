@@ -23,14 +23,14 @@ def initialise_multivector(mv, M):
     # initial multiindices
     mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(M, 1)]
     # intialise fem vectors
-    N = 5
+    N = 15
     mesh = UnitSquareMesh(N, N)
     V = FunctionSpace(mesh, 'CG', 1)
-    ex = Expression('sin(2*pi*A)', A=0)
+    ex = Expression('sin(2*pi*A*x[0])', A=0)
     for i, mi in enumerate(mis):
-        ex.A = i
+        ex.A = i+1
         f = interpolate(ex, V)
-        mv[mi] = FEniCSVector(f) 
+        mv[mi] = FEniCSVector(f)
 
 mv = MultiVectorSharedBasis()
 initialise_multivector(mv, 2)
