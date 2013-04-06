@@ -1,6 +1,5 @@
 from __future__ import division
 from abc import ABCMeta, abstractmethod, abstractproperty
-import spuq.polyquad.polynomials.StochasticHermitePolynomials
 import numpy as np
 import itertools as it
 from scipy.misc import factorial
@@ -9,7 +8,7 @@ from spuq.polyquad.polynomials import StochasticHermitePolynomials
 
 class Covariance:
     __metaclass__ = ABCMeta
-    
+
     def __init__(self, isisotropic=False, ishomogeneous=False):
         self._isisotropic = isisotropic
         self._ishomgeneous = ishomogeneous
@@ -17,78 +16,91 @@ class Covariance:
     @property
     def isotropic(self):
         return self._isisotropic
-    
+
     @property
     def homogeneous(self):
         return self._ishomogeneous
-    
+
     def __call__(self, x, y):
         return self.evaluate(x, y)
 
     @abstractmethod
     def evaluate(self, r):
         raise NotImplementedError
-    
+
 
 class GaussianCovariance(Covariance):
     def __init__(self, sigma, a):
-        super(True, True)
+        super(self.__class__, self).__init__(True, True)
         self.sigma = sigma
         self.a = a
-        
+
     def evaluate(self, x, y):
-        r = ((x - y) ** 2).sum(axis=1)
+        r = ((x - y) ** 2).T.sum(axis=0).T
         return self.sigma ** 2 * np.exp(-r / self.a ** 2)
-    
+
 
 class ExponentialCovariance(Covariance):
     def __init__(self, sigma, a):
-        super(True, True)
+        super(self.__class__, self).__init__(True, True)
         self.sigma = sigma
         self.a = a
-        
+
     def evaluate(self, x, y):
-        r = np.sqrt(((x - y) ** 2).sum(axis=1))
+        r = np.sqrt( ((x - y) ** 2).T.sum(axis=0).T )
         return self.sigma ** 2 * np.exp(-r / self.a)
 
-    
+
 class TransformedCovariance(Covariance):
-    def __init__(self, phi, KL, N):
+    def __init__(self, I, phi, KL, N):
+        assert N <= KL.M
         self.phi = phi
         self.N = N
-        self._cov_gamma = self.eval_transformed_covariance(phi, KL.cov, KL.basis, N)
-        self._r_alpha = self.eval_gpc_coefficients(KL, N)
-        
-    def eval_transformed_covariance(self, phi, cov_r, basis, N):
-        # EZ (3.59)
-        def phi_integrand(x, i, phi):
-            return phi(x)*StochasticHermitePolynomials.eval(i, x)*np.exp(-x**2/2) / (np.sqrt(2*np.pi)*factorial(i))
-        phii = [quad(phi_integrand, -np.Inf, np.Inf, args=(i, phi)) for i in range(N)]
-        
+        self.I = I
+        self._cov_gamma, phii = self.prepare_transformed_covariance(phi, KL.cov, KL.basis, N)
+        self._r_alpha = self.eval_gpc_coefficients(I, KL, phii)
+
+    def prepare_transformed_covariance(self, phi, cov_r, basis, N):
+        # EZ (3.59) and (3.55)
+        def phi_integrand(x, i, phi, Hpoly):
+            return phi(x)*Hpoly.eval(i, x)*np.exp(-x**2/2)/(np.sqrt(2*np.pi)*factorial(i))
+        Hpoly = StochasticHermitePolynomials()
+#        phii = [quad(phi_integrand, -np.Inf, np.Inf, args=(i, phi, Hpoly)) for i in range(N)]
+        phii = [quad(phi_integrand, -1, 1, args=(i, phi, Hpoly))[0] for i in range(N)]
+
+        print "XXXXXX", phii
+
         c4dof = basis.get_dof_coordinates()
-        N = c4dof.shape[0]
-        cov_gamma = np.ndarray(N, N)
+        J = c4dof.shape[0]
+        cov_gamma = np.ndarray((J, J))
         # find roots of polynomials for each pair of coordinates
-        for i, j in it.product(range(N), repeat=2):
-            c = [phii[0] - cov_r] + [factorial(i)*phii[i]**2 for i in range(1,N+1)]
+        for i, j in it.product(range(J), repeat=2):
+            c = [phii[0] - cov_r(c4dof[i], c4dof[j])] + [factorial(i)*phii[i]**2 for i in range(1,N)]
             r = np.roots(c)
-            cov_gamma[i,j] = r[0] 
+            print "RRRR", r, J
+            cov_gamma[i,j] = r[0]
         return cov_gamma, phii
-        
-    def eval_gpc_coeficents(self, alphas, KL, phii=None):
-        # EZ (3.62)
+
+    def eval_gpc_coefficients(self, alphas, KL, phii):
+        # EZ (3.68)
         def binom(a):
-            return factorial(np.sum(a))/np.prod(map(lambda x: float(factorial(x)), a))
-        r = [binom(a)*phii[np.sum(a)]*KL.g**a for a in alphas]
+            if a.order == 0: return 0
+            return factorial(a.order)/np.prod(map(lambda x: float(factorial(x)), a.as_array))
+        Balphas = [(binom(a),a) for a in alphas]
+        r = [lambda x: A*phii[a.order]*KL.g(x)**a for A, a in Balphas]
         return r
 
-    
+    def evaluate(self, x, y):
+        r = np.sqrt( ((x - y) ** 2).T.sum(axis=0).T )
+        pass
+
+
 class InterpolatedCovariance(Covariance):
     def __init__(self):
         pass
 
-    
+
 class LognormalTransformedCovariance(Covariance):
     def __init__(self):
         pass
-        
+

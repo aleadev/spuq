@@ -1,6 +1,7 @@
 #from abc import ABCMeta, abstractmethod, abstractproperty
 from hashlib import sha1
 import numpy as np
+import scipy as sp
 
 from spuq.utils import strclass
 from spuq.utils.decorators import total_ordering
@@ -109,6 +110,9 @@ class Multiindex(object):
 
     def dec(self, pos, by=1):
         return self.inc(pos, -by)
+
+    def factorial(self):
+        return sp.misc.factorial(self._arr)
 
     @staticmethod
     def createCompleteOrderSet(m, p):

@@ -33,7 +33,7 @@ class FEniCSBasis(FEMBasis):
             else:
                 newfs = FunctionSpace(mesh, self._fefs.ufl_element().family(), degree)
             return FEniCSBasis(newfs, self._ptype)
-         
+
     def get_dof_coordinates(self):
         V = self._fefs
         # degrees of freedom
@@ -46,7 +46,7 @@ class FEniCSBasis(FEMBasis):
             # global indices of nodes in current cell
             nodes = V.dofmap().cell_dofs(c.index())
             # set global nodes coordinates
-            c4dof[nodes] = cell_c4dof    
+            c4dof[nodes] = cell_c4dof
         return c4dof
 
     def new_vector(self, sub_spaces=None):
@@ -57,7 +57,7 @@ class FEniCSBasis(FEMBasis):
             return FV.FEniCSVector(Function(V))
         else:
             assert sub_spaces is None or sub_spaces == self.num_sub_spaces
-            return FV.FEniCSVector(Function(self._fefs)) 
+            return FV.FEniCSVector(Function(self._fefs))
 
     def refine(self, cell_ids=None):
         """Refine mesh of basis uniformly or wrt cells, returns (new_basis,prolongate,restrict)."""
@@ -142,11 +142,11 @@ class FEniCSBasis(FEMBasis):
         return self.mesh.hmin()
 
     @property
-    def degree(self):        
+    def degree(self):
         return self._fefs.ufl_element().degree()
 
     @property
-    def family(self):        
+    def family(self):
         return self._fefs.ufl_element().family()
 
     def eval(self, x):  # pragma: no coverage

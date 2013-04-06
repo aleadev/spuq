@@ -50,7 +50,7 @@ class FEniCSVector(FEMVector):
 
     @property
     def num_sub_spaces(self):
-        return self._fefunc.function_space().num_sub_spaces() 
+        return self._fefunc.function_space().num_sub_spaces()
 
     @property
     def mesh(self):
@@ -94,6 +94,9 @@ class FEniCSVector(FEMVector):
     def interpolate(self, f):
         self._fefunc.interpolate(f)
         return self
+
+    def __call__(self, x):
+        return self._fefunc(x)
 
     def __eq__(self, other):
         """Compare vectors for equality.
@@ -140,9 +143,9 @@ class FEniCSVector(FEMVector):
 
     def plot(self, **kwargs):
         func = self._fefunc
-        # fix a bug in the fenics plot function that appears when 
-        # the maximum difference between data values is very small 
-        # compared to the magnitude of the data 
+        # fix a bug in the fenics plot function that appears when
+        # the maximum difference between data values is very small
+        # compared to the magnitude of the data
         values = func.vector().array()
         diff = max(values) - min(values)
         magnitude = max(abs(values))
@@ -154,11 +157,11 @@ class FEniCSVector(FEMVector):
 
     def norm(self, norm_type="L2"):
         return norm(self._fefunc, norm_type)
-        
+
     @property
     def min_val(self):
         return min(self._fefunc.vector().array())
-        
+
     @property
     def max_val(self):
         return max(self._fefunc.vector().array())
