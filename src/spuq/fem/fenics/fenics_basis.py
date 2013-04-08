@@ -172,3 +172,4 @@ class FEniCSBasis(FEMBasis):
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self._fefs == other._fefs)
+        # TODO: comparison of properties is required...

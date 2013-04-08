@@ -13,18 +13,19 @@ def solve_KL_eigenvalue_problem(cov, basis, M):
     C = np.ndarray((N, N))
     # evaluate covariance matrix
     for i, j in it.product(range(N), repeat=2):
-        C[i,j] = cov(c4dof[i],c4dof[j])
+        C[i, j] = cov(c4dof[i], c4dof[j])
     # get Gram matrix
     G = basis.gramian
-    W = G*MatrixOperator(C)*G
+    W = G * MatrixOperator(C) * G
     # evaluate M largest eigenpairs of symmetric eigenvalue problem
     Gmat = G.as_matrix()
     J = Gmat.shape[0]
-    evals, evecs = eigh(W.as_matrix(), Gmat, eigvals=(J-M, J-1))
+    evals, evecs = eigh(W.as_matrix(), Gmat, eigvals=(J - M, J - 1))
     return evals, evecs.T
 
 
 class KLexpansion(object):
+    # M term KL expansion of covariance with given discrete spatial basis
     def __init__(self, cov, basis, M):
         self.cov = cov
         self.basis = basis

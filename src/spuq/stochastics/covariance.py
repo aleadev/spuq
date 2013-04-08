@@ -47,7 +47,7 @@ class ExponentialCovariance(Covariance):
         self.a = a
 
     def evaluate(self, x, y):
-        r = np.sqrt( ((x - y) ** 2).T.sum(axis=0).T )
+        r = np.sqrt(((x - y) ** 2).T.sum(axis=0).T)
         return self.sigma ** 2 * np.exp(-r / self.a)
 
 
@@ -61,10 +61,11 @@ class TransformedCovariance(Covariance):
         self._r_alpha = self.eval_gpc_coefficients(I, KL, phii)
 
     def prepare_transformed_covariance(self, phi, cov_r, basis, N):
-        # EZ (3.59) and (3.55)
+        # EZ (3.55)
         def phi_integrand(x, i, phi, Hpoly):
-            return phi(x)*Hpoly.eval(i, x)*np.exp(-x**2/2)/(np.sqrt(2*np.pi)*factorial(i))
+            return phi(x) * Hpoly.eval(i, x) * np.exp(-x ** 2 / 2) / (np.sqrt(2 * np.pi) * factorial(i))
         Hpoly = StochasticHermitePolynomials()
+        # TODO: quadrature does not seem to be finite on \R with this integrand
 #        phii = [quad(phi_integrand, -np.Inf, np.Inf, args=(i, phi, Hpoly)) for i in range(N)]
         phii = [quad(phi_integrand, -1, 1, args=(i, phi, Hpoly))[0] for i in range(N)]
 
@@ -75,23 +76,34 @@ class TransformedCovariance(Covariance):
         cov_gamma = np.ndarray((J, J))
         # find roots of polynomials for each pair of coordinates
         for i, j in it.product(range(J), repeat=2):
-            c = [phii[0] - cov_r(c4dof[i], c4dof[j])] + [factorial(i)*phii[i]**2 for i in range(1,N)]
+            # EZ (3.59), evaluation of polynomial roots
+            c = [phii[0] - cov_r(c4dof[i], c4dof[j])] + [factorial(i) * phii[i] ** 2 for i in range(1, N)]
             r = np.roots(c)
+            # TODO: check existence/uniqueness of result
+            
             print "RRRR", r, J
-            cov_gamma[i,j] = r[0]
+            
+            cov_gamma[i, j] = r[0]
         return cov_gamma, phii
 
-    def eval_gpc_coefficients(self, alphas, KL, phii):
-        # EZ (3.68)
+    def eval_gpc_coefficients(self, alphas, KL, phii, project_onto_basis=None):
+        # evaluate pce coefficients from (optionally projected) KL expansion
         def binom(a):
             if a.order == 0: return 0
-            return factorial(a.order)/np.prod(map(lambda x: float(factorial(x)), a.as_array))
-        Balphas = [(binom(a),a) for a in alphas]
-        r = [lambda x: A*phii[a.order]*KL.g(x)**a for A, a in Balphas]
+            return factorial(a.order) / np.prod(map(lambda x: float(factorial(x)), a.as_array))
+        Balphas = [(binom(a), a) for a in alphas]
+        if project_onto_basis is not None:
+            g = [project_onto_basis.project_onto(KL.gi) for gi in KL.g]
+        else:
+            g = KL.g
+        # EZ (3.68)
+        r = [lambda x: A * phii[a.order] * g(x) ** a for A, a in Balphas]
         return r
+        # TODO: PCE/GPC class?!
 
     def evaluate(self, x, y):
-        r = np.sqrt( ((x - y) ** 2).T.sum(axis=0).T )
+        r = np.sqrt(((x - y) ** 2).T.sum(axis=0).T)
+        # TODO: what needs to be done here? interpolation?
         pass
 
 
