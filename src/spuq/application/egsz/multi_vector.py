@@ -432,6 +432,7 @@ class MultiVectorSharedBasis(MultiVector):
         if multivector is not None:
             for mu, vec in multivector.iteritems():
                 self[mu] = vec
+                assert self[mu].basis == self[self.active_indices()[0]]
 
     @property
     def basis(self):  # pragma: no cover
@@ -442,7 +443,7 @@ class MultiVectorSharedBasis(MultiVector):
     def __setitem__(self, mi, val):
         self.on_modify()
         if len(self) > 0:
-            assert val.dim == self[self.keys()[0]].dim
+            assert val.basis == self[self.active_indices()[0]].basis
         self.mi2vec[mi] = val
 
     def keys(self):
@@ -460,7 +461,7 @@ class MultiVectorSharedBasis(MultiVector):
             mv[mi] = self[mi].copy()
         return mv
 
-    def refine(self, cell_ids = None):
+    def refine(self, cell_ids=None):
         _, prolongate, _ = self.basis.basis.refine(cell_ids)
         mv = self.__class__()
         for mi in self.keys():
