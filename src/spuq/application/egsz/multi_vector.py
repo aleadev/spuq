@@ -41,12 +41,17 @@ class MultiVector(Vector):
         return MultiVectorBasis(self)
 
     @property
-    def dim(self, summed = False):
+    def dim(self, summed=False):
         """Return set of dimensions of MultiVector."""
         if summed:
             return sum(d for d in self.dim.values())
         else:
             return {mu:self[mu].dim for mu in self.active_indices()}
+
+    @property
+    def supp(self):
+        s = [set(mu.supp) for mu in self.active_indices()]
+        return set.union(*s)
 
     def flatten(self):
         """Return flattened (Euclidian) vector."""
@@ -425,8 +430,6 @@ class MultiVectorOperator(BaseOperator):
 class MultiVectorSharedBasis(MultiVector):
     """Specialisation of MultiVector which only allows a shared basis between all multiindices."""
 
-    # TODO: introduce basis checks to ensure single basis!!!!
-
     @takes(anything, optional(callable))
     def __init__(self, on_modify=lambda: None, multivector=None):
         self.mi2vec = dict()
@@ -456,11 +459,6 @@ class MultiVectorSharedBasis(MultiVector):
 
     def active_indices(self):
         return sorted(self.keys())
-
-    @property
-    def supp(self):
-        s = [set(mu.supp) for mu in self.active_indices()]
-        return set.union(*s)
 
     def copy(self):
         mv = self.__class__()

@@ -1,9 +1,8 @@
-"""Implementation of the EGSZ marking algorithm for the residual a posteriori error estimator.
+"""Implementation of the EGSZ2 marking algorithm for the residual a posteriori error estimator.
 
 The marking is carried out with respect to the
     [a] spatial residual
-    [b] projection error between meshes
-    [c] projection error of inactive multiindices. 
+    [b] upper tail bound for inactive multiindices. 
 """
 
 from __future__ import division
@@ -22,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Marking(object):
-    """EGSZ marking strategy for residual estimator."""
+    """EGSZ2 marking strategy for residual estimator."""
 
     @classmethod
     @takes(anything, MultiVector, dict, list, callable)
@@ -118,40 +117,6 @@ class Marking(object):
         logger.info("(mark_residual) MARKED elements: %s",
             [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()])
         return mesh_markers
-
-
-    @classmethod
-    @takes(anything, MultiVector, float, optional(float), optional(float), optional(anything), optional(str))
-    def mark_projection(cls, projind, theta_zeta, min_zeta=1e-10, maxh=1 / 10, estimator_data=None, marking_strategy="SEPARATE with CELLPROJECTION"):
-        """Evaluate projection error for active multiindices and determine multiindices to be refined."""
-        # projection marking
-        # ==================
-        # setup marking sets
-        from numpy import sqrt
-        mesh_markers = defaultdict(set)
-        max_zeta1 = max([max(projind[mu].coeffs) for mu in projind.active_indices()])    # maximal element strategy
-        max_zeta2 = max([sqrt(sum(projind[mu].coeffs ** 2)) for mu in projind.active_indices()])     # maximal mesh strategy
-        if marking_strategy.upper().find('CELLPROJECTION') != -1:
-            max_zeta = max_zeta1
-        else:
-            max_zeta = max_zeta2
-        logger.info("max_zeta = %f \t (cell %f, mesh %f)", max_zeta, max_zeta1, max_zeta2)
-
-        #        if logger.isEnabledFor(logging.DEBUG):
-        #            for mu, cellproj in projind.iteritems():
-        #                logger.debug("projind[%s] = %s", mu, cellproj)
-
-        if max_zeta >= min_zeta:
-            for mu, vec in projind.iteritems():
-                indmu = [i for i, p in enumerate(vec.coeffs) if p >= theta_zeta * max_zeta]
-                mesh_markers[mu] = mesh_markers[mu].union(set(indmu))
-                logger.debug("PROJ MARKING %i elements in %s", len(indmu), mu)
-
-            logger.info("FINAL MARKED elements: %s",
-                str([(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()]))
-        else:
-            logger.info("NO PROJECTION MARKING due to very small projection error")
-        return mesh_markers, max_zeta
 
 
     @classmethod

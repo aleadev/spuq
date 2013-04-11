@@ -15,9 +15,7 @@ terms are defined for some discrete :math:`w_N\in\mathcal{V}_N` by
           \eta_{\mu,S}(w_N) &:= h_S^{-1/2} || \overline{a}^{-1/2} [(\overline{a}\nabla w_{N,\mu} + \sum_{m=1}^\infty a_m\nabla
                                   ( \alpha_{\mu_m+1}^m\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m} - \alpha_{\mu_m}^m w_{N,\mu}
                                   + \alpha_{\mu_m-1}^m\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m})\cdot\nu] ||_{L^2(S)}\\
-          \delta_\mu(w_N) &:= \sum_{m=1}^\infty || a_m/\overline{a} ||_{L^\infty(D)
-                          ||| \alpha_{\mu+1}^m \nabla(\Pi_{\mu+e_m}^\mu (\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m}) ) - w_{N,\mu+e_m} |||
-                          + ||| \alpha_{\mu-1}^m \nabla(\Pi_{\mu-e_m}^\mu (\Pi_\mu^{\mu-e_m} w_{N,\mu-e_m}) ) - w_{N,\mu-e_m} |||
+          \zeta_\mu(w_N) &:= ... TODO ...
 
 
 The coefficients :math:`\alpha_j` follow from the recurrence coefficients
@@ -38,7 +36,7 @@ from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFu
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
+from spuq.application.egsz.multi_vector import MultiVector, MultiVectorSharedBasis
 from spuq.fem.fenics.fenics_utils import weighted_H1_norm
 from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
@@ -49,18 +47,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ResidualEstimator(object):
-    """Evaluation of the residual error estimator which consists of volume/edge terms and the projection error between different FE meshes.
-
-    Note: In order to reduce computational costs, projected vectors are stored and reused at the expense of memory.
-    fenics/dolfin implementation is based on
-    https://answers.launchpad.net/dolfin/+question/177108
+    """Evaluation of the residual error estimator which consists of volume/edge terms and the upper tail bound.
     """
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, int, optional(float), optional(int))
-    def evaluateError(cls, w, coeff_field, pde, f, zeta, gamma, ceta, cQ, newmi_add_maxm, maxh=0.1, quadrature_degree= -1):
-        """Evaluate EGSZ Error (7.5)."""
-        logger.debug("starting evaluateResidualEstimator")
+    @takes(anything, MultiVectorSharedBasis, CoefficientField, anything, anything, int, optional(float), optional(int))
+    def evaluateError(cls, w, coeff_field, pde, f, add_maxm, maxh=0.1, quadrature_degree= -1):
+        """Evaluate EGSZ2 error according to algorithm in Section 5.3 and return local indicators."""
+        logger.debug("starting evaluateError")
 
         # define store function for timings
         from functools import partial
@@ -71,28 +65,20 @@ class ResidualEstimator(object):
         with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RESIDUAL", stats=timing_stats)):
             resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
 
-        logger.debug("starting evaluateInactiveProjectionError")
-        with timing(msg="ResidualEstimator.evaluateInactiveMIProjectionError", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-INACTIVE-MI", stats=timing_stats)):
-            mierror = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, pde, maxh, newmi_add_maxm) 
+        logger.debug("starting evaluateUpperTailBound")
+        with timing(msg="ResidualEstimator.evaluateUpperTailBound", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-TAIL-BOUND", stats=timing_stats)):
+            z, zeta, zeta_bar, zeta_func = ResidualEstimator.evaluateUpperTailBound(w, coeff_field, pde, maxh, add_maxm) 
 
-        eta = sum(reserror[mu] ** 2 for mu in reserror)
-        delta_inactive_mi = sum(v[1] ** 2 for v in mierror)
-        est1 = ceta / sqrt(1 - gamma) * sqrt(eta)
-        est2 = cQ / sqrt(1 - gamma) * sqrt(delta_inactive_mi)
-        est3 = cQ * sqrt(zeta / (1 - gamma))
-        est4 = zeta / (1 - gamma)
-#        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
-#              + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
-        xi = (est1 + est2 + est3) ** 2 + est4
-        logger.info("Total Residual ERROR Factors: A1=%s  A2=%s  A3=%s  A4=%s", ceta / sqrt(1 - gamma), cQ / sqrt(1 - gamma), cQ * sqrt(zeta / (1 - gamma)), zeta / (1 - gamma))
-        return (xi, resind, mierror, (est1, est2, est3, est4), (eta, delta, zeta), timing_stats)
+        eta = sqrt(sum(reserror[mu] ** 2 for mu in reserror))
+        logger.info("Total Residual ERROR terms: eta=%s  zeta=%s", eta, z)
+        return (eta, resind), (z, zeta, zeta_bar, zeta_func), timing_stats
 
 
     @classmethod
-    @takes(anything, MultiVectorWithProjection, CoefficientField, anything, anything, optional(int))
+    @takes(anything, MultiVector, CoefficientField, anything, anything, optional(int))
     def evaluateResidualEstimator(cls, w, coeff_field, pde, f, quadrature_degree= -1):
-        """Evaluate residual estimator EGSZ (5.7) for all active mu of w."""
-        # evaluate residual estimator for all multi indices
+        """Evaluate residual estimator EGSZ2 (4.1) for all active mu of w."""
+        # evaluate residual estimator for all multiindices
         eta = MultiVector()
         global_error = {}
         for mu in w.active_indices():
@@ -101,9 +87,9 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, Multiindex, MultiVectorWithProjection, CoefficientField, anything, anything, int)
+    @takes(anything, Multiindex, MultiVector, CoefficientField, anything, anything, int)
     def _evaluateResidualEstimator(cls, mu, w, coeff_field, pde, f, quadrature_degree):
-        """Evaluate the residual error according to EGSZ (5.7) which consists of volume terms (5.3) and jump terms (5.5).
+        """Evaluate the residual error according to EGSZ2 (4.1) which consists of volume terms and jump terms.
 
             .. math:: \eta_{\mu,T}(w_N) &:= h_T || \overline{a}^{-1/2} (f\delta_{\mu,0} + \nabla\overline{a}\cdot\nabla w_{N,\mu}
                                 + \sum_{m=1}^\infty \nabla a_m\cdot\nabla( \alpha^m_{\mu_m+1}\Pi_\mu^{\mu+e_m} w_{N,\mu+e_m}
@@ -212,32 +198,51 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, optional(float), optional(int))
-    def evaluateUpperTailBounds(cls, w, coeff_field, pde, maxh=1 / 10, add_maxm=10):
+    @takes(anything, MultiVectorSharedBasis, CoefficientField, anything, optional(float), optional(int))
+    def evaluateUpperTailBound(cls, w, coeff_field, pde, maxh=1 / 10, add_maxm=10):
         """Estimate upper tail bounds according to Section 3.2."""
-        def prepare_ainfty(Lambda, M):
-            ainfty = []
+#        def prepare_ainfty(M):
+#            ainfty = []
+#            a0_f = coeff_field.mean_func
+#            if isinstance(a0_f, tuple):
+#                a0_f = a0_f[0]
+#            # retrieve (sufficiently fine) function space for maximum norm evaluation
+#            # NOTE: we use the deterministic mesh since it is assumed to be the finest
+#            V = w[Multiindex()].basis.refine_maxh(maxh)
+#            # determine min \overline{a} on D (approximately)
+#            f = FEniCSVector.from_basis(V, sub_spaces=0)
+#            f.interpolate(a0_f)
+#            min_a0 = f.min_val
+#            for m in range(M):
+#                am_f, _ = coeff_field[m]
+#                if isinstance(am_f, tuple):
+#                    am_f = am_f[0]
+#                # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
+#                f.interpolate(am_f)
+#                max_am = f.max_val
+#                ainftym = max_am / min_a0
+#                assert isinstance(ainftym, float)
+#                ainfty.append(ainftym)
+#            return ainfty
+        
+        @cache
+        def get_ainfty(m, V):
             a0_f = coeff_field.mean_func
             if isinstance(a0_f, tuple):
                 a0_f = a0_f[0]
-            # retrieve (sufficiently fine) function space for maximum norm evaluation
-            # NOTE: we use the deterministic mesh since it is assumed to be the finest
-            V = w[Multiindex()].basis.refine_maxh(maxh)
             # determine min \overline{a} on D (approximately)
             f = FEniCSVector.from_basis(V, sub_spaces=0)
             f.interpolate(a0_f)
             min_a0 = f.min_val
-            for m in range(M):
-                am_f, _ = coeff_field[m]
-                if isinstance(am_f, tuple):
-                    am_f = am_f[0]
-                # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
-                f.interpolate(am_f)
-                max_am = f.max_val
-                ainftym = max_am / min_a0
-                assert isinstance(ainftym, float)
-                ainfty.append(ainftym)
-            return ainfty
+            am_f, _ = coeff_field[m]
+            if isinstance(am_f, tuple):
+                am_f = am_f[0]
+            # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
+            f.interpolate(am_f)
+            max_am = f.max_val
+            ainftym = max_am / min_a0
+            assert isinstance(ainftym, float)
+            return ainftym
         
         def prepare_norm_w(self, energynorm, w):
             normw = {}
@@ -246,37 +251,48 @@ class ResidualEstimator(object):
             return normw
 
         # evaluate (3.15)
-        def eval_zeta_bar(mu, coef_field, ainfty, normw, M):
+        def eval_zeta_bar(mu, coef_field, normw, V, M):
             assert mu in normw.keys()
             z = normw[mu]
             zz = 0
             for m in range(M):
                 _, am_rv = coeff_field[m]
                 beta = am_rv.orth_polys.get_beta(mu[m])
-                zz += (beta[1] * ainfty[m])**2
+                ainfty = get_ainfty(m, V)
+                zz += (beta[1] * ainfty) ** 2
             return z + sqrt(zz)
         
         # evaluate (3.11)
-        def eval_zeta(mu, Lambda, coeff_field, ainfty, normw, M):
+        def eval_zeta(mu, Lambda, coeff_field, normw, V, M=None, this_m=None):
             z = 0
-            for m in range(M):
-                _, am_rv = coeff_field[m]
-                beta = am_rv.orth_polys.get_beta(mu[m])
-                mu1 = mu.inc(m)
-                if mu1 in Lambda:
-                    z += ainfty[m] * beta[1] * normw[mu1]
-                mu2 = mu.dec(m)
-                if mu2 in Lambda:
-                    z -= ainfty[m] * beta[-1] * normw[mu2]
-            return z
+            if this_m is None:
+                for m in range(M):
+                    _, am_rv = coeff_field[m]
+                    beta = am_rv.orth_polys.get_beta(mu[m])
+                    ainfty = get_ainfty(m, V)
+                    mu1 = mu.inc(m)
+                    if mu1 in Lambda:
+                        z += ainfty * beta[1] * normw[mu1]
+                    mu2 = mu.dec(m)
+                    if mu2 in Lambda:
+                        z -= ainfty * beta[-1] * normw[mu2]
+                return z
+            else:
+                    m = this_m
+                    _, am_rv = coeff_field[m]
+                    beta = am_rv.orth_polys.get_beta(mu[m])
+                    ainfty = get_ainfty(m, V)
+                    return ainfty * beta[1] * normw[mu]
         
         # prepare some variables
         energynorm = pde.norm
         Lambda = w.active_indices()
         suppLambda = w.supp
         M = min(w.max_order + add_maxm, len(coeff_field))
-        ainfty = prepare_ainfty(Lambda, M)
         normw = prepare_norm_w(energynorm, w)
+        # retrieve (sufficiently fine) function space for maximum norm evaluation
+        # NOTE: we use the deterministic mesh since it is assumed to be the finest
+        V = w[Multiindex()].basis.refine_maxh(maxh)
         
         # evaluate estimator contributions of (3.16)
         from collections import defaultdict
@@ -285,19 +301,19 @@ class ResidualEstimator(object):
         for mu in Lambda:
             # iterate Lambda for 
             for mu in Lambda:
-                zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, ainfty, normw, M)
+                zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, normw, V, M)
                 
             # iterate multiindex extensions
             for m in suppLambda:
                 mu1 = mu.inc(m)
                 if mu1 not in Lambda:
-                    zeta[mu1] += eval_zeta(mu1, Lambda, coeff_field, ainfty, normw, M)
+                    zeta[mu1] += eval_zeta(mu1, Lambda, coeff_field, normw, V, M)
                     
                 mu2 = mu.dec(m)
                 if mu2 not in Lambda:
-                    zeta[mu2] += eval_zeta(mu2, Lambda, coeff_field, ainfty, normw, M)
+                    zeta[mu2] += eval_zeta(mu2, Lambda, coeff_field, normw, V, M)
 
         # evaluate summed estimator (3.16)
-        z = sqrt(sum([v**2 for v in zeta.values()]) + sum([v**2 for v in zeta_bar.values()]))
-        return z, zeta, zeta_bar
+        z = sqrt(sum([v ** 2 for v in zeta.values()]) + sum([v ** 2 for v in zeta_bar.values()]))
+        return z, zeta, zeta_bar, lambda mu, m: eval_zeta(mu=mu, Lambda=Lambda, coeff_field=coeff_field, normw=normw, this_m=m)
     

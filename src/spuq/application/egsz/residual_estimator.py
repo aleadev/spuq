@@ -60,7 +60,7 @@ class ResidualEstimator(object):
     @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, int, optional(float), optional(int), optional(int), optional(int))
     def evaluateError(cls, w, coeff_field, pde, f, zeta, gamma, ceta, cQ, newmi_add_maxm, maxh=0.1, quadrature_degree= -1, projection_degree_increase=1, refine_projection_mesh=1):
         """Evaluate EGSZ Error (7.5)."""
-        logger.debug("starting evaluateResidualEstimator")
+        logger.debug("starting evaluateError")
 
         # define store function for timings
         from functools import partial
