@@ -25,3 +25,8 @@ mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(3, 1)]
 sigma_, mu_ = 1, 0
 phi = lambda gamma: np.exp(sigma_*gamma + mu_)
 TCV = TransformedCovariance(mis, phi, KL, N=3)
+
+# evaluate KL of transfor
+KL2 = KLexpansion(TCV, basis, M=5)
+# get pce coefficients of KL
+r = eval_pce_from_KL(mis, KL, TCV._phii)
