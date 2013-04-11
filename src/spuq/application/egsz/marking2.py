@@ -23,78 +23,61 @@ logger = logging.getLogger(__name__)
 class Marking(object):
     """EGSZ2 marking strategy for residual estimator."""
 
-    @classmethod
-    @takes(anything, MultiVector, dict, list, callable)
-    def refine(cls, w, mesh_markers, new_multiindices, eval_vec):
-        """ """
-        # create new refined (and enlarged) multi vector
-        for mu, cell_ids in mesh_markers.iteritems():
-            logger.info("REFINE: refining %s of %s cells for mesh of mu %s", len(cell_ids), w[mu]._fefunc.function_space().mesh().num_cells(), mu)
-            w[mu] = w[mu].refine(cell_ids, with_prolongation=True)
-
-        # determine current mesh sizes
-        minh, maxh = 1e6, 0
-        for mu in w.active_indices():
-            mesh = w[mu].mesh
-            minH, maxH = mesh.hmin(), mesh.hmax()
-            if minH < minh:
-                minh = minH 
-            if maxH > maxh:
-                maxh = maxH 
-        logger.info("REFINE: current meshes minh = %s and maxh = %s", minh, maxh)
-
-        # add new multiindices to solution vector
-        for mu in new_multiindices:
-            logger.info("REFINE: adding new multiindex %s", mu)
-            w[mu] = eval_vec()
-            logger.info("REFINE: new mesh maxh = %s", w[mu].mesh.hmax())
-
-
-    @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, optional(float), optional(int),
-           optional(int), optional(bool))
-    def estimate_mark(cls, w, coeff_field, pde, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10,
-                       quadrature_degree= -1, projection_degree_increase=0, refine_projection_mesh=0):
-        """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
-        #        # testing -->
-        #        if logger.isEnabledFor(logging.DEBUG):
-        #            projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
-        #            for mu, val in projglobal.iteritems():
-        #                logger.debug("GLOBAL Projection Error for %s = %f", mu, val)
-        #        # <-- testing
-
-        # evaluate residual estimator
-        resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
-        # evaluate projection errors
-        projind, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, projection_degree_increase, refine_projection_mesh)
-        # evaluate inanctive mi projection error
-        mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, maxm)
-        # mark
-        return cls.mark(resind, projind, mierr, w.max_order, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
+#    @classmethod
+#    @takes(anything, MultiVector, dict, list, callable)
+#    def refine(cls, w, mesh_markers, new_multiindices, eval_vec):
+#        """ """
+#        # create new refined (and enlarged) multi vector
+#        for mu, cell_ids in mesh_markers.iteritems():
+#            logger.info("REFINE: refining %s of %s cells for mesh of mu %s", len(cell_ids), w[mu]._fefunc.function_space().mesh().num_cells(), mu)
+#            w[mu] = w[mu].refine(cell_ids, with_prolongation=True)
+#
+#        # determine current mesh sizes
+#        minh, maxh = 1e6, 0
+#        for mu in w.active_indices():
+#            mesh = w[mu].mesh
+#            minH, maxH = mesh.hmin(), mesh.hmax()
+#            if minH < minh:
+#                minh = minH 
+#            if maxH > maxh:
+#                maxh = maxH 
+#        logger.info("REFINE: current meshes minh = %s and maxh = %s", minh, maxh)
+#
+#        # add new multiindices to solution vector
+#        for mu in new_multiindices:
+#            logger.info("REFINE: adding new multiindex %s", mu)
+#            w[mu] = eval_vec()
+#            logger.info("REFINE: new mesh maxh = %s", w[mu].mesh.hmax())
+#
+#
+#    @classmethod
+#    @takes(anything, MultiVector, CoefficientField, anything, anything, float, float, float, float, optional(float), optional(int),
+#           optional(int), optional(bool))
+#    def estimate_mark(cls, w, coeff_field, pde, f, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, maxm=10,
+#                       quadrature_degree= -1, projection_degree_increase=0, refine_projection_mesh=0):
+#        """Convenience method which evaluates the residual and the projection indicators and then calls the marking algorithm."""
+#        #        # testing -->
+#        #        if logger.isEnabledFor(logging.DEBUG):
+#        #            projglobal, _ = ResidualEstimator.evaluateProjectionError(w, coeff_field, maxh, local=False)
+#        #            for mu, val in projglobal.iteritems():
+#        #                logger.debug("GLOBAL Projection Error for %s = %f", mu, val)
+#        #        # <-- testing
+#
+#        # evaluate residual estimator
+#        resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
+#        # evaluate upper tail bound
+#        mierr = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, maxh, maxm)
+#        # mark
+#        return cls.mark(resind, projind, mierr, w.max_order, theta_eta, theta_zeta, theta_delta, min_zeta, maxh, maxm)
 
 
     @classmethod
-    @takes(anything, MultiVector, MultiVector, list, int, float, float, float, float, optional(float), optional(float), optional(anything), optional(str))
-    def mark(cls, resind, projind, mierr, maxorder_Lambda, theta_eta, theta_zeta, theta_delta, min_zeta, maxh=1 / 10, max_Lambda_frac=1 / 10,
-                estimator_data=None, marking_strategy="SEPARATE with CELLPROJECTION"):
-        """Evaluate residual and projection errors, mark elements with bulk criterion and identify multiindices to activate."""
-        mesh_markers_R = cls.mark_residual(resind, theta_eta, estimator_data, marking_strategy)
-        mesh_markers_P, max_zeta = cls.mark_projection(projind, theta_zeta, min_zeta, maxh, estimator_data, marking_strategy)
-        max_inactive_mi_zeta = 0
-        if max_zeta >= min_zeta:
-            new_mi, max_inactive_mi_zeta, new_mi_all = cls.mark_inactive_multiindices(mierr, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac, estimator_data, marking_strategy)
-        else:
-            new_mi, new_mi_all = {}, {}
-            logger.info("SKIPPING search for new multiindices due to very small max_zeta = %s", max_zeta)
-        return mesh_markers_R, mesh_markers_P, new_mi, (max_zeta, max_inactive_mi_zeta), new_mi_all
-
-
-    @classmethod
-    @takes(anything, MultiVector, float, optional(anything), optional(str))
-    def mark_residual(cls, resind, theta_eta, estimator_data=None, marking_strategy="SEPARATE with CELLPROJECTION"):
+    @takes(anything, MultiVector, CoefficientField, anything, anything, float, optional(anything), optional(int))
+    def estimate_mark_x(cls, w, coeff_field, pde, f, theta_x, estimator_data=None, quadrature_degree= -1):
         """Evaluate residual estimator and carry out Doerfler marking (bulk criterion) for elements with parameter theta."""
-        # residual marking
-        # ================
+        # evaluate residual indicators
+        resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
+
 
         #        if logger.isEnabledFor(logging.DEBUG):
         #            for mu, cellres in resind.iteritems():
@@ -121,11 +104,9 @@ class Marking(object):
 
     @classmethod
     @takes(anything, list, float, float, int, optional(float), optional(anything), optional(str))
-    def mark_inactive_multiindices(cls, Lambda_candidates, theta_delta, max_zeta, maxorder_Lambda, max_Lambda_frac=1 / 10,
-                                            estimator_data=None, marking_strategy="SEPARATE with CELLPROJECTION"):
-        """Determine multiindices to be activated."""
-        # new multiindex activation
-        # =========================
+    def estimate_mark_y(cls, Lambda_candidates, theta_delta, max_zeta, maxorder_Lambda, estimator_data=None):
+        """Evaluate upper tail bound and carry out Doerfler marking by activation of new indices."""
+        
         zeta_threshold = theta_delta * max_zeta
         lambdaN = int(ceil(max_Lambda_frac * maxorder_Lambda))                    # max number new multiindices
         # select indices with largest projection error

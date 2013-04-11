@@ -34,13 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 # setup initial multivector
-def setup_vector(mesh, pde, degree=1, maxh=None):
-#    fs = FunctionSpace(mesh, "CG", degree)
-    if maxh is not None:
-        old_mesh = mesh
-        while mesh.hmax() > maxh:
-            mesh = refine(old_mesh)
-            old_mesh = mesh
+def setup_vector(pde, basis):
+    mesh = basis._fefs.mesh()
+    degree = basis._fefs.ufl_element().degree()
     fs = pde.function_space(mesh, degree=degree)
     vec = FEniCSVector(Function(fs))
     return vec
@@ -103,23 +99,14 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
 @takes(MultiOperator, CoefficientField, FEMDiscretisation, list, MultiVector, anything, int)
 def AdaptiveSolver(A, coeff_field, pde,
                     mis, w0, mesh0, degree,
-                    gamma=0.9,
-                    cQ=1.0,
-                    ceta=6.0,
                     # marking parameters
-                    theta_eta=0.4, # residual marking bulk parameter
-                    theta_zeta=0.1, # projection marking threshold factor
-                    min_zeta=1e-8, # minimal projection error to be considered 
-                    maxh=0.1, # maximal mesh width for projection maximum norm evaluation
+                    rho=1.0, # tail factor
+                    sigma=1.0, # residual factor
+                    theta_x=0.4, # residual marking bulk parameter
+                    theta_y=0.1, # tail bound marking bulk paramter
                     newmi_add_maxm=20, # maximal search length for new new multiindices (to be added to max order of solution w)
-                    theta_delta=10.0, # number new multiindex activation bound
-                    max_Lambda_frac=1 / 10, # max fraction of |Lambda| for new multiindices
-                    marking_strategy="SEPARATE with CELLPROJECTION", # separate (as initially in EGSZ) or relative marking wrt overall error, projection refinement based on cell or mesh errors
                     # residual error
                     quadrature_degree= -1,
-                    # projection error
-                    projection_degree_increase=1,
-                    refine_projection_mesh=1,
                     # pcg solver
                     pcg_eps=1e-6,
                     pcg_maxiter=100,
@@ -127,7 +114,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     error_eps=1e-2,
                     # refinements
                     max_refinements=5,
-                    do_refinement={"RES":True, "PROJ":True, "MI":False},
+                    do_refinement={"RES":True, "TAIL":True},
                     do_uniform_refinement=False,
                     w_history=None,
                     sim_stats=None):
@@ -264,7 +251,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             
             # carry out refinement of meshes
             with timing(msg="Marking.refine", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARKING", stats=stats)):
-                Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, mesh=mesh0, degree=degree))
+                Marking.refine(w, mesh_markers, new_multiindices.keys(), partial(setup_vector, pde=pde, basis=w.basis))
     
     if refinement:
         logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
