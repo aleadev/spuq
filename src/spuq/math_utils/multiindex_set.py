@@ -21,7 +21,7 @@ class MultiindexSet(object):
     @property
     def count(self):
         return len(self)
-
+        
     def __len__(self):
         return self.arr.shape[0]
 

@@ -85,6 +85,10 @@ class Multiindex(object):
     def as_array(self):
         return self._arr
 
+    @property
+    def supp(self):
+        return np.nonzero(self._arr)
+
     def inc(self, pos, by=1):
         assert pos >= 0
         value = self._arr[pos] if pos < len(self._arr) else 0

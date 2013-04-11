@@ -457,6 +457,11 @@ class MultiVectorSharedBasis(MultiVector):
     def active_indices(self):
         return sorted(self.keys())
 
+    @property
+    def supp(self):
+        s = [set(mu.supp) for mu in self.active_indices()]
+        return set.union(*s)
+
     def copy(self):
         mv = self.__class__()
         for mi in self.keys():

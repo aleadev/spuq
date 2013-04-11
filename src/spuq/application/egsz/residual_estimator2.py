@@ -228,7 +228,7 @@ class ResidualEstimator(object):
             f.interpolate(a0_f)
             min_a0 = f.min_val
             for m in range(M):
-                am_f, am_rv = coeff_field[m]
+                am_f, _ = coeff_field[m]
                 if isinstance(am_f, tuple):
                     am_f = am_f[0]
                 # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
@@ -246,16 +246,34 @@ class ResidualEstimator(object):
             return normw
 
         # evaluate (3.15)
-        def eval_zeta_bar(mu, coef_field, ainfty, normw):
-            pass
+        def eval_zeta_bar(mu, coef_field, ainfty, normw, M):
+            assert mu in normw.keys()
+            z = normw[mu]
+            zz = 0
+            for m in range(M):
+                _, am_rv = coeff_field[m]
+                beta = am_rv.orth_polys.get_beta(mu[m])
+                zz += (beta[1] * ainfty[m])**2
+            return z + sqrt(zz)
         
         # evaluate (3.11)
-        def eval_zeta(mu, coeff_field, ainfty, normw):
-            pass
+        def eval_zeta(mu, Lambda, coeff_field, ainfty, normw, M):
+            z = 0
+            for m in range(M):
+                _, am_rv = coeff_field[m]
+                beta = am_rv.orth_polys.get_beta(mu[m])
+                mu1 = mu.inc(m)
+                if mu1 in Lambda:
+                    z += ainfty[m] * beta[1] * normw[mu1]
+                mu2 = mu.dec(m)
+                if mu2 in Lambda:
+                    z -= ainfty[m] * beta[-1] * normw[mu2]
+            return z
         
         # prepare some variables
         energynorm = pde.norm
         Lambda = w.active_indices()
+        suppLambda = w.supp
         M = min(w.max_order + add_maxm, len(coeff_field))
         ainfty = prepare_ainfty(Lambda, M)
         normw = prepare_norm_w(energynorm, w)
@@ -263,26 +281,23 @@ class ResidualEstimator(object):
         # evaluate estimator contributions of (3.16)
         from collections import defaultdict
         zeta = defaultdict(0)
-        zeta_bar = defaultdict(0)
+        zeta_bar = {}
         for mu in Lambda:
             # iterate Lambda for 
             for mu in Lambda:
-                zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, ainfty, normw)
+                zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, ainfty, normw, M)
                 
             # iterate multiindex extensions
-            for m in range(M):
+            for m in suppLambda:
                 mu1 = mu.inc(m)
-                if mu1 in Lambda:
-                    continue
-#                _, am_rv = coeff_field[m]
-#                beta = am_rv.orth_polys.get_beta(mu1[m])
-#                val1 = beta[1] * ainfty[m] * norm_w
-                zeta[mu1] += eval_zeta(mu, coeff_field, ainfty, normw) 
-                
-#         # set largest projection error for mu
-#         if mu1 not in Lambda_candidates.keys() or (mu1 in Lambda_canssssdidates.keys() and Lambda_candidates[mu1] < val1):
-#             Lambda_candidates[mu1] = val1
-            
-#         logger.debug("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
-#         Lambda_candidates = sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True)
-#         return Lambda_candidates
+                if mu1 not in Lambda:
+                    zeta[mu1] += eval_zeta(mu1, Lambda, coeff_field, ainfty, normw, M)
+                    
+                mu2 = mu.dec(m)
+                if mu2 not in Lambda:
+                    zeta[mu2] += eval_zeta(mu2, Lambda, coeff_field, ainfty, normw, M)
+
+        # evaluate summed estimator (3.16)
+        z = sqrt(sum([v**2 for v in zeta.values()]) + sum([v**2 for v in zeta_bar.values()]))
+        return z, zeta, zeta_bar
+    
