@@ -76,17 +76,16 @@ class ResidualEstimator(object):
             mierror = ResidualEstimator.evaluateInactiveMIProjectionError(w, coeff_field, pde, maxh, newmi_add_maxm) 
 
         eta = sum(reserror[mu] ** 2 for mu in reserror)
-        delta = sum(projerror[mu] ** 2 for mu in projerror)
         delta_inactive_mi = sum(v[1] ** 2 for v in mierror)
         est1 = ceta / sqrt(1 - gamma) * sqrt(eta)
-        est2 = cQ / sqrt(1 - gamma) * sqrt(delta + delta_inactive_mi)
+        est2 = cQ / sqrt(1 - gamma) * sqrt(delta_inactive_mi)
         est3 = cQ * sqrt(zeta / (1 - gamma))
         est4 = zeta / (1 - gamma)
 #        xi = (ceta / sqrt(1 - gamma) * sqrt(eta) + cQ / sqrt(1 - gamma) * sqrt(delta)
 #              + cQ * sqrt(zeta / (1 - gamma))) ** 2 + zeta / (1 - gamma)
         xi = (est1 + est2 + est3) ** 2 + est4
         logger.info("Total Residual ERROR Factors: A1=%s  A2=%s  A3=%s  A4=%s", ceta / sqrt(1 - gamma), cQ / sqrt(1 - gamma), cQ * sqrt(zeta / (1 - gamma)), zeta / (1 - gamma))
-        return (xi, resind, projind, mierror, (est1, est2, est3, est4), (eta, delta, zeta), timing_stats)
+        return (xi, resind, mierror, (est1, est2, est3, est4), (eta, delta, zeta), timing_stats)
 
 
     @classmethod
@@ -213,8 +212,8 @@ class ResidualEstimator(object):
 
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, optional(float), optional(int), optional(bool))
-    def evaluateUpperTailBounds(cls, w, coeff_field, pde, maxh=1 / 10, add_maxm=10, accumulate=True):
+    @takes(anything, MultiVector, CoefficientField, anything, optional(float), optional(int))
+    def evaluateUpperTailBounds(cls, w, coeff_field, pde, maxh=1 / 10, add_maxm=10):
         """Estimate upper tail bounds according to Section 3.2."""
         def prepare_ainfty(Lambda, M):
             ainfty = []
@@ -245,38 +244,45 @@ class ResidualEstimator(object):
             for mu in w.active_indices():
                 normw[mu] = energynorm(w[mu]._fefunc)        
             return normw
+
+        # evaluate (3.15)
+        def eval_zeta_bar(mu, coef_field, ainfty, normw):
+            pass
         
-        # determine possible new indices
+        # evaluate (3.11)
+        def eval_zeta(mu, coeff_field, ainfty, normw):
+            pass
+        
+        # prepare some variables
         energynorm = pde.norm
-        Lambda_candidates = {}
         Lambda = w.active_indices()
         M = min(w.max_order + add_maxm, len(coeff_field))
         ainfty = prepare_ainfty(Lambda, M)
-        normw = prepare_normw(energynorm, w)
+        normw = prepare_norm_w(energynorm, w)
         
+        # evaluate estimator contributions of (3.16)
+        from collections import defaultdict
+        zeta = defaultdict(0)
+        zeta_bar = defaultdict(0)
         for mu in Lambda:
+            # iterate Lambda for 
+            for mu in Lambda:
+                zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, ainfty, normw)
+                
             # iterate multiindex extensions
             for m in range(M):
                 mu1 = mu.inc(m)
                 if mu1 in Lambda:
                     continue
-                _, am_rv = coeff_field[m]
-                beta = am_rv.orth_polys.get_beta(mu1[m])
-                logger.debug("\t beta[1] * ainfty * norm_w = %s", beta[1] * ainfty[m] * norm_w)
+#                _, am_rv = coeff_field[m]
+#                beta = am_rv.orth_polys.get_beta(mu1[m])
+#                val1 = beta[1] * ainfty[m] * norm_w
+                zeta[mu1] += eval_zeta(mu, coeff_field, ainfty, normw) 
                 
-                val1 = beta[1] * ainfty[m] * norm_w
-                if not accumulate:
-                    # set largest projection error for mu
-                    if mu1 not in Lambda_candidates.keys() or (mu1 in Lambda_candidates.keys() and Lambda_candidates[mu1] < val1):
-                        Lambda_candidates[mu1] = val1
-                else:
-                    # accumulate projection errors for mu
-                    if mu1 not in Lambda_candidates.keys():
-                        Lambda_candidates[mu1] = val1
-                    else:
-                        Lambda_candidates[mu1] += val1
-#                        Lambda_candidates[mu1] = sqrt(Lambda_candidates[mu1] ** 2 + val1 ** 2)
+#         # set largest projection error for mu
+#         if mu1 not in Lambda_candidates.keys() or (mu1 in Lambda_canssssdidates.keys() and Lambda_candidates[mu1] < val1):
+#             Lambda_candidates[mu1] = val1
             
-        logger.debug("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
-        Lambda_candidates = sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True)
-        return Lambda_candidates
+#         logger.debug("POSSIBLE NEW MULTIINDICES %s", sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True))
+#         Lambda_candidates = sorted(Lambda_candidates.iteritems(), key=itemgetter(1), reverse=True)
+#         return Lambda_candidates

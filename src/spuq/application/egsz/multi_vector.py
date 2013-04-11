@@ -41,15 +41,15 @@ class MultiVector(Vector):
         return MultiVectorBasis(self)
 
     @property
-    def dim(self):
+    def dim(self, summed = False):
         """Return set of dimensions of MultiVector."""
-        return {mu:self[mu].dim for mu in self.active_indices()}
-
-    def __len__(self):
-        return sum(d for d in self.dim.values())
+        if summed:
+            return sum(d for d in self.dim.values())
+        else:
+            return {mu:self[mu].dim for mu in self.active_indices()}
 
     def flatten(self):
-        """Return flattened (Euclidian) vector"""
+        """Return flattened (Euclidian) vector."""
         F = self.to_euclidian_operator
         return F.apply(self)
 
@@ -259,7 +259,7 @@ class MultiVectorWithProjection(MultiVector):
         From this, the projection of mu_src onto the mu_dest space, then to the mu_dest space of dest_degree is subtracted.
         If refine_mesh > 0, the destination mesh is refined uniformly n times."""
         from spuq.fem.fenics.fenics_utils import create_joint_mesh
-        from dolfin import refine, FunctionSpace, VectorFunctionSpace
+        from dolfin import FunctionSpace, VectorFunctionSpace
         from spuq.fem.fenics.fenics_basis import FEniCSBasis
         
         # get joint mesh based on destination space
@@ -304,7 +304,7 @@ class MultiVectorWithProjection(MultiVector):
             # uniformly refine destination mesh
             # NOTE: the cell_marker based refinement used in FEniCSBasis is a bisection of elements
             # while refine(mesh) carries out a red-refinement of all cells (split into 4)
-            basis_src = self[mu_src].basis 
+#            basis_src = self[mu_src].basis
             basis_dest = self[mu_dest].basis
             mesh_reference = basis_dest.mesh
             for _ in range(refine_mesh):
@@ -424,6 +424,8 @@ class MultiVectorOperator(BaseOperator):
 
 class MultiVectorSharedBasis(MultiVector):
     """Specialisation of MultiVector which only allows a shared basis between all multiindices."""
+
+    # TODO: introduce basis checks to ensure single basis!!!!
 
     @takes(anything, optional(callable))
     def __init__(self, on_modify=lambda: None, multivector=None):

@@ -91,20 +91,20 @@ class Multiindex(object):
         newval = value + by
         if newval < 0:
             return None
-        if False:    # TODO: debugging work-around, clean up
-            arr = self._arr.copy()
-            if pos >= len(arr):
-                if True or len(arr):
-                    print arr, type(arr), repr(arr)
-                    arr = arr.copy()
-                    arr.resize(pos + 1)
-                else:
-                    arr = np.array([0] * (pos + 1))
-        if True:   # TODO: dito
-            l = len(self._arr)
-            arr = np.array([0] * max(l, (pos + 1)))
-            if l:
-                arr[:l] = self._arr[:l]
+#         if False:    # TODO: debugging work-around, clean up
+#             arr = self._arr.copy()
+#             if pos >= len(arr):
+#                 if True or len(arr):
+#                     print arr, type(arr), repr(arr)
+#                     arr = arr.copy()
+#                     arr.resize(pos + 1)
+#                 else:
+#                     arr = np.array([0] * (pos + 1))
+#         if True:   # TODO: dito
+        l = len(self._arr)
+        arr = np.array([0] * max(l, (pos + 1)))
+        if l:
+            arr[:l] = self._arr[:l]
         arr[pos] = newval
         return self.__class__(arr)
 
@@ -121,15 +121,3 @@ class Multiindex(object):
             def __getitem__(self, i):
                 return Multiindex(MultiindexSet.__getitem__(self, i))
         return MultiindexSetEx.createCompleteOrderSet(m, p)
-
-
-# class MultiindexSet(object):
-#     pass
-
-
-# class FixedLengthSet(MultiindexSet):
-#     pass
-
-
-# class VariableLengthSet(MultiindexSet):
-#     pass
