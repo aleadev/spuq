@@ -97,9 +97,6 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
 # PART B: Adaptive Algorithm
 # ============================================================
 
-# refinement loop
-# ===============
-# error constants
 @takes(MultiOperator, CoefficientField, FEMDiscretisation, list, MultiVector, anything, int)
 def AdaptiveSolver(A, coeff_field, pde,
                     mis, w0, mesh0, degree,

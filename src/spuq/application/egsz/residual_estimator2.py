@@ -42,37 +42,15 @@ from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
 from spuq.utils.timing import timing
+from spuq.utils.decorators import cache
 
 import logging
 logger = logging.getLogger(__name__)
 
+
 class ResidualEstimator(object):
     """Evaluation of the residual error estimator which consists of volume/edge terms and the upper tail bound.
     """
-
-    @classmethod
-    @takes(anything, MultiVectorSharedBasis, CoefficientField, anything, anything, int, optional(float), optional(int))
-    def evaluateError(cls, w, coeff_field, pde, f, add_maxm, maxh=0.1, quadrature_degree= -1):
-        """Evaluate EGSZ2 error according to algorithm in Section 5.3 and return local indicators."""
-        logger.debug("starting evaluateError")
-
-        # define store function for timings
-        from functools import partial
-        def _store_stats(val, key, stats):
-            stats[key] = val
-
-        timing_stats = {}
-        with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RESIDUAL", stats=timing_stats)):
-            resind, reserror = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
-
-        logger.debug("starting evaluateUpperTailBound")
-        with timing(msg="ResidualEstimator.evaluateUpperTailBound", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-TAIL-BOUND", stats=timing_stats)):
-            z, zeta, zeta_bar, zeta_func = ResidualEstimator.evaluateUpperTailBound(w, coeff_field, pde, maxh, add_maxm) 
-
-        eta = sqrt(sum(reserror[mu] ** 2 for mu in reserror))
-        logger.info("Total Residual ERROR terms: eta=%s  zeta=%s", eta, z)
-        return (eta, resind), (z, zeta, zeta_bar, zeta_func), timing_stats
-
 
     @classmethod
     @takes(anything, MultiVector, CoefficientField, anything, anything, optional(int))
@@ -80,10 +58,10 @@ class ResidualEstimator(object):
         """Evaluate residual estimator EGSZ2 (4.1) for all active mu of w."""
         # evaluate residual estimator for all multiindices
         eta = MultiVector()
-        global_error = {}
+        global_eta = {}
         for mu in w.active_indices():
-            eta[mu], global_error[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, pde, f, quadrature_degree)
-        return (eta, global_error)
+            global_eta[mu], eta[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, pde, f, quadrature_degree)
+        return global_eta, eta
 
 
     @classmethod
@@ -194,7 +172,7 @@ class ResidualEstimator(object):
         # restore quadrature degree
         parameters["form_compiler"]["quadrature_degree"] = quadrature_degree_old
 
-        return (FlatVector(eta_indicator), global_error)
+        return global_error, FlatVector(eta_indicator)
 
 
     @classmethod
@@ -251,16 +229,15 @@ class ResidualEstimator(object):
             return normw
 
         # evaluate (3.15)
-        def eval_zeta_bar(mu, coef_field, normw, V, M):
+        def eval_zeta_bar(mu, coeff_field, normw, V, M):
             assert mu in normw.keys()
-            z = normw[mu]
             zz = 0
             for m in range(M):
                 _, am_rv = coeff_field[m]
                 beta = am_rv.orth_polys.get_beta(mu[m])
                 ainfty = get_ainfty(m, V)
                 zz += (beta[1] * ainfty) ** 2
-            return z + sqrt(zz)
+            return normw[mu] * sqrt(zz)
         
         # evaluate (3.11)
         def eval_zeta(mu, Lambda, coeff_field, normw, V, M=None, this_m=None):
@@ -299,9 +276,8 @@ class ResidualEstimator(object):
         zeta = defaultdict(0)
         zeta_bar = {}
         for mu in Lambda:
-            # iterate Lambda for 
-            for mu in Lambda:
-                zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, normw, V, M)
+            # iterate mu in Lambda
+            zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, normw, V, M)
                 
             # iterate multiindex extensions
             for m in suppLambda:
@@ -314,6 +290,41 @@ class ResidualEstimator(object):
                     zeta[mu2] += eval_zeta(mu2, Lambda, coeff_field, normw, V, M)
 
         # evaluate summed estimator (3.16)
-        z = sqrt(sum([v ** 2 for v in zeta.values()]) + sum([v ** 2 for v in zeta_bar.values()]))
-        return z, zeta, zeta_bar, lambda mu, m: eval_zeta(mu=mu, Lambda=Lambda, coeff_field=coeff_field, normw=normw, this_m=m)
-    
+        global_zeta = sqrt(sum([v ** 2 for v in zeta.values()]) + sum([v ** 2 for v in zeta_bar.values()]))
+        # also return zeta evaluation for single m (needed for refinement algorithm)
+        eval_zeta_m = lambda mu, m: eval_zeta(mu=mu, Lambda=Lambda, coeff_field=coeff_field, normw=normw, this_m=m)
+        return global_zeta, zeta, zeta_bar, eval_zeta_m
+
+# TODO: replace the above code with the following
+
+#def LambdaNew(Lambda):
+#        suppLambda = support(Lambda)
+#        for mu in Lambda:
+#            for m in suppLambda:
+#                mu1 = mu.inc(m)
+#                if mu1 not in Lambda:
+#                    yield mu1
+#                    
+#                mu2 = mu.dec(m)
+#                if mu2 not in Lambda:
+#                    yield mu2
+#
+#
+#        Lambda = w.active_indices()
+#        M = min(w.max_order + add_maxm, len(coeff_field))
+#        normw = prepare_norm_w(energynorm, w)
+#        # retrieve (sufficiently fine) function space for maximum norm evaluation
+#        # NOTE: we use the deterministic mesh since it is assumed to be the finest
+#        V = w[Multiindex()].basis.refine_maxh(maxh)
+#        
+#        # evaluate estimator contributions of (3.16)
+#        from collections import defaultdict
+#        zeta = defaultdict(0)
+#        # iterate multiindex extensions
+#        for nu in LambdaNew(Lambda):
+#            zeta[nu] += eval_zeta(nu, Lambda, coeff_field, normw, V, M)
+#
+#        zeta_bar = {}
+#        # iterate over active indices
+#        for mu in Lambda:
+#            zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, normw, V, M)
