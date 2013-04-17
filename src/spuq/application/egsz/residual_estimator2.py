@@ -177,29 +177,6 @@ class ResidualEstimator(object):
     @takes(anything, MultiVectorSharedBasis, CoefficientField, anything, optional(float), optional(int))
     def evaluateUpperTailBound(cls, w, coeff_field, pde, maxh=1 / 10, add_maxm=10):
         """Estimate upper tail bounds according to Section 3.2."""
-#        def prepare_ainfty(M):
-#            ainfty = []
-#            a0_f = coeff_field.mean_func
-#            if isinstance(a0_f, tuple):
-#                a0_f = a0_f[0]
-#            # retrieve (sufficiently fine) function space for maximum norm evaluation
-#            # NOTE: we use the deterministic mesh since it is assumed to be the finest
-#            V = w[Multiindex()].basis.refine_maxh(maxh)
-#            # determine min \overline{a} on D (approximately)
-#            f = FEniCSVector.from_basis(V, sub_spaces=0)
-#            f.interpolate(a0_f)
-#            min_a0 = f.min_val
-#            for m in range(M):
-#                am_f, _ = coeff_field[m]
-#                if isinstance(am_f, tuple):
-#                    am_f = am_f[0]
-#                # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
-#                f.interpolate(am_f)
-#                max_am = f.max_val
-#                ainftym = max_am / min_a0
-#                assert isinstance(ainftym, float)
-#                ainfty.append(ainftym)
-#            return ainfty
         
         @cache
         def get_ainfty(m, V):

@@ -27,55 +27,71 @@ class Marking(object):
     @takes(anything, float, anything, float)
     def mark_x(cls, eta, eta_local, theta_x):
         """Carry out Doerfler marking (bulk criterion) for elements with parameter theta."""
-
-        allresind = list()
-        for mu, resmu in resind.iteritems():
-            allresind = allresind + [(resmu.coeffs[i], i, mu) for i in range(len(resmu.coeffs))]
-        allresind = sorted(allresind, key=itemgetter(0), reverse=True)
-        global_res = sum([res[0] for res in allresind])
-        logger.info("(mark_residual) global residual is %f, want to mark for %f", global_res, theta_eta * global_res)
+        eta_local = sorted(eta_local, key=itemgetter(0), reverse=True)
+        logger.info("(mark_x) global residual is %f, want to mark for %f", global_eta, theta_x * global_eta)
         # setup marking sets
         mesh_markers = defaultdict(set)
-        marked_res = 0.0
-        for res in allresind:
-            if marked_res >= theta_eta * global_res:
+        marked_eta = 0.0
+        for eta_cell in eta_local:
+            if theta_x * global_eta <= marked_eta:
                 break
-            mesh_markers[res[2]].add(res[1])
-            marked_res += res[0]
-        logger.info("(mark_residual) MARKED elements: %s",
-            [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()])
+            mesh_markers.add(res[1])
+            marked_eta += res[0]
+        logger.info("(mark_x) MARKED elements: %s", len(mesh_markers))
         return mesh_markers
 
     @classmethod
-    def refine_x(cls, w, ):
-        pass
+    @takes(anything, MultiVector, (list, tuple))
+    def refine_x(cls, w, cell_ids):
+        w.refine(cell_ids)
 
     @classmethod
-    @takes(anything, list, float, float, int, optional(float), optional(str))
-    def mark_y(cls, w, coeff_field, pde, theta_delta, maxh=1 / 10, add_maxm=10):
+    @takes(anything, float, dict, dict, anything, float, int)
+    def mark_y(cls, Lambda, global_zeta, zeta, zeta_bar, eval_zeta_m, theta_y, max_new_mi=100):
         """Carry out Doerfler marking by activation of new indices."""
-        # evaluate upper tail bound
-        z, zeta, zeta_bar, eval_zeta_m = ResidualEstimator.evaluateUpperTailBound(cls, w, coeff_field, pde, maxh, add_maxm)
+        def supp(Lambda):
+            s = [set(mu.supp) for mu in Lambda]
+            return set.union(*s)
+        suppLambda = supp(Lambda)
+        maxm = max(suppLambda)        
+        new_mi = []
+        marked_zeta = 0.0
+        while True:
+            zeta = sorted(zeta, key=itemgetter(1))
+            mu = zeta[-1][0]
+            new_mi.append(mu)
+            marked_zeta += zeta[-1][1]
+            # extend set if necessary (see section 5.7)
+            try:
+                mu2 = mu.dec(maxm)
+                mu = Lambda[Lambda.index(mu2)]
+                logger.debug("extending multiindex canidates since %s is at the boundary of Lambda (reachable from %s)", mu, mu2)
+                minm = min(set(range(1, maxm + 2)).difference(set(suppLambda)))
+                new_mu = mu.inc(minm)
+                new_zeta = eval_zeta_m(mu, minm)
+                zeta.append((new_mu, new_zeta))
+            finally:
+                logger.debug("no further extension of multiindex canidates required")
+            
+            # break if sufficiently many new mi are selected
+            if theta_y * zeta <= marked_zeta or len(new_mi) >= max_new_mi or len(zeta) == 0:
+                break 
 
-        
-        zeta_threshold = theta_delta * max_zeta
-        lambdaN = int(ceil(max_Lambda_frac * maxorder_Lambda))                    # max number new multiindices
-        # select indices with largest projection error
-        Lambda_selection_all = sorted(Lambda_candidates, key=itemgetter(1), reverse=True)
-        Lambda_selection = Lambda_selection_all[:min(len(Lambda_candidates), lambdaN)]
-        try:
-            lambda_max = Lambda_selection[0][1]
-#            assert lambda_max == max([v for v in Lambda_selection.values()])
-        except:
-            lambda_max = -1
-        # apply threshold criterion
-        Lambda_selection = [l for l in Lambda_selection if l[1] >= zeta_threshold]
-        if len(Lambda_selection) > 0:
-            logger.info("SELECTED NEW MULTIINDICES (zeta_thresh = %s, lambda_max = %s) %s", zeta_threshold, lambda_max, Lambda_selection)
+        if len(new_mi) > 0:
+            logger.info("SELECTED NEW MULTIINDICES %s", new_mi)
         else:
             logger.info("NO NEW MULTIINDICES SELECTED")
-        return dict(Lambda_selection), lambda_max, dict(Lambda_selection_all)
+        return new_mi
 
     @classmethod
-    def refine_y(cls):
-        pass
+    @takes(anything, MultiVector, (list, tuple), callable)
+    def refine_y(cls, w, new_mi, setup_vector):
+        for mu in new_mi:
+            w[mu] = setup_vector()
+
+    @classmethod
+    def refine_osc(cls, w, coeff, M):
+        osc_refinements = 0
+        # TODO
+        return osc_refinements
+    

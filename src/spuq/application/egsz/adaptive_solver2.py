@@ -2,7 +2,6 @@ from __future__ import division
 from functools import partial
 from collections import defaultdict
 from math import sqrt
-from collections import namedtuple
 import logging
 import os
 
@@ -84,9 +83,8 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
     b2 = A * w
-    stats["L2"] = error_norm(b, b2, "L2")
-    stats["H1"] = error_norm(b, b2, pde.norm)
-#    stats["H1"] = error_norm(b, b2, "H1")
+    stats["ERROR-L2"] = error_norm(b, b2, "L2")
+    stats["ERROR-H1A"] = error_norm(b, b2, pde.norm)
     stats["DOFS"] = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
     stats["CELLS"] = sum([b[mu]._fefunc.function_space().mesh().num_cells() for mu in b.keys()])
     logger.info("Residual = [%s (L2)] [%s (H1)] with [%s dofs] and [%s cells]", stats["L2"], stats["H1"], stats["DOFS"], stats["CELLS"])
@@ -105,7 +103,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     sigma=1.0, # residual factor
                     theta_x=0.4, # residual marking bulk parameter
                     theta_y=0.4, # tail bound marking bulk paramter
-                    maxh = 0.1, # maximal mesh width for coefficient maximum norm evaluation
+                    maxh=0.1, # maximal mesh width for coefficient maximum norm evaluation
                     add_maxm=20, # maximal search length for new new multiindices (to be added to max order of solution w)
                     # residual error
                     quadrature_degree= -1,
@@ -151,6 +149,7 @@ def AdaptiveSolver(A, coeff_field, pde,
 
         # pcg solve
         # ---------
+        
         stats = {}
         with timing(msg="pcg_solve", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-PCG", stats=stats)):
             w, zeta = pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter)
@@ -172,13 +171,13 @@ def AdaptiveSolver(A, coeff_field, pde,
             global_eta, eta, eta_local = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, zeta, quadrature_degree)
             
         # set overall error
-        xi = sqrt(global_eta**2 + global_zeta**2)
+        xi = sqrt(global_eta ** 2 + global_zeta ** 2)
         logger.info("Overall Estimator Error xi = %s while residual error is %s and tail error is %s", xi, global_eta, global_zeta)
 
         # store simulation data
-        stats["EST"] = xi
-        stats["RES"] = global_eta
-        stats["TAIL"] = global_zeta
+        stats["ERROR-EST"] = xi
+        stats["ERROR-RES"] = global_eta
+        stats["ERROR-TAIL"] = global_zeta
         stats["MARKING-RES"] = 0
         stats["MARKING-MI"] = 0
         stats["TIME-MARK-RES"] = 0
@@ -206,24 +205,27 @@ def AdaptiveSolver(A, coeff_field, pde,
             logger.debug("START marking")
             # === mark x ===
             if do_refinement["RES"]:
+                cell_ids = []
+                logger.info("REFINE RES")
                 if not do_uniform_refinement:        
-                    mesh_markers = []
-                    if global_eta > rho*global_zeta:
+                    if global_eta > rho * global_zeta:
                         with timing(msg="Marking.mark_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-RES", stats=stats)):
-                            mesh_markers = Marking.mark_x(eta, eta_local, theta_x)
+                            cell_ids = Marking.mark_x(eta, eta_local, theta_x)
                 else:
                     # uniformly refine mesh
                     logger.info("UNIFORM refinement")
-                    mesh_markers = list([c.index() for c in cells(w.basis._fefs.mesh())])
+                    cell_ids = [c.index() for c in cells(w.basis._fefs.mesh())]
             else:
-                mesh_markers = []
                 logger.info("SKIP residual refinement")
             # refine mesh
+            logger.debug("w.dim BEFORE refinement: %f", w.dim)
             with timing(msg="Marking.refine_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-RES", stats=stats)):
-                Marking.refine_x(w, mesh_markers)
+                w = Marking.refine_x(w, cell_ids)
+            logger.debug("w.dim AFTER refinement: %f", w.dim)
                             
             # === mark y ===
             if do_refinement["TAIL"]:
+                logger.info("REFINE TAIL")
                 with timing(msg="Marking.mark_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-TAIL", stats=stats)):
                     new_mi = Marking.mark_y(global_zeta, zeta, zeta_bar, eval_zeta_m, theta_y)
             else:
@@ -232,6 +234,18 @@ def AdaptiveSolver(A, coeff_field, pde,
             # add new multiindices
             with timing(msg="Marking.refine_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-TAIL", stats=stats)):
                 Marking.refine_y(w, new_mi, partial(setup_vector, pde=pde, basis=w.basis))
+
+            # === uniformly refine for coefficient function oscillations ===
+            if do_refinement["OSC"]:
+                logger.info("REFINE OSC")
+                with timing(msg="Marking.refine_osc", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-OSC", stats=stats)):
+                    osc_refinements = Marking.refine_osc(w, coeff, M)
+            else:
+                logger.info("SKIP tail refinement")
+            # add new multiindices
+            with timing(msg="Marking.refine_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-TAIL", stats=stats)):
+                Marking.refine_y(w, new_mi, partial(setup_vector, pde=pde, basis=w.basis))
+
             
             logger.info("MARKING was carried out with %s (res) cells and %s (mi) new multiindices", len(mesh_markers), len(new_mi))
             stats["MARKING-RES"] = len(mesh_markers)

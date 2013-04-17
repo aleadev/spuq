@@ -15,6 +15,9 @@ class CoefficientField(object):
     """Expansion of a coefficient field according to EGSZ (1.2)."""
     __metaclass__ = ABCMeta
 
+    def range(self, firstderivative=False):
+        raise NotImplementedError
+
     @abstractproperty
     def mean_func(self):
         pass
