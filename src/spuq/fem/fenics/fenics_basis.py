@@ -1,4 +1,4 @@
-from dolfin import FunctionSpace, VectorFunctionSpace, FunctionSpaceBase, Function, TestFunction, TrialFunction, CellFunction, assemble, dx, refine, cells
+from dolfin import FunctionSpace, VectorFunctionSpace, FunctionSpaceBase, Function, TestFunction, TrialFunction, CellFunction, assemble, dx, refine, cells, nabla_grad
 import dolfin
 import numpy as np
 
@@ -160,7 +160,7 @@ class FEniCSBasis(FEMBasis):
 
     @property
     def gramian(self):
-        """The Gramian as a LinearOperator (not necessarily a matrix)"""
+        """The Gramian as a LinearOperator (not necessarily a matrix)."""
         # TODO: wrap sparse FEniCS matrix A in FEniCSOperator
         u = TrialFunction(self._fefs)
         v = TestFunction(self._fefs)
@@ -168,8 +168,24 @@ class FEniCSBasis(FEMBasis):
         A = assemble(a)
         return MatrixOperator(A.array())
 
+    @property
+    def stiffness(self):
+        """The stiffness matrix as a LinearOperator."""
+        u = TrialFunction(self._fefs)
+        v = TestFunction(self._fefs)
+        a = (nabla_grad(u), nabla_grad(v)) * dx
+        A = assemble(a)
+        return MatrixOperator(A.array())
+
     @takes(anything, "FEniCSBasis")
     def __eq__(self, other):
+        ufl1 = self._fefs.ufl_element()
+        ufl2 = other._fefs.ufl_element()
+        mesh1 = self._fefs.mesh()
+        mesh2 = other._fefs.mesh()
         return (type(self) == type(other) and
-                self._fefs == other._fefs)
-        # TODO: comparison of properties is required...
+                ufl1.degree() == ufl2.degree() and
+                ufl1.family() == ufl2.family() and
+                ufl1.subspaces() == ufl2.subspaces() and
+                mesh1.cells() == mesh2.cells() and
+                mesh1.coordinates() == mesh2.coordinates())

@@ -432,6 +432,7 @@ class MultiVectorSharedBasis(MultiVector):
 
     @takes(anything, optional(callable))
     def __init__(self, on_modify=lambda: None, multivector=None):
+        self.single_basis = True    # TODO: flag for pickling
         self.mi2vec = dict()
         self.on_modify = on_modify
         if multivector is not None:

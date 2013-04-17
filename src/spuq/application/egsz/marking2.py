@@ -71,11 +71,14 @@ class Marking(object):
                 new_zeta = eval_zeta_m(mu, minm)
                 zeta.append((new_mu, new_zeta))
             finally:
-                logger.debug("no further extension of multiindex canidates required")
+                logger.debug("no further extension of multiindex candidates required")
             
             # break if sufficiently many new mi are selected
             if theta_y * zeta <= marked_zeta or len(new_mi) >= max_new_mi or len(zeta) == 0:
                 break 
+
+        if len(zeta) == 0:
+            logger.warning("list of mi candidates is empty")
 
         if len(new_mi) > 0:
             logger.info("SELECTED NEW MULTIINDICES %s", new_mi)
