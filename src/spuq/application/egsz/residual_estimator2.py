@@ -29,19 +29,16 @@ The coefficients :math:`\alpha_j` follow from the recurrence coefficients
 
 from __future__ import division
 import numpy as np
-from operator import itemgetter
-
 from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFunctionSpace, cells,
                     Constant, FunctionSpace, TestFunction, CellSize, FacetNormal, parameters)
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorSharedBasis
-from spuq.fem.fenics.fenics_utils import weighted_H1_norm
+#from spuq.fem.fenics.fenics_utils import weighted_H1_norm
 from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
-from spuq.utils.timing import timing
 from spuq.utils.decorators import cache
 
 import logging
@@ -57,11 +54,12 @@ class ResidualEstimator(object):
     def evaluateResidualEstimator(cls, w, coeff_field, pde, f, quadrature_degree= -1):
         """Evaluate residual estimator EGSZ2 (4.1) for all active mu of w."""
         # evaluate residual estimator for all multiindices
-        eta = MultiVector()
-        global_eta = {}
+        eta_local = MultiVector()
+        eta = {}
         for mu in w.active_indices():
-            global_eta[mu], eta[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, pde, f, quadrature_degree)
-        return global_eta, eta
+            eta[mu], eta_local[mu] = cls._evaluateResidualEstimator(mu, w, coeff_field, pde, f, quadrature_degree)
+        global_eta = sqrt(sum([v ** 2 for v in eta.values()]))
+        return global_eta, eta, eta_local
 
 
     @classmethod

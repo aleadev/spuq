@@ -17,8 +17,8 @@ from spuq.utils.timing import timing
 
 try:
     from dolfin import (Function, FunctionSpace, cells, Constant, refine)
-    from spuq.application.egsz.marking import Marking
-    from spuq.application.egsz.residual_estimator import ResidualEstimator
+    from spuq.application.egsz.marking2 import Marking
+    from spuq.application.egsz.residual_estimator2 import ResidualEstimator
     from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_utils import error_norm
 except:
@@ -105,6 +105,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     sigma=1.0, # residual factor
                     theta_x=0.4, # residual marking bulk parameter
                     theta_y=0.4, # tail bound marking bulk paramter
+                    maxh = 0.1, # maximal mesh width for coefficient maximum norm evaluation
                     add_maxm=20, # maximal search length for new new multiindices (to be added to max order of solution w)
                     # residual error
                     quadrature_degree= -1,
@@ -122,7 +123,6 @@ def AdaptiveSolver(A, coeff_field, pde,
                     sim_stats=None):
     
     # define store function for timings
-    from functools import partial
     def _store_stats(val, key, stats):
         stats[key] = val
     
@@ -145,7 +145,7 @@ def AdaptiveSolver(A, coeff_field, pde,
     import resource
     refinement = None
     for refinement in range(start_iteration, max_refinements + 1):
-        logger.info("************* REFINEMENT LOOP [OUTER] iteration %i (of %i) *************", refinement, max_refinements)
+        logger.info("************* REFINEMENT LOOP iteration %i (of %i) *************", refinement, max_refinements)
         # memory usage info
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 
@@ -159,62 +159,86 @@ def AdaptiveSolver(A, coeff_field, pde,
         if w_history is not None and (refinement == 0 or start_iteration < refinement):
             w_history.append(w)
 
-        # inner refinement loop (residual estimator)
-        # ------------------------------------------
-        for inner_refinement in range(max_inner_refinements):
-            # evaluate estimate_y
-            logger.debug("evaluating upper tail bound")
-            with timing(msg="ResidualEstimator.evaluateUpperTailBound", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-TAIL", stats=stats)):
-                global_eta, eta = ResidualEstimator.evaluateUpperTailBound(w, coeff_field, pde, maxh, add_maxm)
-            # evaluate estimate_x
-            with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
-                global_eta, eta = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, zeta, quadrature_degree)
-
-
-
-
-            
-            reserrmu = [(mu, sqrt(sum(resind[mu].coeffs ** 2))) for mu in resind.keys()]
-            projerrmu = [(mu, sqrt(sum(projind[mu].coeffs ** 2))) for mu in projind.keys()]
-            res_part, proj_part, pcg_part = estparts[0], estparts[1], estparts[2]
-            err_res, err_proj, err_pcg = errors[0], errors[1], errors[2]
-            logger.info("Overall Estimator Error xi = %s while residual error is %s, projection error is %s, pcg error is %s", xi, res_part, proj_part, pcg_part)
-            
-            stats.update(timing_stats)
-            stats["EST"] = xi
-            stats["RES-PART"] = res_part
-            stats["PCG-PART"] = pcg_part
-            stats["ERR-RES"] = err_res
-            stats["ERR-PCG"] = err_pcg
-            stats["ETA-ERR"] = errors[0]
-            stats["DELTA-ERR"] = errors[1]
-            stats["ZETA-ERR"] = errors[2]
-            stats["RES-mu"] = reserrmu
-            stats["MARKING-RES"] = 0
-            stats["MARKING-PROJ"] = 0
-            stats["MARKING-MI"] = 0
-            stats["TIME-MARKING"] = 0
-            stats["MI"] = [(mu, vec.basis.dim) for mu, vec in w.iteritems()]
-            if refinement == 0 or start_iteration < refinement:
-                sim_stats.append(stats)            
-    #            print "SIM_STATS:", sim_stats[refinement]
-
-
-
-
+        # evaluate estimators
+        # -------------------
         
-        logger.debug("squared error components: eta=%s  delta=%s  zeta=%", errors[0], errors[1], errors[2])
+        # evaluate estimate_y
+        logger.debug("evaluating upper tail bound")
+        with timing(msg="ResidualEstimator.evaluateUpperTailBound", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-TAIL", stats=stats)):
+            global_zeta, zeta, zeta_bar, eval_zeta_m = ResidualEstimator.evaluateUpperTailBound(w, coeff_field, pde, maxh, add_maxm)
+            
+        # evaluate estimate_x
+        with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
+            global_eta, eta, eta_local = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, zeta, quadrature_degree)
+            
+        # set overall error
+        xi = sqrt(global_eta**2 + global_zeta**2)
+        logger.info("Overall Estimator Error xi = %s while residual error is %s and tail error is %s", xi, global_eta, global_zeta)
 
+        # store simulation data
+        stats["EST"] = xi
+        stats["RES"] = global_eta
+        stats["TAIL"] = global_zeta
+        stats["MARKING-RES"] = 0
+        stats["MARKING-MI"] = 0
+        stats["TIME-MARK-RES"] = 0
+        stats["TIME-REFINE-RES"] = 0
+        stats["TIME-MARK-TAIL"] = 0
+        stats["TIME-REFINE-TAIL"] = 0
+        stats["MI"] = [mu for mu in w.active_indices()]
+        stats["DIM"] = w.dim
+        if refinement == 0 or start_iteration < refinement:
+            sim_stats.append(stats)
+            print "SIM_STATS:", sim_stats[refinement]
+            
         # exit when either error threshold or max_refinements is reached
         if refinement > max_refinements:
             logger.info("skipping refinement after final solution in iteration %i", refinement)
             break
         if xi <= error_eps:
             logger.info("error reached requested accuracy, xi=%f", xi)
-            break
+            break 
 
+        # mark and refine and activate new mi
+        # -----------------------------------
 
-
-
+        if refinement < max_refinements:
+            logger.debug("START marking")
+            # === mark x ===
+            if do_refinement["RES"]:
+                if not do_uniform_refinement:        
+                    mesh_markers = []
+                    if global_eta > rho*global_zeta:
+                        with timing(msg="Marking.mark_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-RES", stats=stats)):
+                            mesh_markers = Marking.mark_x(eta, eta_local, theta_x)
+                else:
+                    # uniformly refine mesh
+                    logger.info("UNIFORM refinement")
+                    mesh_markers = list([c.index() for c in cells(w.basis._fefs.mesh())])
+            else:
+                mesh_markers = []
+                logger.info("SKIP residual refinement")
+            # refine mesh
+            with timing(msg="Marking.refine_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-RES", stats=stats)):
+                Marking.refine_x(w, mesh_markers)
+                            
+            # === mark y ===
+            if do_refinement["TAIL"]:
+                with timing(msg="Marking.mark_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-TAIL", stats=stats)):
+                    new_mi = Marking.mark_y(global_zeta, zeta, zeta_bar, eval_zeta_m, theta_y)
+            else:
+                new_mi = []
+                logger.info("SKIP tail refinement")
+            # add new multiindices
+            with timing(msg="Marking.refine_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-TAIL", stats=stats)):
+                Marking.refine_y(w, new_mi, partial(setup_vector, pde=pde, basis=w.basis))
+            
+            logger.info("MARKING was carried out with %s (res) cells and %s (mi) new multiindices", len(mesh_markers), len(new_mi))
+            stats["MARKING-RES"] = len(mesh_markers)
+            stats["MARKING-MI"] = len(new_mi)
+    
+    if refinement:
+        logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
+                    refinement, max_refinements, sim_stats[refinement]["DOFS"], len(sim_stats[refinement]["MI"]))
 
     return w, sim_stats

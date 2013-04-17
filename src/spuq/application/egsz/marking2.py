@@ -24,16 +24,9 @@ class Marking(object):
     """EGSZ2 marking strategy for residual estimator."""
 
     @classmethod
-    @takes(anything, MultiVector, CoefficientField, anything, anything, float, optional(int))
-    def mark_x(cls, w, coeff_field, pde, f, theta_x, quadrature_degree= -1):
+    @takes(anything, float, anything, float)
+    def mark_x(cls, eta, eta_local, theta_x):
         """Carry out Doerfler marking (bulk criterion) for elements with parameter theta."""
-        # evaluate residual indicators
-        resind, _ = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
-
-
-        #        if logger.isEnabledFor(logging.DEBUG):
-        #            for mu, cellres in resind.iteritems():
-        #                logger.debug("resind[%s] = %s", mu, cellres)
 
         allresind = list()
         for mu, resmu in resind.iteritems():
@@ -53,6 +46,9 @@ class Marking(object):
             [(mu, len(cell_ids)) for mu, cell_ids in mesh_markers.iteritems()])
         return mesh_markers
 
+    @classmethod
+    def refine_x(cls, w, ):
+        pass
 
     @classmethod
     @takes(anything, list, float, float, int, optional(float), optional(str))
@@ -60,9 +56,6 @@ class Marking(object):
         """Carry out Doerfler marking by activation of new indices."""
         # evaluate upper tail bound
         z, zeta, zeta_bar, eval_zeta_m = ResidualEstimator.evaluateUpperTailBound(cls, w, coeff_field, pde, maxh, add_maxm)
-
-
-
 
         
         zeta_threshold = theta_delta * max_zeta
@@ -82,3 +75,7 @@ class Marking(object):
         else:
             logger.info("NO NEW MULTIINDICES SELECTED")
         return dict(Lambda_selection), lambda_max, dict(Lambda_selection_all)
+
+    @classmethod
+    def refine_y(cls):
+        pass
