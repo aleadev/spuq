@@ -15,19 +15,16 @@ where the coefficients :math:`(\alpha^m_{n-1},\alpha^m_n,\alpha^m_{n+1})` are ob
 from spuq.linalg.basis import Basis
 from spuq.linalg.operator import Operator
 from spuq.utils.type_check import takes, anything, optional
-from spuq.fem.fenics.fenics_utils import create_joint_mesh
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
+from spuq.application.egsz.multi_vector import MultiVector, MultiVectorSharedBasis
 from spuq.utils.enum import Enum
 
 import logging
 logger = logging.getLogger(__name__)
 
-ASSEMBLY_TYPE = Enum('MU', 'JOINT_MU', 'JOINT_GLOBAL')
-
 
 class MultiOperator(Operator):
-    """Discrete operator according to EGSZ (2.6), generalised for spuq orthonormal polynomials."""
+    """Discrete operator according to EGSZ (2.6) but with just a single spatial grid, generalised for spuq orthonormal polynomials."""
 
     @takes(anything, CoefficientField, callable, optional(callable), optional(Basis), optional(Basis))
     def __init__(self, coeff_field, assemble_0, assemble_m=None, domain=None, codomain=None, assembly_type=ASSEMBLY_TYPE.JOINT_MU):
@@ -42,7 +39,7 @@ class MultiOperator(Operator):
     @takes(any, MultiVector)
     def apply(self, w):
         """Apply operator to vector which has to live in the same domain."""
-
+        
         v = 0 * w
         Lambda = w.active_indices()
         maxm = w.max_order
@@ -52,36 +49,11 @@ class MultiOperator(Operator):
             maxm = len(self._coeff_field)
             #        assert self._coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
         
-        # construct global joint mesh
-        if self._assembly_type == ASSEMBLY_TYPE.JOINT_GLOBAL:
-            meshes = [w[m].basis.mesh for m in Lambda]
-            mesh = create_joint_mesh(meshes)
-            Vfine = w[Lambda[0]].basis.copy(mesh=mesh)
-        
         for mu in Lambda:
-
-            if self._assembly_type != ASSEMBLY_TYPE.JOINT_GLOBAL:
-                # create joint mesh and basis
-                if (self._assembly_type == ASSEMBLY_TYPE.JOINT_MU
-                    and hasattr(w[mu].basis, "mesh")):
-                    # identify active multi indices
-                    mus = set([mu])
-                    mus = mus.union([mu.inc(m) for m in range(maxm)])
-                    mus = mus.union([mu.dec(m) for m in range(maxm)])
-                    mus = mus.intersection(Lambda)
-                    logger.debug("apply on mu = %s with joint mesh for %s",
-                                 str(mu), str(mus))
-
-                    meshes = [w[m].basis.mesh for m in mus]
-                    mesh, _ = create_joint_mesh(meshes)
-                    Vfine = w[mu].basis.copy(mesh=mesh)
-                else:
-                    Vfine = w[mu].basis
-
             # deterministic part
             a0_f = self._coeff_field.mean_func
-            A0 = self._assemble_0(a0_f, Vfine)
-            cur_v = A0 * Vfine.project_onto(w[mu])
+            A0 = self._assemble_0(a0_f, V)
+            cur_v = A0 * w[mu]
 
             # iterate related multiindices
             for m in range(maxm):
@@ -94,32 +66,31 @@ class MultiOperator(Operator):
                 beta = am_rv.orth_polys.get_beta(mu[m])
 
                 # mu
-                cur_w = -beta[0] * Vfine.project_onto(w[mu])
+                cur_w = -beta[0] * w[mu]
 
                 # mu+1
                 mu1 = mu.inc(m)
                 if mu1 in Lambda:
-                    cur_w += beta[1] * Vfine.project_onto(w[mu1])
+                    cur_w += beta[1] * w[mu1]
 
                 # mu-1
                 mu2 = mu.dec(m)
                 if mu2 in Lambda:
-                    cur_w += beta[-1] * Vfine.project_onto(w[mu2])
+                    cur_w += beta[-1] * w[mu2]
 
                 # apply discrete operator
                 cur_v += Am * cur_w
-            v[mu] = w[mu].basis.project_onto(cur_v)
+            v[mu] = cur_v
         return v
 
-    @takes(any, MultiVectorWithProjection)
+    @takes(any, MultiVectorSharedBasis)
     def apply_A(self, w):
         """Apply operator to vector which has to live in the same domain."""
         v = 0 * w
         Lambda = w.active_indices()
         maxm = w.max_order
         if len(self._coeff_field) < maxm:
-            logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i",
-                len(self._coeff_field), maxm)
+            logger.warning("insufficient length of coefficient field for MultiVector (%i instead of %i", len(self._coeff_field), maxm)
             maxm = len(self._coeff_field)
             #        assert self._coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
         for mu in Lambda:
@@ -143,12 +114,12 @@ class MultiOperator(Operator):
                 # mu+1
                 mu1 = mu.inc(m)
                 if mu1 in Lambda:
-                    cur_w += beta[1] * w.get_projection(mu1, mu)
+                    cur_w += beta[1] * w[mu1]
 
                 # mu-1
                 mu2 = mu.dec(m)
                 if mu2 in Lambda:
-                    cur_w += beta[-1] * w.get_projection(mu2, mu)
+                    cur_w += beta[-1] * w[mu2]
 
                 # apply discrete operator
                 v[mu] += Am * cur_w

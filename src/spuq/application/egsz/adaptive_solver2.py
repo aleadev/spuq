@@ -147,6 +147,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         # memory usage info
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 
+        # ---------
         # pcg solve
         # ---------
         
@@ -158,6 +159,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         if w_history is not None and (refinement == 0 or start_iteration < refinement):
             w_history.append(w)
 
+        # -------------------
         # evaluate estimators
         # -------------------
         
@@ -198,6 +200,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             logger.info("error reached requested accuracy, xi=%f", xi)
             break 
 
+        # -----------------------------------
         # mark and refine and activate new mi
         # -----------------------------------
 
