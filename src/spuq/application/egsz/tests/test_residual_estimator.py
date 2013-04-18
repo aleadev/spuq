@@ -130,7 +130,7 @@ def test_estimator_refinement():
     a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
         element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
     rvs = (NormalRV(mu=0.5) for _ in count())
-    coeff_field = GeneratorCoefficientField(a, rvs, a0=a0)
+    coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
 
     # refinement loop
     # ===============
@@ -306,7 +306,7 @@ def test_marking():
     a = (Expression('A*cos(pi*I*x[0])*cos(pi*I*x[1])', A=1 / i ** 2, I=i, degree=2,
         element=FiniteElement('Lagrange', ufl.triangle, 1)) for i in count())
     rvs = (NormalRV(mu=0.5) for _ in count())
-    coeff_field = GeneratorCoefficientField(a, rvs, a0=a0)
+    coeff_field = ParametricCoefficientField(a, rvs, a0=a0)
 
     # refinement loop
     # ===============

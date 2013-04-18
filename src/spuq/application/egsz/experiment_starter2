@@ -1,0 +1,238 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+import optparse
+import ConfigParser
+
+# standard options for simulation
+# types: 0=string, 1=int, 2=float, 3=bool
+simulation_options_conf = (("SFEM",
+                {"experiment_name": (0, ""),
+                    "problem_type":1,
+                    "domain":0,
+                    "boundary_type":1,
+                    "FEM_degree":1,
+                    "initial_Lambda":1,
+                    "decay_exp":2,
+                    "coeff_type":1,
+                    "coeff_scale":2,
+                    "freq_scale":2,
+                    "freq_skip":1,
+                    "gamma":2,
+                    "mu":(2, None),
+                    "initial_mesh_N":(1, 10),
+                    "iterative_solver":(3, False)}),
+           ("SFEM adaptive algorithm",
+                {"iterations":1,
+                    "uniform_refinement":3,
+                    "refine_residual":3,
+                    "refine_tail":3,
+                    "rho":2,
+                    "sigma":2,
+                    "theta_x":2,
+                    "theta_y":2,
+                    "maxh":2,
+                    "newmi_add_maxm":1,
+                    "quadrature_degree":1,
+                    "pcg_eps":2,
+                    "pcg_maxiter":1,
+                    "error_eps":2}),
+           ("LOGGING",
+                {"level":0}),
+           ("MC",
+                {"runs":1,
+                    "N":1,
+                    "max_h":2,
+                    "ref_mesh_refine":(1, 0),
+                    "sampling_order":(1, 0),
+                    "sampling_order_increase":(1, 0)})
+           )
+
+
+class ExperimentStarter(object):
+    def __init__(self):
+        self.opts = self._parse_options()
+        self.conf = self._parse_config(self.opts)
+        
+    def _parse_options(self):
+        usage = "%prog [options] config_file"
+        optparser = optparse.OptionParser(usage=usage)
+        
+        optparser.add_option('-f', '--config',
+                             dest='add_config', action='append', default=[],
+                             help='specify additional config files')
+        
+        optparser.add_option('--runSFEM', '--run-sfem',
+                             action='store_true', default=False, dest='runSFEM',
+                             help='start the SFEM computation')
+        optparser.add_option('--runMC', '--run-mc',
+                             action='store_true', default=False, dest='runMC',
+                             help='start the MC computation')
+        optparser.add_option('--continueSFEM', '--continue-sfem',
+                             action='store_true', default=False, dest='continueSFEM',
+                             help='continue the SFEM computation')
+        optparser.add_option('--continueMC', '--continue-mc',
+                             action='store_true', default=False, dest='continueMC',
+                             help='continue the Monte Carlo computation')
+        optparser.add_option('--noSaveData', '--no-save-data',
+                             action='store_false', default=True, dest='saveData',
+                             help='do not save the computed data after the run')
+        optparser.add_option('--noTypeCheck', '--no-type-check',
+                             action='store_false', default=True, dest='typeCheck',
+                             help='disable type checking')
+        optparser.add_option('--profiling',
+                             action='store_true', default=False, dest='profiling',
+                             help='enable profiling (timing)')
+        
+        optparser.add_option('--plotSolution', '--plot-solution',
+                             action='store_true', default=False, dest='plotSolution',
+                             help='Plot the solution for all multiindices.')
+        optparser.add_option('--plotEstimator', '--plot-estimator',
+                             action='store_true', default=False, dest='plotEstimator',
+                             help='Plot residual error estimator over all iterations.')
+        optparser.add_option('--plotEstimatorAll', '--plot-estimator-all',
+                             action='store_true', default=False, dest='plotEstimatorAll',
+                             help='Plot additional figures.')
+        optparser.add_option('--plotMesh', '--plot-mesh',
+                             action='store_true', default=False, dest='plotMesh',
+                             help='Plot the meshes.')
+        
+        optparser.add_option('--clear', type='choice', choices=['none', 'all', 'SFEM', 'MC'], dest='clear', default='none',
+                             help='clear data, CLEAR one of ' + repr(['none', 'all', 'SFEM', 'MC']))
+        
+        optparser.add_option('--debug', action='store_true', default=False,
+                             dest='debug', help='')
+        
+        options, args = optparser.parse_args()
+        if len(args) < 1:
+            optparser.error('No config file specified (use -h/--help for help)')
+        elif len(args) > 1:
+            optparser.error('More than one config file specified (use -h/--help for help)')
+        else:
+            options.config = args[0]
+
+        # handle some dependencies
+        if options.plotEstimatorAll:
+            options.plotEstimator = True
+        if options.continueSFEM:
+            options.runSFEM = True
+        if options.continueMC:
+            options.runMC = True
+
+        from os.path import dirname
+        basedir = dirname(options.config)
+    
+        if options.debug:
+            print("program options", options)
+            print("basedir", basedir) 
+        
+        options.basedir = basedir
+        return options
+
+    @classmethod        
+    def _parse_config(cls, opts, opts_conf=simulation_options_conf, additional_opts_conf=None, configfile=None):
+        class _Undefined:
+            pass
+        try:
+            confparser = ConfigParser.SafeConfigParser()
+            if configfile is not None:
+                filename = configfile
+            else:
+                assert opts is not None
+                filename = [opts.config] + opts.add_config
+            if not confparser.read(filename):
+                raise ConfigParser.ParsingError("file " + filename + " not found")
+        except ConfigParser.ParsingError, err:
+            print("Could not parse:", err)
+
+        # extract options
+        getter = ("get", "getint", "getfloat", "getboolean")
+        conf = {}
+        for sec, optsdict in opts_conf:
+            conf[sec] = {}
+            for key, keytype in optsdict.iteritems():
+                print("processing", sec, key)
+                try:
+                    if type(keytype) is tuple:
+                        keytype, defaultval = keytype[0], keytype[1]
+                    else:
+                        defaultval = _Undefined
+                    exec "conf['" + sec + "']['" + key + "'] = confparser." + getter[keytype] + "('" + sec + "','" + key + "')"
+                except:
+                    if not isinstance(defaultval, _Undefined):
+                        if keytype == 0:
+                            defaultval = "'" + defaultval + "'"
+                        else:
+                            defaultval = str(defaultval)
+                        exec "conf['" + sec + "']['" + key + "'] = " + defaultval
+                    else:
+                        print("skipped", sec, key)
+
+        if additional_opts_conf is not None and opts.debug:
+            # TODO: implement...
+            for sec in confparser.sections():
+                print("section", sec)
+                for opt in confparser.options(sec):
+                    print("\t", opt, "=", confparser.get(sec, opt))
+                print("")
+            print(conf)
+
+        return conf
+
+    @classmethod
+    def _extract_config(cls, dic, savefile=None):
+        CONFstr = 'CONF_'
+        conf = {}
+        for k, v in dic.iteritems():
+            if k.startswith(CONFstr):
+                conf[k[len(CONFstr):]] = v
+        
+        if savefile is not None:
+            import time
+            with open(savefile, 'a') as f:
+                print("\n" + time.asctime() + "="*60 + "\n", file=f)
+                for k in sorted(conf):
+                    print(k + " = " + str(conf[k]), file=f)
+                print("\n" + "="*80 + "\n", file=f)
+        return conf
+
+    def start(self):
+        # check if data should be cleared
+        if self.opts.clear == 'SFEM' or self.opts.clear == 'all':
+            print("clearing SFEM data TODO")
+            # TODO
+        if self.opts.clear == 'MC' or self.opts.clear == 'all':
+            print("clearing MC data TODO")
+            # TODO
+
+        if not self.opts.typeCheck:
+            print("="*60)
+            print("disabling type checking")
+            print("="*60)
+            from spuq.utils.type_check import disable_type_check
+            disable_type_check()
+
+        from run_SFEM2 import run_SFEM
+        from run_MC2 import run_MC
+
+        # start SFEM
+        if self.opts.runSFEM:
+            print("="*60)
+            print("starting SFEM")
+            print("="*60)
+            run_SFEM(self.opts, self.conf)
+        
+        # start MC
+        if self.opts.runMC:
+            print("="*60)
+            print("starting MC")
+            print("="*60)
+            run_MC(self.opts, self.conf)
+
+# -----------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    # get configuration and start experiments
+    starter = ExperimentStarter()
+    starter.start()

@@ -150,7 +150,7 @@ class SampleProblem(object):
         return m
 
     @classmethod
-    @takes(anything, dict, callable)
+    @takes(anything, anything, list, callable)
     def setupMultiVector(cls, mesh, mis, setup_vec):
         w = MultiVectorSharedBasis()
         for mu in mis:

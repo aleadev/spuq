@@ -27,14 +27,13 @@ class MultiOperator(Operator):
     """Discrete operator according to EGSZ (2.6) but with just a single spatial grid, generalised for spuq orthonormal polynomials."""
 
     @takes(anything, CoefficientField, callable, optional(callable), optional(Basis), optional(Basis))
-    def __init__(self, coeff_field, assemble_0, assemble_m=None, domain=None, codomain=None, assembly_type=ASSEMBLY_TYPE.JOINT_MU):
+    def __init__(self, coeff_field, assemble_0, assemble_m=None, domain=None, codomain=None):
         """Initialise discrete operator with FEM discretisation and coefficient field."""
         self._assemble_0 = assemble_0
         self._assemble_m = assemble_m or assemble_0
         self._coeff_field = coeff_field
         self._domain = domain
         self._codomain = codomain
-        self._assembly_type = assembly_type
 
     @takes(any, MultiVector)
     def apply(self, w):

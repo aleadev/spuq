@@ -186,6 +186,6 @@ class FEniCSBasis(FEMBasis):
         return (type(self) == type(other) and
                 ufl1.degree() == ufl2.degree() and
                 ufl1.family() == ufl2.family() and
-                ufl1.subspaces() == ufl2.subspaces() and
-                mesh1.cells() == mesh2.cells() and
-                mesh1.coordinates() == mesh2.coordinates())
+                self._fefs.num_sub_spaces() == other._fefs.num_sub_spaces() and
+                (mesh1.cells() == mesh2.cells()).all() and
+                (mesh1.coordinates() == mesh2.coordinates()).all())

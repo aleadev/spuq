@@ -101,7 +101,7 @@ def run_SFEM(opts, conf):
                 w_history = pickle.load(fin)
             # convert to MultiVectorWithProjection
             for i, mv in enumerate(w_history):
-                w_history[i] = MultiVectorWithProjection(cache_active=True, multivector=w_history[i])
+                w_history[i] = MultiVectorSharedBasis(multivector=w_history[i])
             # load simulation data
             logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'))
             with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
