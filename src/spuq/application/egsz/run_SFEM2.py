@@ -5,7 +5,7 @@ import logging
 from math import sqrt
 from collections import defaultdict
 
-from spuq.application.egsz.adaptive_solver import AdaptiveSolver, setup_vector
+from spuq.application.egsz.adaptive_solver2 import AdaptiveSolver
 from spuq.application.egsz.multi_operator2 import MultiOperator
 from spuq.application.egsz.sample_problems2 import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
@@ -85,7 +85,7 @@ def run_SFEM(opts, conf):
     A = MultiOperator(coeff_field, pde.assemble_operator, pde.assemble_operator_inner_dofs)
 
     # setup initial solution multivector
-    w = SampleProblem.setupMultiVector(mesh0, mis, functools.partial(setup_vector, pde=pde, degree=CONF_FEM_degree))
+    w = SampleProblem.setupMultiVector(mis, pde, mesh0, CONF_FEM_degree)
     logger.info("active indices of w after initialisation: %s", w.active_indices())
 
     sim_stats = None

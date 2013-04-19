@@ -76,7 +76,7 @@ class MultiOperator(Operator):
                     mesh, _ = create_joint_mesh(meshes)
                     Vfine = w[mu].basis.copy(mesh=mesh)
                 else:
-                    Vfine = w[mu].basis
+                    Vfine = w[mu].basis.basis
 
             # deterministic part
             a0_f = self._coeff_field.mean_func

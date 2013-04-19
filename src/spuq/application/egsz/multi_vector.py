@@ -50,6 +50,8 @@ class MultiVector(Vector):
 
     @property
     def supp(self):
+        for mu in self.active_indices():
+            print mu, mu.supp, mu.supp.shape
         s = [set(mu.supp) for mu in self.active_indices()]
         return set.union(*s)
 

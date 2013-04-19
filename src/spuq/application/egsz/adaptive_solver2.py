@@ -6,7 +6,7 @@ import logging
 import os
 
 from spuq.application.egsz.pcg import pcg
-from spuq.application.egsz.multi_operator import MultiOperator, PreconditioningOperator
+from spuq.application.egsz.multi_operator2 import MultiOperator, PreconditioningOperator
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.fem_discretisation import FEMDiscretisation
 from spuq.application.egsz.multi_vector import MultiVector
@@ -18,7 +18,6 @@ try:
     from dolfin import (Function, FunctionSpace, cells, Constant, refine)
     from spuq.application.egsz.marking2 import Marking
     from spuq.application.egsz.residual_estimator2 import ResidualEstimator
-    from spuq.fem.fenics.fenics_vector import FEniCSVector
     from spuq.fem.fenics.fenics_utils import error_norm
 except:
     import traceback
@@ -30,15 +29,6 @@ except:
 
 # retrieve logger
 logger = logging.getLogger(__name__)
-
-
-# setup initial multivector
-def setup_vector(pde, basis):
-    mesh = basis._fefs.mesh()
-    degree = basis._fefs.ufl_element().degree()
-    fs = pde.function_space(mesh, degree=degree)
-    vec = FEniCSVector(Function(fs))
-    return vec
 
 
 # ============================================================
@@ -87,7 +77,7 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
     stats["ERROR-H1A"] = error_norm(b, b2, pde.norm)
     stats["DOFS"] = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
     stats["CELLS"] = sum([b[mu]._fefunc.function_space().mesh().num_cells() for mu in b.keys()])
-    logger.info("Residual = [%s (L2)] [%s (H1)] with [%s dofs] and [%s cells]", stats["L2"], stats["H1"], stats["DOFS"], stats["CELLS"])
+    logger.info("Residual = [%s (L2)] [%s (H1)] with [%s dofs] and [%s cells]", stats["ERROR-L2"], stats["ERROR-H1A"], stats["DOFS"], stats["CELLS"])
     return w, zeta
 
 
@@ -170,7 +160,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             
         # evaluate estimate_x
         with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
-            global_eta, eta, eta_local = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, zeta, quadrature_degree)
+            global_eta, eta, eta_local = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
             
         # set overall error
         xi = sqrt(global_eta ** 2 + global_zeta ** 2)

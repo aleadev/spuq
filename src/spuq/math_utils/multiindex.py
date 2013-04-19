@@ -87,7 +87,7 @@ class Multiindex(object):
 
     @property
     def supp(self):
-        return np.nonzero(self._arr)
+        return np.flatnonzero(self._arr)
 
     def inc(self, pos, by=1):
         assert pos >= 0

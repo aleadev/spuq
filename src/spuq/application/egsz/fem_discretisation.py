@@ -182,7 +182,7 @@ class FEMPoisson(FEMDiscretisationBase):
             g = [g]
         if len(g) == 1:
             g *= len(boundary)
-        parts = FacetFunction("sizet", mesh, 0)
+        parts = FacetFunction("size_t", mesh, 0)
         for j, bnd in enumerate(boundary):
             bnd.mark(parts, j + 1)
         # evaluate boundary flux terms

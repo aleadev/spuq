@@ -1,9 +1,7 @@
 """EGSZ2 a posteriori residual estimator (FEniCS centric implementation)
 
-The residual estimator consists of a volume term :math:`\eta_{\mu,T}`, an edge term
-:math:`\eta_{\mu,S}` and the projection error :math:`\delta_\mu`. The former two terms
-are based on the flux of the discrete solution while the latter term measures the
-projection error between different FE meshes.
+The residual estimator consists of a volume term :math:`\eta_{\mu,T}` and an edge term
+:math:`\eta_{\mu,S}`. These terms are based on the flux of the discrete solution.
 
 In an extended form for the more generic orthonormal polynomials in spuq, the three
 terms are defined for some discrete :math:`w_N\in\mathcal{V}_N` by
@@ -122,13 +120,13 @@ class ResidualEstimator(object):
             # mu+1
             mu1 = mu.inc(m)
             if mu1 in Lambda:
-                w_mu1 = w.get_projection(mu1, mu)
+                w_mu1 = w[mu1]
                 res += beta[1] * w_mu1
 
             # mu-1
             mu2 = mu.dec(m)
             if mu2 in Lambda:
-                w_mu2 = w.get_projection(mu2, mu)
+                w_mu2 = w[mu2]
                 res += beta[-1] * w_mu2
 
             # add volume contribution for m
@@ -197,7 +195,7 @@ class ResidualEstimator(object):
             assert isinstance(ainftym, float)
             return ainftym
         
-        def prepare_norm_w(self, energynorm, w):
+        def prepare_norm_w(energynorm, w):
             normw = {}
             for mu in w.active_indices():
                 normw[mu] = energynorm(w[mu]._fefunc)        
@@ -248,7 +246,7 @@ class ResidualEstimator(object):
         
         # evaluate estimator contributions of (3.16)
         from collections import defaultdict
-        zeta = defaultdict(0)
+        zeta = defaultdict(int)
         zeta_bar = {}
         for mu in Lambda:
             # iterate mu in Lambda
@@ -257,11 +255,13 @@ class ResidualEstimator(object):
             # iterate multiindex extensions
             for m in suppLambda:
                 mu1 = mu.inc(m)
+                print "AAAAAA === ", mu, m, mu1
                 if mu1 not in Lambda:
                     zeta[mu1] += eval_zeta(mu1, Lambda, coeff_field, normw, V, M)
                     
                 mu2 = mu.dec(m)
-                if mu2 not in Lambda:
+                print "BBBBBB === ", mu, m, mu2
+                if mu2 not in Lambda and mu2 is not None:
                     zeta[mu2] += eval_zeta(mu2, Lambda, coeff_field, normw, V, M)
 
         # evaluate summed estimator (3.16)

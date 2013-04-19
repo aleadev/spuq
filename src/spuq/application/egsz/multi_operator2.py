@@ -48,6 +48,7 @@ class MultiOperator(Operator):
             maxm = len(self._coeff_field)
             #        assert self._coeff_field.length >= maxm        # ensure coeff_field expansion is sufficiently long
         
+        V = w.basis.basis
         for mu in Lambda:
             # deterministic part
             a0_f = self._coeff_field.mean_func
@@ -59,7 +60,7 @@ class MultiOperator(Operator):
                 logger.debug("with m = %i", m)
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._coeff_field[m]
-                Am = self._assemble_m(am_f, Vfine)
+                Am = self._assemble_m(am_f, V)
 
                 # prepare polynom coefficients
                 beta = am_rv.orth_polys.get_beta(mu[m])

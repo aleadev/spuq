@@ -12,8 +12,9 @@ from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.utils.type_check import takes, anything, optional
 from spuq.application.egsz.fem_discretisation import FEMPoisson
 from spuq.application.egsz.fem_discretisation import FEMNavierLame
+from spuq.fem.fenics.fenics_vector import FEniCSVector
 
-from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement, Constant
+from dolfin import Expression, Mesh, refine, CellFunction, FiniteElement, Constant, Function
 import ufl
 
 import logging
@@ -150,11 +151,12 @@ class SampleProblem(object):
         return m
 
     @classmethod
-    @takes(anything, anything, list, callable)
-    def setupMultiVector(cls, mesh, mis, setup_vec):
+    @takes(anything, list, anything, anything, int)
+    def setupMultiVector(cls, mis, pde, mesh, degree):
+        fs = pde.function_space(mesh, degree=degree)
         w = MultiVectorSharedBasis()
         for mu in mis:
-            w[mu] = setup_vec(mesh)
+            w[mu] = FEniCSVector(Function(fs))
         return w
 
     @staticmethod
