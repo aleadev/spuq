@@ -24,19 +24,22 @@ class Marking(object):
     """EGSZ2 marking strategy for residual estimator."""
 
     @classmethod
-    @takes(anything, float, anything, float)
-    def mark_x(cls, eta, eta_local, theta_x):
+    @takes(anything, float, MultiVector, float)
+    def mark_x(cls, global_eta, eta_local, theta_x):
         """Carry out Doerfler marking (bulk criterion) for elements with parameter theta."""
+        eta_local = [(mu, err) for mu, err in eta_local.iteritems()]    # convert to list
         eta_local = sorted(eta_local, key=itemgetter(0), reverse=True)
         logger.info("(mark_x) global residual is %f, want to mark for %f", global_eta, theta_x * global_eta)
         # setup marking sets
-        mesh_markers = defaultdict(set)
+        mesh_markers = set()
         marked_eta = 0.0
+        print "XXX1", eta_local
         for eta_cell in eta_local:
+            print "XXX2", eta_cell
             if theta_x * global_eta <= marked_eta:
                 break
-            mesh_markers.add(res[1])
-            marked_eta += res[0]
+            mesh_markers.add(eta_cell[1])
+            marked_eta += eta_cell[0]
         logger.info("(mark_x) MARKED elements: %s", len(mesh_markers))
         return mesh_markers
 
@@ -46,8 +49,8 @@ class Marking(object):
         w.refine(cell_ids)
 
     @classmethod
-    @takes(anything, float, dict, dict, anything, float, int)
-    def mark_y(cls, Lambda, global_zeta, zeta, zeta_bar, eval_zeta_m, theta_y, max_new_mi=100):
+    @takes(anything, (list, tuple), dict, callable, float, int)
+    def mark_y(cls, Lambda, zeta, eval_zeta_m, theta_y, max_new_mi=100):
         """Carry out Doerfler marking by activation of new indices."""
         def supp(Lambda):
             s = [set(mu.supp) for mu in Lambda]

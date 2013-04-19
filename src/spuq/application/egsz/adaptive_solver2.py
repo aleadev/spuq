@@ -203,7 +203,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                 if not do_uniform_refinement:        
                     if global_eta > rho * global_zeta:
                         with timing(msg="Marking.mark_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-RES", stats=stats)):
-                            cell_ids = Marking.mark_x(eta, eta_local, theta_x)
+                            cell_ids = Marking.mark_x(global_eta, eta_local, theta_x)
                 else:
                     # uniformly refine mesh
                     logger.info("UNIFORM refinement")
@@ -220,7 +220,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             if do_refinement["TAIL"]:
                 logger.info("REFINE TAIL")
                 with timing(msg="Marking.mark_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-TAIL", stats=stats)):
-                    new_mi = Marking.mark_y(global_zeta, zeta, zeta_bar, eval_zeta_m, theta_y)
+                    new_mi = Marking.mark_y(zeta, eval_zeta_m, theta_y)
             else:
                 new_mi = []
                 logger.info("SKIP tail refinement")
