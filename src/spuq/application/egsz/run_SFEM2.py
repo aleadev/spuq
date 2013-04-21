@@ -95,16 +95,16 @@ def run_SFEM(opts, conf):
             logger.info("CONTINUIING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
             import pickle
             LOAD_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
-            logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'))
+            logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM2-SOLUTIONS.pkl'))
             # load solutions
-            with open(os.path.join(LOAD_SOLUTION, 'SFEM-SOLUTIONS.pkl'), 'rb') as fin:
+            with open(os.path.join(LOAD_SOLUTION, 'SFEM2-SOLUTIONS.pkl'), 'rb') as fin:
                 w_history = pickle.load(fin)
             # convert to MultiVectorWithProjection
             for i, mv in enumerate(w_history):
                 w_history[i] = MultiVectorSharedBasis(multivector=w_history[i])
             # load simulation data
-            logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'))
-            with open(os.path.join(LOAD_SOLUTION, 'SIM-STATS.pkl'), 'rb') as fin:
+            logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM2-STATS.pkl'))
+            with open(os.path.join(LOAD_SOLUTION, 'SIM2-STATS.pkl'), 'rb') as fin:
                 sim_stats = pickle.load(fin)
             logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
             w0 = w_history[-1]
@@ -152,3 +152,84 @@ def run_SFEM(opts, conf):
     # memory usage info
     import resource
     logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
+    
+    
+    # ============================================================
+    # PART D: Export of Solutions and Simulation Data
+    # ============================================================
+        
+    # flag for final solution export
+    if opts.saveData:
+        import pickle
+        SAVE_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
+        try:
+            os.makedirs(SAVE_SOLUTION)
+        except:
+            pass
+        logger.info("saving solutions into %s" % os.path.join(SAVE_SOLUTION, 'SFEM2-SOLUTIONS.pkl'))
+        # save solutions
+        with open(os.path.join(SAVE_SOLUTION, 'SFEM2-SOLUTIONS.pkl'), 'wb') as fout:
+            pickle.dump(w_history, fout)
+        # save simulation data
+        sim_stats[0]["OPTS"] = opts
+        sim_stats[0]["CONF"] = conf
+        logger.info("saving statistics into %s" % os.path.join(SAVE_SOLUTION, 'SIM2-STATS.pkl'))
+        with open(os.path.join(SAVE_SOLUTION, 'SIM2-STATS.pkl'), 'wb') as fout:
+            pickle.dump(sim_stats, fout)
+
+
+    # ============================================================
+    # PART E: Plotting
+    # ============================================================
+    
+    # plot residuals
+    if opts.plotEstimator and len(sim_stats) > 1:
+        try:
+            from matplotlib.pyplot import figure, show, legend
+            X = [s["DOFS"] for s in sim_stats]
+            print "DOFS", X
+            L2 = [s["ERROR-L2"] for s in sim_stats]
+            H1A = [s["ERROR-H1A"] for s in sim_stats]
+            err_est = [sqrt(s["ERROR-EST"]) for s in sim_stats]
+            err_res = [s["ERROR-RES"] for s in sim_stats]
+            err_tail = [s["ERROR-TAIL"] for s in sim_stats]
+            mi = [s["MI"] for s in sim_stats]
+            num_mi = [len(m) for m in mi]
+#            reserrmu = defaultdict(list)
+#            for rem in _reserrmu:
+#                for mu, v in rem:
+#                    reserrmu[mu].append(v)
+#            projerrmu = defaultdict(list)
+#            for pem in _projerrmu:
+#                for mu, v in pem:
+#                    projerrmu[mu].append(v)
+#            print "errest", errest
+    
+#            # --------
+#            # figure 2
+#            # --------
+#            fig2 = figure()
+#            fig2.suptitle("error estimator")
+#            ax = fig2.add_subplot(111)
+#            ax.loglog(X, errest, '-g<', label='error estimator')
+#            legend(loc='upper right')
+            
+            # --------
+            # figure 1
+            # --------
+            fig1 = figure()
+            fig1.suptitle("residual estimator")
+            ax = fig1.add_subplot(111)
+            if REFINEMENT["TAIL"]:
+                ax.loglog(X, num_mi, '--y+', label='active mi')
+            ax.loglog(X, err_est, '-g<', label='error estimator')
+            ax.loglog(X, err_res, '-.cx', label='residual')
+            ax.loglog(X, err_tail, '-.m>', label='tail')
+#            ax.loglog(X, pcg_part, '-.b>', label='pcg part')
+            legend(loc='upper right')
+            
+            show()  # this invalidates the figure instances...
+        except:
+            import traceback
+            print traceback.format_exc()
+            logger.info("skipped plotting since matplotlib is not available...")
