@@ -386,7 +386,6 @@ class MultiVectorOperator(BaseOperator):
     def invert(self):
         return MultiVectorOperator(to_euclidian=False, basis=self._basis)
 
-
     def _multivec_to_euclidian(self, vec):
         assert vec.dim == self._dim
         if not self._last_vec:

@@ -260,13 +260,14 @@ class ResidualEstimator(object):
         
         # evaluate estimator contributions of (3.16)
         from collections import defaultdict
+        # === (a) zeta ===
         zeta = defaultdict(int)
         # iterate multiindex extensions
         print "===A1 Lambda", Lambda
         for nu in LambdaBoundary(Lambda):
             print "===A2 boundary nu", nu
             zeta[nu] += eval_zeta(nu, Lambda, coeff_field, normw, V, M)
-
+        # === (b) zeta_bar ===
         zeta_bar = {}
         # iterate over active indices
         for mu in Lambda:
