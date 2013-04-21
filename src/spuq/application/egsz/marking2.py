@@ -67,10 +67,14 @@ class Marking(object):
         marked_zeta = 0.0
         while True:
             sorted_zeta = sorted(zeta.items(), key=itemgetter(1))
-            print "ZZZZZZZZZ", sorted_zeta
-            mu = sorted_zeta[-1][0]
+            print "SORTED ZETA", sorted_zeta
+            new_zeta = sorted_zeta.pop()
+#            mu = sorted_zeta[-1][0]
+            mu = new_zeta[0]
+            print "ADDING", mu, "to new_mi", new_mi
             new_mi.append(mu)
-            marked_zeta += sorted_zeta[-1][1]
+#            marked_zeta += sorted_zeta[-1][1]
+            marked_zeta += new_zeta[1]
             # extend set if necessary (see section 5.7)
             mu2 = mu.dec(maxm)
             if mu2 in Lambda:
