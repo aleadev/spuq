@@ -32,7 +32,7 @@ from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFu
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.application.egsz.multi_vector import MultiVector, MultiVectorSharedBasis
+from spuq.application.egsz.multi_vector import MultiVector, MultiVectorSharedBasis, supp
 #from spuq.fem.fenics.fenics_utils import weighted_H1_norm
 from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
@@ -200,6 +200,18 @@ class ResidualEstimator(object):
             for mu in w.active_indices():
                 normw[mu] = energynorm(w[mu]._fefunc)        
             return normw
+        
+        def LambdaBoundary(Lambda):
+            suppLambda = supp(Lambda)
+            for mu in Lambda:
+                for m in suppLambda:
+                    mu1 = mu.inc(m)
+                    if mu1 not in Lambda:
+                        yield mu1
+                        
+                    mu2 = mu.dec(m)
+                    if mu2 not in Lambda and mu2 is not None:
+                        yield mu2
 
         # evaluate (3.15)
         def eval_zeta_bar(mu, coeff_field, normw, V, M):
@@ -237,69 +249,28 @@ class ResidualEstimator(object):
         # prepare some variables
         energynorm = pde.norm
         Lambda = w.active_indices()
-        suppLambda = w.supp
+        suppLambda = supp(w.active_indices())
         M = min(w.max_order + add_maxm, len(coeff_field))
         normw = prepare_norm_w(energynorm, w)
         # retrieve (sufficiently fine) function space for maximum norm evaluation
-        # NOTE: we use the deterministic mesh since it is assumed to be the finest
         V = w[Multiindex()].basis.refine_maxh(maxh)
         
         # evaluate estimator contributions of (3.16)
         from collections import defaultdict
         zeta = defaultdict(int)
+        # iterate multiindex extensions
+        for nu in LambdaBoundary(Lambda):
+            print "AAAAA boundary nu", nu
+            zeta[nu] += eval_zeta(nu, Lambda, coeff_field, normw, V, M)
+
         zeta_bar = {}
+        # iterate over active indices
         for mu in Lambda:
-            # iterate mu in Lambda
             zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, normw, V, M)
-                
-            # iterate multiindex extensions
-            for m in suppLambda:
-                mu1 = mu.inc(m)
-                print "AAAAAA === ", mu, m, mu1
-                if mu1 not in Lambda:
-                    zeta[mu1] += eval_zeta(mu1, Lambda, coeff_field, normw, V, M)
-                    
-                mu2 = mu.dec(m)
-                print "BBBBBB === ", mu, m, mu2
-                if mu2 not in Lambda and mu2 is not None:
-                    zeta[mu2] += eval_zeta(mu2, Lambda, coeff_field, normw, V, M)
 
         # evaluate summed estimator (3.16)
         global_zeta = sqrt(sum([v ** 2 for v in zeta.values()]) + sum([v ** 2 for v in zeta_bar.values()]))
         # also return zeta evaluation for single m (needed for refinement algorithm)
-        eval_zeta_m = lambda mu, m: eval_zeta(mu=mu, Lambda=Lambda, coeff_field=coeff_field, normw=normw, this_m=m)
+        eval_zeta_m = lambda mu, m: eval_zeta(mu=mu, Lambda=Lambda, coeff_field=coeff_field, normw=normw, V=V, M=M, this_m=m)
+        print "=== ZETA", global_zeta, zeta, zeta_bar
         return global_zeta, zeta, zeta_bar, eval_zeta_m
-
-# TODO: replace the above code with the following
-
-#def LambdaNew(Lambda):
-#        suppLambda = support(Lambda)
-#        for mu in Lambda:
-#            for m in suppLambda:
-#                mu1 = mu.inc(m)
-#                if mu1 not in Lambda:
-#                    yield mu1
-#                    
-#                mu2 = mu.dec(m)
-#                if mu2 not in Lambda:
-#                    yield mu2
-#
-#
-#        Lambda = w.active_indices()
-#        M = min(w.max_order + add_maxm, len(coeff_field))
-#        normw = prepare_norm_w(energynorm, w)
-#        # retrieve (sufficiently fine) function space for maximum norm evaluation
-#        # NOTE: we use the deterministic mesh since it is assumed to be the finest
-#        V = w[Multiindex()].basis.refine_maxh(maxh)
-#        
-#        # evaluate estimator contributions of (3.16)
-#        from collections import defaultdict
-#        zeta = defaultdict(0)
-#        # iterate multiindex extensions
-#        for nu in LambdaNew(Lambda):
-#            zeta[nu] += eval_zeta(nu, Lambda, coeff_field, normw, V, M)
-#
-#        zeta_bar = {}
-#        # iterate over active indices
-#        for mu in Lambda:
-#            zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, normw, V, M)

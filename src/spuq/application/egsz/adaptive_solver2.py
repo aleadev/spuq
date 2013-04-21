@@ -213,20 +213,20 @@ def AdaptiveSolver(A, coeff_field, pde,
             # refine mesh
             logger.debug("w.dim BEFORE refinement: %f", w.dim)
             with timing(msg="Marking.refine_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-RES", stats=stats)):
-                w = Marking.refine_x(w, cell_ids)
+                Marking.refine_x(w, cell_ids)
             logger.debug("w.dim AFTER refinement: %f", w.dim)
                             
             # === mark y ===
             if do_refinement["TAIL"]:
                 logger.info("REFINE TAIL")
                 with timing(msg="Marking.mark_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-TAIL", stats=stats)):
-                    new_mi = Marking.mark_y(zeta, eval_zeta_m, theta_y)
+                    new_mi = Marking.mark_y(w.active_indices(), global_zeta, zeta, eval_zeta_m, theta_y, add_maxm)
             else:
                 new_mi = []
                 logger.info("SKIP tail refinement")
             # add new multiindices
             with timing(msg="Marking.refine_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-TAIL", stats=stats)):
-                Marking.refine_y(w, new_mi, partial(setup_vector, pde=pde, basis=w.basis))
+                Marking.refine_y(w, new_mi)
 
             # === uniformly refine for coefficient function oscillations ===
             if do_refinement["OSC"]:
@@ -235,13 +235,9 @@ def AdaptiveSolver(A, coeff_field, pde,
                     osc_refinements = Marking.refine_osc(w, coeff, M)
             else:
                 logger.info("SKIP tail refinement")
-            # add new multiindices
-            with timing(msg="Marking.refine_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-TAIL", stats=stats)):
-                Marking.refine_y(w, new_mi, partial(setup_vector, pde=pde, basis=w.basis))
-
             
-            logger.info("MARKING was carried out with %s (res) cells and %s (mi) new multiindices", len(mesh_markers), len(new_mi))
-            stats["MARKING-RES"] = len(mesh_markers)
+            logger.info("MARKING was carried out with %s (res) cells and %s (mi) new multiindices", len(cell_ids), len(new_mi))
+            stats["MARKING-RES"] = len(cell_ids)
             stats["MARKING-MI"] = len(new_mi)
     
     if refinement:

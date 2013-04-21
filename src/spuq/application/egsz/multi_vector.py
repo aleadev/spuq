@@ -19,6 +19,14 @@ __all__ = ["MultiVector", "MultiVectorWithProjection", "MultiVectorSharedBasis"]
 import logging
 logger = logging.getLogger(__name__)
 
+# support for set of multiindices
+def supp(Lambda):
+#    for mu in self.active_indices():
+#        print mu, mu.supp, mu.supp.shape
+    s = [set(mu.supp) for mu in Lambda]
+    return set.union(*s)
+
+
 class MultiVector(Vector):
     """Accommodates tuples of type (MultiindexSet, Vector/Object).
     
@@ -47,13 +55,6 @@ class MultiVector(Vector):
             return sum(d for d in self.dim.values())
         else:
             return {mu:self[mu].dim for mu in self.active_indices()}
-
-    @property
-    def supp(self):
-        for mu in self.active_indices():
-            print mu, mu.supp, mu.supp.shape
-        s = [set(mu.supp) for mu in self.active_indices()]
-        return set.union(*s)
 
     def flatten(self):
         """Return flattened (Euclidian) vector."""
@@ -87,6 +88,9 @@ class MultiVector(Vector):
 
     def keys(self):
         return self.mi2vec.keys()
+
+    def values(self):
+        return self.mi2vec.values()
 
     def iteritems(self):
         return self.mi2vec.iteritems()

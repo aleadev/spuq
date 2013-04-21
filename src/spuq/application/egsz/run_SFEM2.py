@@ -52,7 +52,7 @@ def run_SFEM(opts, conf):
     # ============================================================
     
     # flags for residual and tail refinement 
-    REFINEMENT = {"RES":CONF_refine_residual, "TAIL":CONF_refine_tail}
+    REFINEMENT = {"RES":CONF_refine_residual, "TAIL":CONF_refine_tail, "OSC":CONF_refine_osc}
 
     
     # ============================================================
