@@ -213,7 +213,9 @@ def AdaptiveSolver(A, coeff_field, pde,
             # refine mesh
             logger.debug("w.dim BEFORE refinement: %f", w.dim)
             with timing(msg="Marking.refine_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-RES", stats=stats)):
-                Marking.refine_x(w, cell_ids)
+                print "***** w.dim BEFORE", w.dim
+                w = Marking.refine_x(w, cell_ids)
+                print "***** w.dim AFTER", w.dim
             logger.debug("w.dim AFTER refinement: %f", w.dim)
                             
             # === mark y ===

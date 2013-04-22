@@ -265,6 +265,7 @@ class ResidualEstimator(object):
         # iterate multiindex extensions
         print "===A1 Lambda", Lambda
         for nu in LambdaBoundary(Lambda):
+            assert nu not in Lambda
             print "===A2 boundary nu", nu
             zeta[nu] += eval_zeta(nu, Lambda, coeff_field, normw, V, M)
         # === (b) zeta_bar ===

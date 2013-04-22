@@ -19,10 +19,9 @@ __all__ = ["MultiVector", "MultiVectorWithProjection", "MultiVectorSharedBasis"]
 import logging
 logger = logging.getLogger(__name__)
 
+
 # support for set of multiindices
 def supp(Lambda):
-#    for mu in self.active_indices():
-#        print mu, mu.supp, mu.supp.shape
     s = [set(mu.supp) for mu in Lambda]
     return set.union(*s)
 
