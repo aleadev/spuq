@@ -188,14 +188,14 @@ def AdaptiveSolver(A, coeff_field, pde,
             break
         if xi <= error_eps:
             logger.info("error reached requested accuracy, xi=%f", xi)
-            break 
+            break
 
         # -----------------------------------
         # mark and refine and activate new mi
         # -----------------------------------
 
         if refinement < max_refinements:
-            logger.debug("START marking")
+            logger.debug("START marking === %s", str(do_refinement))
             # === mark x ===
             if do_refinement["RES"]:
                 cell_ids = []
@@ -220,7 +220,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             if do_refinement["TAIL"]:
                 logger.info("REFINE TAIL")
                 with timing(msg="Marking.mark_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-TAIL", stats=stats)):
-                    new_mi = Marking.mark_y(w.active_indices(), global_zeta, zeta, eval_zeta_m, theta_y, add_maxm)
+                    new_mi = Marking.mark_y(w.active_indices(), zeta, eval_zeta_m, theta_y, add_maxm)
             else:
                 new_mi = []
                 logger.info("SKIP tail refinement")

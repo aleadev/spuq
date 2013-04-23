@@ -190,7 +190,7 @@ def run_SFEM(opts, conf):
             print "DOFS", X
             L2 = [s["ERROR-L2"] for s in sim_stats]
             H1A = [s["ERROR-H1A"] for s in sim_stats]
-            err_est = [sqrt(s["ERROR-EST"]) for s in sim_stats]
+            err_est = [s["ERROR-EST"] for s in sim_stats]
             err_res = [s["ERROR-RES"] for s in sim_stats]
             err_tail = [s["ERROR-TAIL"] for s in sim_stats]
             mi = [s["MI"] for s in sim_stats]
@@ -227,6 +227,10 @@ def run_SFEM(opts, conf):
             ax.loglog(X, err_tail, '-.m>', label='tail')
 #            ax.loglog(X, pcg_part, '-.b>', label='pcg part')
             legend(loc='upper right')
+            
+            print "EST", err_est
+            print "RES", err_res
+            print "TAIL", err_tail
             
             show()  # this invalidates the figure instances...
         except:
