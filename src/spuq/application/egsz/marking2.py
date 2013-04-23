@@ -36,7 +36,7 @@ class Marking(object):
         eta_local = np.sqrt(eta_local)
         eta_local_ind = [(x, i) for i, x in enumerate(eta_local)]
         eta_local_ind = sorted(eta_local_ind, key=itemgetter(0), reverse=True)
-        print eta_local_ind
+#        print eta_local_ind
         logger.info("(mark_x) global residual is %f, want to mark for %f", global_eta, theta_x * global_eta)
         # verify global eta by summing up
         assert global_eta - np.sqrt(sum([x ** 2 for x in eta_local])) < 1e-10
@@ -48,7 +48,7 @@ class Marking(object):
             # break if sufficiently many cells are selected
             if theta_x * global_eta <= np.sqrt(marked_eta):
                 break
-            print "ETA_CELL", eta_cell, eta_cell[0]**2, marked_eta
+#            print "ETA_CELL", eta_cell, eta_cell[0]**2, marked_eta
             mesh_markers.add(eta_cell[1])
             marked_eta += eta_cell[0] ** 2
         logger.info("(mark_x) MARKED elements: %s (of %s)", len(mesh_markers), len(eta_local))
@@ -61,8 +61,9 @@ class Marking(object):
 
     @classmethod
     @takes(anything, (list, tuple), float, dict, callable, float, int)
-    def mark_y(cls, Lambda, global_zeta, zeta, eval_zeta_m, theta_y, max_new_mi=100):
+    def mark_y(cls, Lambda, global_zeta, zeta_, eval_zeta_m, theta_y, max_new_mi=100):
         """Carry out Doerfler marking by activation of new indices."""
+        zeta = zeta_
         suppLambda = supp(Lambda)
         maxm = max(suppLambda)
         print "---- SUP", suppLambda, maxm, Lambda
@@ -70,17 +71,17 @@ class Marking(object):
         marked_zeta = 0.0
         while True:
             # break if sufficiently many new mi are selected
+            # TODO: does global_zeta have to be increased according to new multiindices?!
             if theta_y * global_zeta <= marked_zeta or len(new_mi) >= max_new_mi or len(zeta) == 0:
                 break
             sorted_zeta = sorted(zeta.items(), key=itemgetter(1))
             print "SORTED ZETA", sorted_zeta
-            new_zeta = sorted_zeta.pop()
-#            mu = sorted_zeta[-1][0]
+            new_zeta = sorted_zeta[-1]
             mu = new_zeta[0]
+            zeta.pop(mu)
             logger.debug("ADDING %s to new_mi %s", mu, new_mi)
             assert mu not in Lambda
             new_mi.append(mu)
-#            marked_zeta += sorted_zeta[-1][1]
             marked_zeta += new_zeta[1]
             # extend set of inactive potential indices if necessary (see section 5.7)
             mu2 = mu.dec(maxm)
@@ -95,7 +96,8 @@ class Marking(object):
                 logger.debug("no further extension of multiindex candidates required")
 
         if len(zeta) == 0:
-            logger.warning("list of mi candidates is empty")
+            if theta_y * global_zeta > marked_zeta:
+                logger.warning("list of mi candidates is empty and reduction goal not reached, %f > %f!", theta_y * global_zeta, marked_zeta)
 
         if len(new_mi) > 0:
             logger.info("SELECTED NEW MULTIINDICES %s", new_mi)

@@ -105,7 +105,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     # refinements
                     max_refinements=5,
                     max_inner_refinements=20, # max iterations for inner residual refinement loop
-                    do_refinement={"RES":True, "TAIL":True},
+                    do_refinement={"RES":True, "TAIL":True, "OSC":True},
                     do_uniform_refinement=False,
                     w_history=None,
                     sim_stats=None):
@@ -232,7 +232,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             if do_refinement["OSC"]:
                 logger.info("REFINE OSC")
                 with timing(msg="Marking.refine_osc", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-OSC", stats=stats)):
-                    osc_refinements = Marking.refine_osc(w, coeff, M)
+                    osc_refinements = Marking.refine_osc(w, pde.coeff, M)
             else:
                 logger.info("SKIP tail refinement")
             
