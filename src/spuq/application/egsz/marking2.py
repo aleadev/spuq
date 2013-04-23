@@ -36,7 +36,7 @@ class Marking(object):
         eta_local = np.sqrt(eta_local)
         eta_local_ind = [(x, i) for i, x in enumerate(eta_local)]
         eta_local_ind = sorted(eta_local_ind, key=itemgetter(0), reverse=True)
-#        print eta_local_ind
+        print eta_local_ind
         logger.info("(mark_x) global residual is %f, want to mark for %f", global_eta, theta_x * global_eta)
         # verify global eta by summing up
         assert global_eta - np.sqrt(sum([x ** 2 for x in eta_local])) < 1e-10
@@ -48,7 +48,7 @@ class Marking(object):
             # break if sufficiently many cells are selected
             if theta_x * global_eta <= np.sqrt(marked_eta):
                 break
-            print "ETA_CELL", eta_cell, np.sqrt(marked_eta)
+            print "ETA_CELL", eta_cell, eta_cell[0]**2, marked_eta
             mesh_markers.add(eta_cell[1])
             marked_eta += eta_cell[0] ** 2
         logger.info("(mark_x) MARKED elements: %s (of %s)", len(mesh_markers), len(eta_local))
@@ -65,7 +65,7 @@ class Marking(object):
         """Carry out Doerfler marking by activation of new indices."""
         suppLambda = supp(Lambda)
         maxm = max(suppLambda)
-        print "SUPPPPPPPPPPPPP", suppLambda, maxm, Lambda
+        print "---- SUP", suppLambda, maxm, Lambda
         new_mi = []
         marked_zeta = 0.0
         while True:
@@ -77,7 +77,7 @@ class Marking(object):
             new_zeta = sorted_zeta.pop()
 #            mu = sorted_zeta[-1][0]
             mu = new_zeta[0]
-            print "ADDING", mu, "to new_mi", new_mi
+            logger.debug("ADDING %s to new_mi %s", mu, new_mi)
             assert mu not in Lambda
             new_mi.append(mu)
 #            marked_zeta += sorted_zeta[-1][1]
@@ -85,14 +85,12 @@ class Marking(object):
             # extend set of inactive potential indices if necessary (see section 5.7)
             mu2 = mu.dec(maxm)
             if mu2 in Lambda:
-                mu = Lambda[Lambda.index(mu2)]
                 minm = min(set(range(1, maxm + 2)).difference(set(suppLambda))) # find min(N\setminus supp\Lambda)
-                new_mu = mu.inc(minm)
+                new_mu = mu2.inc(minm)
                 assert new_mu not in Lambda
                 if new_mu not in zeta.keys():
-                    logger.info("extending multiindex canidates since %s is at the boundary of Lambda (reachable from %s), minm: %s", mu, mu2, minm)
-                    print "EXTENDING mi set by", new_mu
-                    zeta[new_mu] = eval_zeta_m(mu, minm)
+                    logger.info("extending multiindex candidates by %s since %s is at the boundary of Lambda (reachable from %s), minm: %s", new_mu, mu, mu2, minm)
+                    zeta[new_mu] = eval_zeta_m(mu2, minm)
             else:
                 logger.debug("no further extension of multiindex candidates required")
 

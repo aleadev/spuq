@@ -104,7 +104,7 @@ class Multiindex(object):
 #                     arr.resize(pos + 1)
 #                 else:
 #                     arr = np.array([0] * (pos + 1))
-#         if True:   # TODO: dito
+#         if True:
         l = len(self._arr)
         arr = np.array([0] * max(l, (pos + 1)))
         if l:

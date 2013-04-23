@@ -57,7 +57,7 @@ class MultiOperator(Operator):
 
             # iterate related multiindices
             for m in range(maxm):
-                logger.debug("with m = %i", m)
+                logger.debug("with m = %i (mu = %s)", m, mu)
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._coeff_field[m]
                 Am = self._assemble_m(am_f, V)
