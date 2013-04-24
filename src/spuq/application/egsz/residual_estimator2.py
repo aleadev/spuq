@@ -160,7 +160,7 @@ class ResidualEstimator(object):
 
 #        # debug ---        
 #        print "==========RESIDUAL ESTIMATOR============"
-#        print "eta", eta
+#        print "eta", eta.array()
 #        print "eta_indicator", eta_indicator
 #        print "global =", global_error
 #        # ---debug
@@ -214,10 +214,13 @@ class ResidualEstimator(object):
                         yield mu2
 
         # evaluate (3.15)
-        def eval_zeta_bar(mu, coeff_field, normw, V, M):
+        def eval_zeta_bar(mu, suppLambda, coeff_field, normw, V, M):
             assert mu in normw.keys()
             zz = 0
+#            print "====zeta bar Z1", mu, M
             for m in range(M):
+                if m in suppLambda:
+                    continue
                 _, am_rv = coeff_field[m]
                 beta = am_rv.orth_polys.get_beta(mu[m])
                 ainfty = get_ainfty(m, V)
@@ -234,11 +237,11 @@ class ResidualEstimator(object):
                     ainfty = get_ainfty(m, V)
                     mu1 = mu.inc(m)
                     if mu1 in Lambda:
-                        print "====zeta Z1", ainfty, beta[1], normw[mu1], " == ", ainfty * beta[1] * normw[mu1]
+#                        print "====zeta Z1", ainfty, beta[1], normw[mu1], " == ", ainfty * beta[1] * normw[mu1]
                         z += ainfty * beta[1] * normw[mu1]
                     mu2 = mu.dec(m)
                     if mu2 in Lambda:
-                        print "====zeta Z2", ainfty, beta[-1], normw[mu2], " == ", ainfty * beta[-1] * normw[mu2]
+#                        print "====zeta Z2", ainfty, beta[-1], normw[mu2], " == ", ainfty * beta[-1] * normw[mu2]
                         z += ainfty * beta[-1] * normw[mu2]
                 return z
             else:
@@ -246,7 +249,7 @@ class ResidualEstimator(object):
                     _, am_rv = coeff_field[m]
                     beta = am_rv.orth_polys.get_beta(mu[m])
                     ainfty = get_ainfty(m, V)
-                    print "====zeta Z3", m, ainfty, beta[1], normw[mu], " == ", ainfty * beta[1] * normw[mu]
+#                    print "====zeta Z3", m, ainfty, beta[1], normw[mu], " == ", ainfty * beta[1] * normw[mu]
                     return ainfty * beta[1] * normw[mu]
         
         # prepare some variables
@@ -263,20 +266,20 @@ class ResidualEstimator(object):
         # === (a) zeta ===
         zeta = defaultdict(int)
         # iterate multiindex extensions
-        print "===A1 Lambda", Lambda
+#        print "===A1 Lambda", Lambda
         for nu in LambdaBoundary(Lambda):
             assert nu not in Lambda
-            print "===A2 boundary nu", nu
+#            print "===A2 boundary nu", nu
             zeta[nu] += eval_zeta(nu, Lambda, coeff_field, normw, V, M)
         # === (b) zeta_bar ===
         zeta_bar = {}
         # iterate over active indices
         for mu in Lambda:
-            zeta_bar[mu] = eval_zeta_bar(mu, coeff_field, normw, V, M)
+            zeta_bar[mu] = eval_zeta_bar(mu, suppLambda, coeff_field, normw, V, M)
 
         # evaluate summed estimator (3.16)
         global_zeta = sqrt(sum([v ** 2 for v in zeta.values()]) + sum([v ** 2 for v in zeta_bar.values()]))
         # also return zeta evaluation for single m (needed for refinement algorithm)
         eval_zeta_m = lambda mu, m: eval_zeta(mu=mu, Lambda=Lambda, coeff_field=coeff_field, normw=normw, V=V, M=M, this_m=m)
-        print "=== ZETA", global_zeta, zeta, zeta_bar
+        logger.debug("=== ZETA  %s --- %s --- %s", global_zeta, zeta, zeta_bar)
         return global_zeta, zeta, zeta_bar, eval_zeta_m

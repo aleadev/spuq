@@ -36,7 +36,7 @@ class Marking(object):
         eta_local = np.sqrt(eta_local)
         eta_local_ind = [(x, i) for i, x in enumerate(eta_local)]
         eta_local_ind = sorted(eta_local_ind, key=itemgetter(0), reverse=True)
-        print eta_local_ind
+#        print "XXXXX", eta_local_ind
         logger.info("(mark_x) global residual is %f, want to mark for %f", global_eta, theta_x * global_eta)
         # verify global eta by summing up
         assert fabs(global_eta - np.sqrt(sum([x ** 2 for x in eta_local]))) < 1e-10
@@ -67,7 +67,7 @@ class Marking(object):
         global_zeta = np.sqrt(sum([z ** 2 for z in zeta_.values()]))
         suppLambda = supp(Lambda)
         maxm = max(suppLambda)
-        print "---- SUP", suppLambda, maxm, Lambda
+        logger.debug("---- SUPPORT Lambda %s   maxm %s   Lambda %s ", suppLambda, maxm, Lambda)
         new_mi = []
         marked_zeta = 0.0
         while True:
@@ -75,7 +75,7 @@ class Marking(object):
             if theta_y * global_zeta <= marked_zeta or len(new_mi) >= max_new_mi or len(zeta) == 0:
                 break
             sorted_zeta = sorted(zeta.items(), key=itemgetter(1))
-            print "SORTED ZETA", sorted_zeta
+            logger.debug("SORTED ZETA %s", sorted_zeta)
             new_zeta = sorted_zeta[-1]
             mu = new_zeta[0]
             zeta.pop(mu)
@@ -85,12 +85,14 @@ class Marking(object):
             marked_zeta = np.sqrt(marked_zeta ** 2 + new_zeta[1] ** 2)
             # extend set of inactive potential indices if necessary (see section 5.7)
             mu2 = mu.dec(maxm)
-            if mu2 in Lambda:
+            # NOTE: the following is a slight extension of the algorithm in the paper since it executed the extension on all active multiindices (and not only with the latest activated)
+#            if mu2 in Lambda:
+            for mu2 in Lambda:
                 minm = min(set(range(1, maxm + 2)).difference(set(suppLambda))) # find min(N\setminus supp\Lambda)
                 new_mu = mu2.inc(minm)
-                assert new_mu not in Lambda
-                if new_mu not in zeta.keys():
-                    logger.info("extending multiindex candidates by %s since %s is at the boundary of Lambda (reachable from %s), minm: %s", new_mu, mu, mu2, minm)
+#                assert new_mu not in Lambda
+                if new_mu not in Lambda and new_mu not in zeta.keys():
+                    logger.debug("extending multiindex candidates by %s since %s is at the boundary of Lambda (reachable from %s), minm: %s", new_mu, mu, mu2, minm)
                     zeta[new_mu] = eval_zeta_m(mu2, minm)
                     global_zeta = np.sqrt(global_zeta ** 2 + zeta[new_mu] ** 2)
                     logger.debug("new global_zeta is %f", global_zeta)
