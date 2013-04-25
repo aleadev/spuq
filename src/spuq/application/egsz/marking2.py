@@ -2,18 +2,15 @@
 
 The marking is carried out with respect to the
     [a] spatial residual
-    [b] upper tail bound for inactive multiindices. 
+    [b] upper tail bound for inactive multiindices
+    [c] some oscillation condition of the coefficient. 
 """
 
 from __future__ import division
-from math import ceil, fabs
-from collections import defaultdict
+from math import fabs
 from operator import itemgetter
 
-from spuq.application.egsz.residual_estimator import ResidualEstimator
 from spuq.application.egsz.multi_vector import MultiVector, supp
-from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.fem.fenics.fenics_utils import weighted_H1_norm
 from spuq.utils.type_check import takes, anything, optional
 
 import numpy as np
@@ -48,7 +45,7 @@ class Marking(object):
             # break if sufficiently many cells are selected
             if theta_x * global_eta <= np.sqrt(marked_eta):
                 break
-            print "ETA_CELL", eta_cell, eta_cell[0] ** 2, marked_eta
+#            print "ETA_CELL", eta_cell, eta_cell[0] ** 2, marked_eta
             mesh_markers.add(eta_cell[1])
             marked_eta += eta_cell[0] ** 2
         logger.info("(mark_x) MARKED elements: %s (of %s)", len(mesh_markers), len(eta_local))
@@ -101,7 +98,7 @@ class Marking(object):
 
         if len(zeta) == 0:
             if theta_y * global_zeta > marked_zeta:
-                logger.warning("list of mi candidates is empty and reduction goal not reached, %f > %f!", theta_y * global_zeta, marked_zeta)
+                logger.warning("list of mi candidates is empty and reduction goal NOT REACHED, %f > %f!", theta_y * global_zeta, marked_zeta)
 
         if len(new_mi) > 0:
             logger.info("SELECTED NEW MULTIINDICES %s", new_mi)

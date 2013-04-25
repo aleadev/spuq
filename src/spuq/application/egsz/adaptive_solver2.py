@@ -249,7 +249,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             stats["MARKING-MI"] = len(new_mi)
     
     if refinement:
-        logger.info("ENDED refinement loop after %i of %i refinements with %i dofs and %i active multiindices",
+        logger.info("ENDED refinement loop after %i of (max) %i refinements with %i dofs and %i active multiindices",
                     refinement, max_refinements, sim_stats[refinement]["DOFS"], len(sim_stats[refinement]["MI"]))
 
     return w, sim_stats

@@ -477,6 +477,15 @@ class MultiVectorSharedBasis(MultiVector):
         for mi in self.keys():
             mv[mi] = prolongate(self[mi])
         return mv
+
+    def project(self, vec_src, dest):
+        """Project the source vector onto the basis of the destination vector."""
+        if not isinstance(dest, Basis):
+            basis = dest.basis
+        else:
+            basis = dest
+        assert hasattr(basis, "project_onto")
+        return basis.project_onto(vec_src)
         
     @takes(anything, MultiindexSet, Vector)
     def set_defaults(self, multiindex_set, init_vector):

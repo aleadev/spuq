@@ -41,7 +41,7 @@ def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1, sub_
 
 
 def get_projected_solution(w, mu, proj_basis):
-    # TODO: obfuscated method call since project is not obvious in the interface of MultiVector!
+    # TODO: obfuscated method call since project is not obvious in the interface of MultiVector! This should be separated more clearly!
 #    print "sampling.get_projected_solution"
 #    print w[mu].num_sub_spaces
 #    print proj_basis.num_sub_spaces

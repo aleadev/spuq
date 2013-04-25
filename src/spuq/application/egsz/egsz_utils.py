@@ -91,8 +91,8 @@ def stats_plotter(sim_stats, plot_def=None, plot_type='loglog', title='stats', l
                 key = d[0]
                 marker = d[1]
                 label = d[2]
-                print 'ax.' + plottype + "(x[" + shift + ":]" + ",D['" + key + "'][" + shift + ":],'" + marker + "'" + ",label='" + label + "')"
-                eval('ax.' + plottype + "(x[" + shift + ":]" + ",D['" + key + "'][" + shift + ":],'" + marker + "'" + ",label='" + label + "')", globals, locals)
+                print 'ax.' + plot_type + "(x[" + shift + ":]" + ",D['" + key + "'][" + shift + ":],'" + marker + "'" + ",label='" + label + "')"
+                eval('ax.' + plot_type + "(x[" + shift + ":]" + ",D['" + key + "'][" + shift + ":],'" + marker + "'" + ",label='" + label + "')", globals, locals)
         else:
             eval(code, globals(), locals())
         legend(log=legend_loc)

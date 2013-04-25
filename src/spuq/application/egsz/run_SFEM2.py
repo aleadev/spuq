@@ -193,24 +193,6 @@ def run_SFEM(opts, conf):
             err_tail = [s["ERROR-TAIL"] for s in sim_stats]
             mi = [s["MI"] for s in sim_stats]
             num_mi = [len(m) for m in mi]
-#            reserrmu = defaultdict(list)
-#            for rem in _reserrmu:
-#                for mu, v in rem:
-#                    reserrmu[mu].append(v)
-#            projerrmu = defaultdict(list)
-#            for pem in _projerrmu:
-#                for mu, v in pem:
-#                    projerrmu[mu].append(v)
-#            print "errest", errest
-    
-#            # --------
-#            # figure 2
-#            # --------
-#            fig2 = figure()
-#            fig2.suptitle("error estimator")
-#            ax = fig2.add_subplot(111)
-#            ax.loglog(X, errest, '-g<', label='error estimator')
-#            legend(loc='upper right')
             
             # --------
             # figure 1
@@ -235,3 +217,39 @@ def run_SFEM(opts, conf):
             import traceback
             print traceback.format_exc()
             logger.info("skipped plotting since matplotlib is not available...")
+
+    # plot final meshes
+    if opts.plotMesh:
+        w = w_history[-1]
+        viz_mesh = plot(w.basis.basis.mesh, title="shared mesh", interactive=False)
+        interactive()
+    
+    # plot sample solution
+    if opts.plotSolution:
+        w = w_history[-1]
+        # get random field sample and evaluate solution (direct and parametric)
+        RV_samples = coeff_field.sample_rvs()
+        ref_maxm = w_history[-1].max_order
+        sub_spaces = w[Multiindex()].basis.num_sub_spaces
+        degree = w[Multiindex()].basis.degree
+        maxh = min(w[Multiindex()].basis.minh / 4, CONF_maxh)
+        maxh = w[Multiindex()].basis.minh
+        projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
+        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+        sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
+    
+        # plot
+        print sub_spaces
+        if sub_spaces == 0:
+            viz_p = plot(sample_sol_param._fefunc, title="parametric solution")
+            viz_d = plot(sample_sol_direct._fefunc, title="direct solution")
+            if ref_maxm > 0:
+                viz_v = plot(sol_variance._fefunc, title="solution variance")
+        else:
+            mesh_param = sample_sol_param._fefunc.function_space().mesh()
+            mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
+            wireframe = True
+            viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
+            viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
+        interactive()
