@@ -90,7 +90,6 @@ def AdaptiveSolver(A, coeff_field, pde,
                     mis, w0, mesh0, degree,
                     # marking parameters
                     rho=1.0, # tail factor
-                    sigma=1.0, # residual factor
                     theta_x=0.4, # residual marking bulk parameter
                     theta_y=0.4, # tail bound marking bulk paramter
                     maxh=0.1, # maximal mesh width for coefficient maximum norm evaluation
@@ -104,7 +103,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     error_eps=1e-2,
                     # refinements
                     max_refinements=5,
-                    max_inner_refinements=20, # max iterations for inner residual refinement loop
+                    max_dof=1e10,
                     do_refinement={"RES":True, "TAIL":True, "OSC":True},
                     do_uniform_refinement=False,
                     w_history=None,
@@ -182,12 +181,15 @@ def AdaptiveSolver(A, coeff_field, pde,
             sim_stats.append(stats)
             print "SIM_STATS:", sim_stats[refinement]
             
-        # exit when either error threshold or max_refinements is reached
+        # exit when either error threshold or max_refinements or max_dof is reached
         if refinement > max_refinements:
-            logger.info("skipping refinement after final solution in iteration %i", refinement)
+            logger.info("SKIPPING REFINEMENT after FINAL SOLUTION in ITERATION %i", refinement)
+            break
+        if sim_stats[refinement]["DOFS"] >= max_dof:
+            logger.info("REACHED %i DOFS, EXITING refinement loop", sim_stats[refinement]["DOFS"])
             break
         if xi <= error_eps:
-            logger.info("error reached requested accuracy, xi=%f", xi)
+            logger.info("SKIPPING REFINEMENT since ERROR REACHED requested ACCURACY, xi=%f", xi)
             break
 
         # -----------------------------------
@@ -197,36 +199,42 @@ def AdaptiveSolver(A, coeff_field, pde,
         if refinement < max_refinements:
             logger.debug("START marking === %s", str(do_refinement))
             # === mark x ===
+            res_marked = False
             if do_refinement["RES"]:
                 cell_ids = []
-                logger.info("REFINE RES")
                 if not do_uniform_refinement:        
                     if global_eta > rho * global_zeta:
+                        logger.info("REFINE RES")
                         with timing(msg="Marking.mark_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-RES", stats=stats)):
                             cell_ids = Marking.mark_x(global_eta, eta_local, theta_x)
+                        res_marked = True
+                    else:
+                        logger.info("SKIP REFINE RES -> mark stochastic modes instead")
                 else:
                     # uniformly refine mesh
-                    logger.info("UNIFORM refinement")
+                    logger.info("UNIFORM refinement RES")
                     cell_ids = [c.index() for c in cells(w.basis._fefs.mesh())]
+                    res_marked = True
             else:
                 logger.info("SKIP residual refinement")
             # refine mesh
-            logger.debug("w.dim BEFORE refinement: %s", w.dim)
-            with timing(msg="Marking.refine_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-RES", stats=stats)):
-                w = Marking.refine_x(w, cell_ids)
-            logger.debug("w.dim AFTER refinement: %s", w.dim)
+            if res_marked:
+                logger.debug("w.dim BEFORE refinement: %s", w.dim)
+                with timing(msg="Marking.refine_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-RES", stats=stats)):
+                    w = Marking.refine_x(w, cell_ids)
+                logger.debug("w.dim AFTER refinement: %s", w.dim)
                             
             # === mark y ===
-            if do_refinement["TAIL"]:
+            if do_refinement["TAIL"] and not res_marked:
                 logger.info("REFINE TAIL")
                 with timing(msg="Marking.mark_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-TAIL", stats=stats)):
                     new_mi = Marking.mark_y(w.active_indices(), zeta, eval_zeta_m, theta_y, add_maxm)
+                # add new multiindices
+                with timing(msg="Marking.refine_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-TAIL", stats=stats)):
+                    Marking.refine_y(w, new_mi)
             else:
                 new_mi = []
                 logger.info("SKIP tail refinement")
-            # add new multiindices
-            with timing(msg="Marking.refine_y", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-TAIL", stats=stats)):
-                Marking.refine_y(w, new_mi)
 
             # === uniformly refine for coefficient function oscillations ===
             if do_refinement["OSC"]:

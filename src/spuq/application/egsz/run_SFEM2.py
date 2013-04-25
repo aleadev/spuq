@@ -53,7 +53,6 @@ def run_SFEM(opts, conf):
     
     # flags for residual and tail refinement 
     REFINEMENT = {"RES":CONF_refine_residual, "TAIL":CONF_refine_tail, "OSC":CONF_refine_osc}
-
     
     # ============================================================
     # PART B: Problem Setup
@@ -124,7 +123,6 @@ def run_SFEM(opts, conf):
     w, sim_stats = AdaptiveSolver(A, coeff_field, pde, mis, w0, mesh0, CONF_FEM_degree,
                         # marking parameters
                         rho=CONF_rho, # tail factor
-                        sigma=CONF_sigma, # residual factor
                         theta_x=CONF_theta_x, # residual marking bulk parameter
                         theta_y=CONF_theta_y, # tail bound marking bulk paramter
                         maxh=CONF_maxh, # maximal mesh width for coefficient maximum norm evaluation
@@ -136,7 +134,7 @@ def run_SFEM(opts, conf):
                         # adaptive algorithm threshold
                         error_eps=CONF_error_eps,
                         # refinements
-                        max_refinements=CONF_iterations, do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
+                        max_refinements=CONF_iterations, max_dof = CONF_max_dof, do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
                         w_history=w_history,
                         sim_stats=sim_stats)
     

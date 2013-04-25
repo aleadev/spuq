@@ -92,7 +92,7 @@ def run_MC(opts, conf):
     # ============================================================
     
     MC_N = CONF_N
-    MC_HMAX = CONF_max_h
+    MC_HMAX = CONF_maxh
     if CONF_runs > 0:
         # determine reference mesh
         w = w_history[-1]
