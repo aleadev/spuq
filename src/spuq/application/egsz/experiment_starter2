@@ -135,17 +135,17 @@ class ExperimentStarter(object):
     def _parse_config(cls, opts, opts_conf=simulation_options_conf, additional_opts_conf=None, configfile=None):
         class _Undefined:
             pass
-        try:
-            confparser = ConfigParser.SafeConfigParser()
-            if configfile is not None:
-                filename = configfile
-            else:
-                assert opts is not None
-                filename = [opts.config] + opts.add_config
-            if not confparser.read(filename):
-                raise ConfigParser.ParsingError("file " + filename + " not found")
-        except ConfigParser.ParsingError, err:
-            print("Could not parse:", err)
+#        try:
+        confparser = ConfigParser.SafeConfigParser()
+        if configfile is not None:
+            filename = configfile
+        else:
+            assert opts is not None
+            filename = [opts.config] + opts.add_config
+        if not confparser.read(filename):
+            raise ConfigParser.ParsingError("file " + str(filename) + " not found")
+#        except ConfigParser.ParsingError, err:
+#            print("Could not parse:", err)
 
         # extract options
         getter = ("get", "getint", "getfloat", "getboolean")
@@ -158,7 +158,7 @@ class ExperimentStarter(object):
                     if type(keytype) is tuple:
                         keytype, defaultval = keytype[0], keytype[1]
                     else:
-                        defaultval = _Undefined
+                        defaultval = _Undefined()
                     exec "conf['" + sec + "']['" + key + "'] = confparser." + getter[keytype] + "('" + sec + "','" + key + "')"
                 except:
                     if not isinstance(defaultval, _Undefined):
@@ -166,9 +166,10 @@ class ExperimentStarter(object):
                             defaultval = "'" + defaultval + "'"
                         else:
                             defaultval = str(defaultval)
+                        print("conf['" + sec + "']['" + key + "'] = " + defaultval)
                         exec "conf['" + sec + "']['" + key + "'] = " + defaultval
                     else:
-                        print("skipped", sec, key)
+                        print("WARNING skipped", sec, key)
 
         if additional_opts_conf is not None and opts.debug:
             # TODO: implement...
