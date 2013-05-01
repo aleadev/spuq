@@ -3,6 +3,8 @@ import os
 import logging
 from spuq.utils.timing import timing
 
+from spuq.utils.timing import timing
+
 try:
     from dolfin import (Function, VectorFunctionSpace, FunctionSpace, Constant, refine,
                         solve, plot, interactive, project, errornorm)
@@ -55,19 +57,20 @@ def prepare_w_projections(w, proj_basis):
 
 
 def compute_parametric_sample_solution(RV_samples, coeff_field, w, proj_basis, cache=None):
-    Lambda = w.active_indices()
-    sample_map, _ = coeff_field.sample_realization(Lambda, RV_samples)
-    # sum up (stochastic) solution vector on reference function space wrt samples
-    
-    if cache is None:
-        sample_sol = sum(get_projected_solution(w, mu, proj_basis) * sample_map[mu] for mu in Lambda)
-    else:
-        try:
-            projected_sol = cache.projected_sol
-        except AttributeError:
-            projected_sol = {mu: get_projected_solution(w, mu, proj_basis) for mu in Lambda}
-            cache.projected_sol = projected_sol
-        sample_sol = sum(projected_sol[mu] * sample_map[mu] for mu in Lambda)
+    with timing(msg="parametric_sample_sol", logfunc=logger.info):
+        Lambda = w.active_indices()
+        sample_map, _ = coeff_field.sample_realization(Lambda, RV_samples)
+        # sum up (stochastic) solution vector on reference function space wrt samples
+
+        if cache is None:
+            sample_sol = sum(get_projected_solution(w, mu, proj_basis) * sample_map[mu] for mu in Lambda)
+        else:
+            try:
+                projected_sol = cache.projected_sol
+            except AttributeError:
+                projected_sol = {mu: get_projected_solution(w, mu, proj_basis) for mu in Lambda}
+                cache.projected_sol = projected_sol
+            sample_sol = sum(projected_sol[mu] * sample_map[mu] for mu in Lambda)
     return sample_sol
 
 
@@ -95,28 +98,31 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
         A0 = cache.A
         A_m = cache.A_m
         b = cache.b
+        print "CACHE USED"
     except AttributeError:
-        a = coeff_field.mean_func
-        A0 = pde.assemble_lhs(a, proj_basis, withDirichletBC=False)
-        b = pde.assemble_rhs(a, proj_basis, withDirichletBC=False)
-        A_m = [None] * maxm
+        with timing(msg="direct_sample_sol: compute A_0, b", logfunc=logger.info):
+            a = coeff_field.mean_func
+            A0 = pde.assemble_lhs(basis=proj_basis, coeff=a, withDirichletBC=False)
+            b = pde.assemble_rhs(basis=proj_basis, coeff=a, withDirichletBC=False)
+            A_m = [None] * maxm
+            print "CACHE NOT USED"
         if cache is not None:
             cache.A = A0
             cache.A_m = A_m
             cache.b = b
 
-    from spuq.utils.timing import timing
-    with timing(msg="direct AM", logfunc=logger.info):
+    with timing(msg="direct_sample_sol: compute A_m", logfunc=logger.info):
         A = A0.copy()
         for m in range(maxm):
             if A_m[m] is None:
                 a_m = coeff_field[m][0]
-                A_m[m] = pde.assemble_lhs(a_m, proj_basis, withDirichletBC=False)
+                A_m[m] = pde.assemble_lhs(basis=proj_basis, coeff=a_m, withDirichletBC=False)
             A += RV_samples[m] * A_m[m]
 
-    with timing(msg="direct BC", logfunc=logger.info):
-        A, b = pde.apply_dirichlet_bc(proj_basis, A, b)
-    with timing(msg="direct Solve", logfunc=logger.info):
+    with timing(msg="direct_sample_sol: apply BCs", logfunc=logger.info):
+        A, b = pde.apply_dirichlet_bc(proj_basis._fefs, A, b)
+
+    with timing(msg="direct_sample_sol: solve linear system", logfunc=logger.info):
         X = 0 * b
         logger.info("compute_direct_sample_solution with %i dofs" % b.size())
         solve(A, X, b)
@@ -129,8 +135,8 @@ def compute_direct_sample_solution_old(pde, RV_samples, coeff_field, A, maxm, pr
         a_m = RV_samples[m] * coeff_field[m][0]
         a = a + a_m
 
-    A = pde.assemble_lhs(a, proj_basis)
-    b = pde.assemble_rhs(a, proj_basis)
+    A = pde.assemble_lhs(basis=proj_basis, coeff=a)
+    b = pde.assemble_rhs(basis=proj_basis, coeff=a)
     X = 0 * b
     solve(A, X, b)
     return FEniCSVector(Function(proj_basis._fefs, X)), a

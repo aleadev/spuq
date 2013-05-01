@@ -2,6 +2,7 @@ from __future__ import division
 import logging
 
 from spuq.math_utils.multiindex import Multiindex
+from spuq.utils.timing import timing
 
 try:
     from dolfin import (interactive, project, errornorm, norm)
@@ -23,7 +24,6 @@ class MCCache(object):
 
 def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_sol_cache=None, direct_sol_cache=None):
     # create reference mesh and function space
-    from spuq.utils.timing import timing
     sub_spaces = w[Multiindex()].basis.num_sub_spaces
     degree = w[Multiindex()].basis.degree
 #    projection_basis = get_projection_basis(mesh0, maxh=min(w[Multiindex()].basis.minh, MC_HMAX), degree=degree, sub_spaces=sub_spaces)
@@ -48,7 +48,7 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
         with timing(msg="L2_err_1", logfunc=logger.info):
             cerr_L2 = error_norm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "L2")
         with timing(msg="H1_err_1", logfunc=logger.info):
-            cerr_H1 = error_norm(sample_sol_param._fefunc, sample_sol_direct._fefunc, pde.norm)
+            cerr_H1 = error_norm(sample_sol_param._fefunc, sample_sol_direct._fefunc, pde.energy_norm)
 #        cerr_H1 = errornorm(sample_sol_param._fefunc, sample_sol_direct._fefunc, "H1")
         logger.debug("-- current error L2 = %s    H1 = %s", cerr_L2, cerr_H1)
         err_L2 += 1.0 / MC_N * cerr_L2
@@ -61,7 +61,7 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
             with timing(msg="L2_err_2", logfunc=logger.info):
                 L2_a0 = error_norm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "L2")
             with timing(msg="H1_err_2", logfunc=logger.info):
-                H1_a0 = error_norm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, pde.norm)
+                H1_a0 = error_norm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, pde.energy_norm)
 #            H1_a0 = errornorm(sample_sol_param._fefunc, sample_sol_direct_a0._fefunc, "H1")
             logger.debug("-- DETERMINISTIC error L2 = %s    H1 = %s", L2_a0, H1_a0)
 
@@ -69,14 +69,6 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
             sample_sol_direct_am = sample_sol_direct - sample_sol_direct_a0
             logger.debug("-- STOCHASTIC norm L2 = %s    H1 = %s", sample_sol_direct_am.norm("L2"), sample_sol_direct_am.norm("H1"))
 
-    # remove cached expressions from coeff_field
-    try:
-        del coeff_field.A
-        # TODO: for some strange reason its not possible to delete coeff_field.Am
-        coeff_field.Am = None
-    except:
-        pass
-    
     logger.info("MC Error: L2: %s, H1: %s", err_L2, err_H1)
     err.append((err_L2, err_H1, L2_a0, H1_a0))
 

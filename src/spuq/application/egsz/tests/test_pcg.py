@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 
 from spuq.utils.testing import *
@@ -45,5 +46,8 @@ def test_pcg_matrix():
     #print x
     #print x_ap
 
+
+logger = logging.getLogger("spuq")
+logger.setLevel(logging.WARNING)
 
 test_main()

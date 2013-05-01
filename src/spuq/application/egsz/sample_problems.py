@@ -259,11 +259,11 @@ class SampleProblem(object):
         a0 = coeff_field.mean_func
         
         if pde_type == cls.NAVIER_LAME:
-            pde = FEMNavierLame(lmbda0=a0[0], mu0=a0[1], f=f,
+            pde = FEMNavierLame(lmbda=a0[0], mu=a0[1], f=f,
                                 dirichlet_boundary=Dirichlet_boundary, uD=uD,
                                 neumann_boundary=Neumann_boundary, g=g)
         elif pde_type == cls.POISSON:
-            pde = FEMPoisson(a0=a0, f=f,
+            pde = FEMPoisson(a=a0, f=f,
                              dirichlet_boundary=Dirichlet_boundary, uD=uD,
                              neumann_boundary=Neumann_boundary, g=g)
         else:
