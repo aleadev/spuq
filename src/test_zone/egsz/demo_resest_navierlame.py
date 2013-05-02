@@ -218,7 +218,7 @@ if PLOT_SOLUTION:
             viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
         else:
             Plotter.plotMesh(w[mu]._fefunc, displacement=True, scale=PLOTSCALE)
-            
+
     if not MAYAVI_PLOTTING:
         interactive()
     else:

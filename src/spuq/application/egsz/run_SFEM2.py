@@ -31,18 +31,19 @@ logger = logging.getLogger(__name__)
 
 def run_SFEM(opts, conf):
     # propagate config values
+    _G = globals()
     for sec in conf.keys():
         if sec == "LOGGING":
             continue
         secconf = conf[sec]
         for key, val in secconf.iteritems():
             print "CONF_" + key + "= secconf['" + key + "'] =", secconf[key]
-            exec "CONF_" + key + "= secconf['" + key + "']"
+            _G["CONF_" + key] = secconf[key]
 
     # setup logging
-    print "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
+    _G["LOG_LEVEL"] = eval("logging." + conf["LOGGING"]["level"])
     exec "LOG_LEVEL = logging." + conf["LOGGING"]["level"]
-    setup_logging(LOG_LEVEL, logfile=CONF_experiment_name + "_SFEM")
+    setup_logging(LOG_LEVEL, logfile=CONF_experiment_name + "_SFEM-P{0}".format(CONF_FEM_degree))
     
     # determine path of this module
     path = os.path.dirname(__file__)
@@ -89,21 +90,24 @@ def run_SFEM(opts, conf):
 
     sim_stats = None
     w_history = []
+    FILE_SOLUTION = 'SFEM2-SOLUTIONS-P{0}.pkl'.format(CONF_FEM_degree)
+    FILE_STATS = 'SIM2-STATS-P{0}.pkl'.format(CONF_FEM_degree)
+    
     if opts.continueSFEM:
         try:
-            logger.info("CONTINUIING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
+            logger.info("CONTINUING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
             import pickle
-            LOAD_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
-            logger.info("loading solutions from %s" % os.path.join(LOAD_SOLUTION, 'SFEM2-SOLUTIONS.pkl'))
+            PATH_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
+            logger.info("loading solutions from %s" % os.path.join(PATH_SOLUTION, FILE_SOLUTION))
             # load solutions
-            with open(os.path.join(LOAD_SOLUTION, 'SFEM2-SOLUTIONS.pkl'), 'rb') as fin:
+            with open(os.path.join(PATH_SOLUTION, FILE_SOLUTION), 'rb') as fin:
                 w_history = pickle.load(fin)
             # convert to MultiVectorWithProjection
             for i, mv in enumerate(w_history):
                 w_history[i] = MultiVectorSharedBasis(multivector=w_history[i])
             # load simulation data
-            logger.info("loading statistics from %s" % os.path.join(LOAD_SOLUTION, 'SIM2-STATS.pkl'))
-            with open(os.path.join(LOAD_SOLUTION, 'SIM2-STATS.pkl'), 'rb') as fin:
+            logger.info("loading statistics from %s" % os.path.join(PATH_SOLUTION, FILE_STATS))
+            with open(os.path.join(PATH_SOLUTION, FILE_STATS), 'rb') as fin:
                 sim_stats = pickle.load(fin)
             logger.info("active indices of w after initialisation: %s", w_history[-1].active_indices())
             w0 = w_history[-1]
@@ -161,18 +165,18 @@ def run_SFEM(opts, conf):
         import pickle
         SAVE_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
         try:
-            os.makedirs(SAVE_SOLUTION)
+            os.makedirs(FILE_SOLUTION)
         except:
             pass
-        logger.info("saving solutions into %s" % os.path.join(SAVE_SOLUTION, 'SFEM2-SOLUTIONS.pkl'))
+        logger.info("saving solutions into %s" % os.path.join(PATH_SOLUTION, FILE_SOLUTION))
         # save solutions
-        with open(os.path.join(SAVE_SOLUTION, 'SFEM2-SOLUTIONS.pkl'), 'wb') as fout:
+        with open(os.path.join(PATH_SOLUTION, FILE_SOLUTION), 'wb') as fout:
             pickle.dump(w_history, fout)
         # save simulation data
         sim_stats[0]["OPTS"] = opts
         sim_stats[0]["CONF"] = conf
-        logger.info("saving statistics into %s" % os.path.join(SAVE_SOLUTION, 'SIM2-STATS.pkl'))
-        with open(os.path.join(SAVE_SOLUTION, 'SIM2-STATS.pkl'), 'wb') as fout:
+        logger.info("saving statistics into %s" % os.path.join(PATH_SOLUTION, FILE_STATS))
+        with open(os.path.join(PATH_SOLUTION, FILE_STATS), 'wb') as fout:
             pickle.dump(sim_stats, fout)
 
 
@@ -186,11 +190,11 @@ def run_SFEM(opts, conf):
             from matplotlib.pyplot import figure, show, legend
             X = [s["DOFS"] for s in sim_stats]
             print "DOFS", X
-            L2 = [s["ERROR-L2"] for s in sim_stats]
-            H1A = [s["ERROR-H1A"] for s in sim_stats]
             err_est = [s["ERROR-EST"] for s in sim_stats]
             err_res = [s["ERROR-RES"] for s in sim_stats]
             err_tail = [s["ERROR-TAIL"] for s in sim_stats]
+            res_L2 = [s["RESIDUAL-L2"] for s in sim_stats]
+            res_H1A = [s["RESIDUAL-H1A"] for s in sim_stats]
             mi = [s["MI"] for s in sim_stats]
             num_mi = [len(m) for m in mi]
             
@@ -205,9 +209,10 @@ def run_SFEM(opts, conf):
             ax.loglog(X, err_est, '-g<', label='error estimator')
             ax.loglog(X, err_res, '-.cx', label='residual')
             ax.loglog(X, err_tail, '-.m>', label='tail')
-#            ax.loglog(X, pcg_part, '-.b>', label='pcg part')
             legend(loc='upper right')
             
+            print "RESIDUAL L2", res_L2
+            print "RESIDUAL H1A", res_H1A
             print "EST", err_est
             print "RES", err_res
             print "TAIL", err_tail

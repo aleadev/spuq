@@ -12,7 +12,8 @@ simulation_options_conf = (("SFEM",
                     "problem_type":1,
                     "domain":0,
                     "boundary_type":1,
-                    "FEM_degree":1,
+                    "FEM_degree_min":1,
+                    "FEM_degree_max":1,
                     "initial_Lambda":1,
                     "decay_exp":2,
                     "coeff_type":1,
@@ -223,7 +224,10 @@ class ExperimentStarter(object):
             print("="*60)
             print("starting SFEM")
             print("="*60)
-            run_SFEM(self.opts, self.conf)
+            for p in range(self.conf["SFEM"]["FEM_degree_min"], self.conf["SFEM"]["FEM_degree_max"]+1):
+                print("*"*20+"FEM degree "+str(p)+"*"*20)
+                self.conf["SFEM"]["FEM_degree"] = p
+                run_SFEM(self.opts, self.conf)
         
         # start MC
         if self.opts.runMC:

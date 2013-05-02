@@ -8,7 +8,7 @@ import os
 from spuq.application.egsz.pcg import pcg
 from spuq.application.egsz.multi_operator2 import MultiOperator, PreconditioningOperator
 from spuq.application.egsz.coefficient_field import CoefficientField
-from spuq.application.egsz.fem_discretisation import FEMDiscretisation
+from spuq.application.egsz.fem_discretisation import FEMDiscretisation, zero_function
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything
@@ -38,13 +38,15 @@ logger = logging.getLogger(__name__)
 def prepare_rhs(A, w, coeff_field, pde):
     b = 0 * w
     zero = Multiindex()
-    b[zero].coeffs = pde.assemble_rhs(coeff_field.mean_func, basis=b[zero].basis, withNeumannBC=True)
+    b[zero].coeffs = pde.assemble_rhs(basis=b[zero].basis, coeff=coeff_field.mean_func, 
+                                      withNeumannBC=True)
     
-    f = pde._f
+    f = pde.f
     if f.value_rank() == 0:
         zero_func = Constant(0.0)
     else:
         zero_func = Constant((0.0,) * f.value_size())
+    zero_func = zero_function(b[zero].basis._fefs) 
 
     for m in range(w.max_order):
         eps_m = zero.inc(m)
@@ -53,12 +55,12 @@ def prepare_rhs(A, w, coeff_field, pde):
 
         if eps_m in b.active_indices():
             g0 = b[eps_m].copy()
-            g0.coeffs = pde.assemble_rhs(am_f, basis=b[eps_m].basis, withNeumannBC=False, f=zero_func)  # this equates to homogeneous Neumann bc
+            g0.coeffs = pde.assemble_rhs(basis=b[eps_m].basis, coeff=am_f, withNeumannBC=False, f=zero_func)  # this equates to homogeneous Neumann bc
             pde.set_dirichlet_bc_entries(g0, homogeneous=True)
             b[eps_m] += beta[1] * g0
 
         g0 = b[zero].copy()
-        g0.coeffs = pde.assemble_rhs(am_f, basis=b[zero].basis, f=zero_func)
+        g0.coeffs = pde.assemble_rhs(basis=b[zero].basis, coeff=am_f, f=zero_func)
         pde.set_dirichlet_bc_entries(g0, homogeneous=True)
         b[zero] += beta[0] * g0
     return b
@@ -73,11 +75,11 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
     logger.info("PCG finished with zeta=%f after %i iterations", zeta, numit)
 
     b2 = A * w
-    stats["ERROR-L2"] = error_norm(b, b2, "L2")
-    stats["ERROR-H1A"] = error_norm(b, b2, pde.norm)
+    stats["RESIDUAL-L2"] = error_norm(b, b2, "L2")
+    stats["RESIDUAL-H1A"] = error_norm(b, b2, pde.norm)
     stats["DOFS"] = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
     stats["CELLS"] = sum([b[mu]._fefunc.function_space().mesh().num_cells() for mu in b.keys()])
-    logger.info("Residual = [%s (L2)] [%s (H1)] with [%s dofs] and [%s cells]", stats["ERROR-L2"], stats["ERROR-H1A"], stats["DOFS"], stats["CELLS"])
+    logger.info("[pcg] Residual = [%s (L2)] [%s (H1A)] with [%s dofs] and [%s cells]", stats["RESIDUAL-L2"], stats["RESIDUAL-H1A"], stats["DOFS"], stats["CELLS"])
     return w, zeta
 
 

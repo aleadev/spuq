@@ -55,13 +55,17 @@ else:
 # B Import Solution
 # ==================
 import pickle
-print "loading solutions from %s" % os.path.join(options.experiment_dir, 'SFEM2-SOLUTIONS.pkl')
+
+LOAD_SOLUTION = 'SIM2-SOLUTIONS.pkl'
+LOAD_STATS = 'SIM2-STATS.pkl'
+
+print "loading solutions from %s" % os.path.join(options.experiment_dir, LOAD_SOLUTION)
 # load solutions
 with open(os.path.join(options.experiment_dir, 'SFEM2-SOLUTIONS.pkl'), 'rb') as fin:
     w_history = pickle.load(fin)
 # load simulation data
-print "loading statistics from %s" % os.path.join(options.experiment_dir, 'SIM2-STATS.pkl')
-with open(os.path.join(options.experiment_dir, 'SIM2-STATS.pkl'), 'rb') as fin:
+print "loading statistics from %s" % os.path.join(options.experiment_dir, LOAD_STATS)
+with open(os.path.join(options.experiment_dir, LOAD_STATS), 'rb') as fin:
     sim_stats = pickle.load(fin)
 print "sim_stats has %s iterations" % len(sim_stats)
 itnr = options.iteration_level if options.iteration_level > 0 else len(w_history) + options.iteration_level
