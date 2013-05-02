@@ -78,9 +78,9 @@ class ResidualEstimator(object):
         logger.debug("residual quadrature order = " + str(quadrature_degree))
     
         # get pde residual terms
-        r_T = pde.r_T
-        r_E = pde.r_E
-        r_Nb = pde.r_Nb
+        r_T = pde.volume_residual
+        r_E = pde.edge_residual
+        r_Nb = pde.neumann_residual
         
         # get mean field of coefficient
         a0_f = coeff_field.mean_func
@@ -253,7 +253,7 @@ class ResidualEstimator(object):
                     return ainfty * beta[1] * normw[mu]
         
         # prepare some variables
-        energynorm = pde.norm
+        energynorm = pde.energy_norm
         Lambda = w.active_indices()
         suppLambda = supp(w.active_indices())
         M = min(w.max_order + add_maxm, len(coeff_field))

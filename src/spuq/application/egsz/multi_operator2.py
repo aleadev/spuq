@@ -52,7 +52,7 @@ class MultiOperator(Operator):
         for mu in Lambda:
             # deterministic part
             a0_f = self._coeff_field.mean_func
-            A0 = self._assemble_0(a0_f, V)
+            A0 = self._assemble_0(V, a0_f)
             cur_v = A0 * w[mu]
 
             # iterate related multiindices
@@ -60,7 +60,7 @@ class MultiOperator(Operator):
                 logger.debug("with m = %i (mu = %s)", m, mu)
                 # assemble A for \mu and a_m
                 am_f, am_rv = self._coeff_field[m]
-                Am = self._assemble_m(am_f, V)
+                Am = self._assemble_m(V, am_f)
 
                 # prepare polynom coefficients
                 beta = am_rv.orth_polys.get_beta(mu[m])
@@ -156,7 +156,7 @@ class PreconditioningOperator(Operator):
 
         for mu in Delta:
             a0_f = self._mean_func
-            A0 = self._assemble_solver(a0_f, w[mu].basis)
+            A0 = self._assemble_solver(w[mu].basis, a0_f)
             if False:
                 mat = A0._matrix
                 M = mat.array()

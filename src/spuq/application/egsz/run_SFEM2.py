@@ -90,6 +90,11 @@ def run_SFEM(opts, conf):
 
     sim_stats = None
     w_history = []
+    PATH_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
+    try:
+        os.makedirs(PATH_SOLUTION)
+    except:
+        pass    
     FILE_SOLUTION = 'SFEM2-SOLUTIONS-P{0}.pkl'.format(CONF_FEM_degree)
     FILE_STATS = 'SIM2-STATS-P{0}.pkl'.format(CONF_FEM_degree)
     
@@ -97,7 +102,6 @@ def run_SFEM(opts, conf):
         try:
             logger.info("CONTINUING EXPERIMENT: loading previous data of %s...", CONF_experiment_name)
             import pickle
-            PATH_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
             logger.info("loading solutions from %s" % os.path.join(PATH_SOLUTION, FILE_SOLUTION))
             # load solutions
             with open(os.path.join(PATH_SOLUTION, FILE_SOLUTION), 'rb') as fin:

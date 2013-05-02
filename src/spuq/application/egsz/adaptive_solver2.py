@@ -76,7 +76,7 @@ def pcg_solve(A, w, coeff_field, pde, stats, pcg_eps, pcg_maxiter):
 
     b2 = A * w
     stats["RESIDUAL-L2"] = error_norm(b, b2, "L2")
-    stats["RESIDUAL-H1A"] = error_norm(b, b2, pde.norm)
+    stats["RESIDUAL-H1A"] = error_norm(b, b2, pde.energy_norm)
     stats["DOFS"] = sum([b[mu]._fefunc.function_space().dim() for mu in b.keys()])
     stats["CELLS"] = sum([b[mu]._fefunc.function_space().mesh().num_cells() for mu in b.keys()])
     logger.info("[pcg] Residual = [%s (L2)] [%s (H1A)] with [%s dofs] and [%s cells]", stats["RESIDUAL-L2"], stats["RESIDUAL-H1A"], stats["DOFS"], stats["CELLS"])
@@ -134,7 +134,7 @@ def AdaptiveSolver(A, coeff_field, pde,
     import resource
     refinement = None
     for refinement in range(start_iteration, max_refinements + 1):
-        logger.info("************* REFINEMENT LOOP iteration %i (of %i) *************", refinement, max_refinements)
+        logger.info("************* REFINEMENT LOOP iteration {0} (of {1} or max dofs {2}) *************".format(refinement, max_refinements, max_dof))
         # memory usage info
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 
