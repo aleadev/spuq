@@ -167,9 +167,8 @@ def run_SFEM(opts, conf):
     # flag for final solution export
     if opts.saveData:
         import pickle
-        SAVE_SOLUTION = os.path.join(opts.basedir, CONF_experiment_name)
         try:
-            os.makedirs(FILE_SOLUTION)
+            os.makedirs(PATH_SOLUTION)
         except:
             pass
         logger.info("saving solutions into %s" % os.path.join(PATH_SOLUTION, FILE_SOLUTION))
