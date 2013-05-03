@@ -27,13 +27,13 @@ optparser.add_option('--showFigures', '--show-figures',
                      action='store_true', default=False, dest='showFigures',
                      help='show several figures')
 
-optparser.add_option('--withMeshes', '--with-meshes',
-                     action='store_true', default=False, dest='withMesh',
-                     help='export meshes')
-
-optparser.add_option('--withSolution', '--with-solution',
-                     action='store_true', default=False, dest='withSolution',
-                     help='export sample parametric and direct solution')
+# optparser.add_option('--withMeshes', '--with-meshes',
+#                      action='store_true', default=False, dest='withMesh',
+#                      help='export meshes')
+# 
+# optparser.add_option('--withSolution', '--with-solution',
+#                      action='store_true', default=False, dest='withSolution',
+#                      help='export sample parametric and direct solution')
 
 optparser.add_option('--withMI', '--with-mi',
                      action='store_true', default=False, dest='withMI',
@@ -48,8 +48,8 @@ if len(args) < 1:
     optparser.error('No experiment directory specified (use -h/--help for help)')
 elif len(args) > 1:
     optparser.error('Too many arguments (use -h/--help for help)')
-# else:
-#     options.experiment_dir = args[0]
+else:
+    options.experiment_dir = args[0]
 #     if len(args) > 1:
 #         options.iteration_level = int(args[1])
 #     else:
@@ -65,7 +65,7 @@ import pickle
 LOAD_STATS_FN = os.path.join(options.experiment_dir, 'SIM2-STATS-P*.pkl')
 SIM_STATS = {}
 for fname in glob(LOAD_STATS_FN):
-    P = fname[fname.find("-P")+2:fname.find(".pkl")]
+    P = int(fname[fname.find("-P")+2:fname.find(".pkl")])
     print "loading P{0} statistics from {1}".format(P,fname)
     with open(fname, 'rb') as fin:
         sim_stats = pickle.load(fin)
@@ -74,8 +74,11 @@ for fname in glob(LOAD_STATS_FN):
     # prepare data
     D = {}
     if len(sim_stats) > 0:
+        print sim_stats[0].keys()
         for k in sim_stats[0].keys():
-            D[k] = [s[k] for s in sim_stats]
+            print "DATA", k
+            if k not in ["CONF","OPTS"]:
+                D[k] = [s[k] for s in sim_stats]
         # evaluate additional data
         D["NUM-MI"] = [len(m) for m in D["MI"]]
         try:
@@ -135,15 +138,19 @@ if options.withFigures:
             fig1.suptitle("residual estimator")
         ax = fig1.add_subplot(111)
         for P,D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['active mi', 'estimator', 'residual', 'tail', 'MC H1A', 'MC L2', 'efficiency']
+            else:
+                LABELS = ["_nolegend_" for _ in range(7)]
             X = D["DOFS"]
-            ax.loglog(X, D["NUM-MI"], '--y+', label='active mi', linewidth=1.5)
-            ax.loglog(X, D["ERROR-EST"], '-g*', label='estimator P%i'%P, linewidth=1.5)
-            ax.loglog(X, D["ERROR-RES"], '-.cx', label='residual', linewidth=1.5)
-            ax.loglog(X, D["ERROR-TAIL"], '-.m>', label='tail', linewidth=1.5)
+            ax.loglog(X, D["NUM-MI"], '--y+', label=LABELS[0], linewidth=1.5)
+            ax.loglog(X, D["ERROR-EST"], '-g*', label=LABELS[1], linewidth=1.5)
+            ax.loglog(X, D["ERROR-RES"], '-.cx', label=LABELS[2], linewidth=1.5)
+            ax.loglog(X, D["ERROR-TAIL"], '-.m>', label=LABELS[3], linewidth=1.5)
             if D["WITH-MC"]:
-                ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label='MC H1A')
-                ax.loglog(X, D["MC-ERROR-L2"], '-ro', label='MC L2')
-                ax.loglog(X, D["EFFICIENCY"], '-.b>', label='efficiency', linewidth=1.5)
+                ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label=LABELS[4])
+                ax.loglog(X, D["MC-ERROR-L2"], '-ro', label=LABELS[5])
+                ax.loglog(X, D["EFFICIENCY"], '-.b>', label=LABELS[6], linewidth=1.5)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error (number active multi-indices)")
             
@@ -494,20 +501,23 @@ if options.withFigures:
 # ==================
 # E Generate MI DATA
 # ==================
-print "generating multi-index data for iteration", options.iteration_level
-w = w_history[options.iteration_level]
-print w.dim
 if options.withMI:
-    level = options.iteration_level if options.iteration_level >= 0 else len(w_history) - 1 
-    print "# multi-indices and dimensions for '" + options.experiment_dir + "' at iteration " + str(level)
-    with file(os.path.join(options.experiment_dir, 'MI-%i.txt' % itnr), 'w') as f:
-        dofs = 0
-        for mu in w.active_indices():
-            ms = str(mu)
-            ms = ms[ms.find('=') + 1:-1]
-            mis = '{0:2s} {1:3d}'.format(ms, w[mu].dim)
-            dofs += w[mu].dim
-            print mis
-            f.write(mis + "\n")
-        f.write("overall dofs = %i and %i active multi-indices for iteration %i\n" % (dofs, len(w.active_indices()), itnr))
-    print "overall dofs =", dofs
+    print "generating multi-index data for last iterations..."
+    for P,D in SIM_STATS.iteritems():
+        itnr = len(D["MI"]) - 1
+        print "# multi-indices and dimensions for '{0}' at iteration %{1}".format(options.experiment_dir, itnr)
+        with file(os.path.join(options.experiment_dir, 'MI-P{0}-{1}.txt'.format(P, itnr)), 'w') as f:
+            for mu in D["MI"][-1]:
+                ms = str(mu)
+                ms = ms[ms.find('=') + 1:-1]
+                print D["DOFS"]
+                print D["DIM"]
+                print D["NUM-MI"]
+                mis = '{0:2s} {1:3d}'.format(ms, D["DIM"][-1][mu])
+                print mis
+                f.write(mis + "\n")
+            dofs = D["DOFS"][-1]
+            nummi = D["NUM-MI"][-1]
+            itnr = len(D["DOFS"])
+            f.write("overall dofs = %i and %i active multi-indices for iteration %i\n" % (dofs, nummi, itnr))
+            print "overall dofs =", dofs
