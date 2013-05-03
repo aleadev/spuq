@@ -170,29 +170,37 @@ if options.withFigures:
         fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-overview.pdf'))
         fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-overview.png'))
 
-        if False:        
-            # --------
-            # figure 2
-            # --------
-            fig2 = plt.figure()
-            if options.withTitles:
-                fig2.suptitle("efficiency residual estimator")
-            ax = fig2.add_subplot(111)
-            if with_mc_data:
-                ax.loglog(x, effest, '-ro', label='efficiency', linewidth=1.5)        
-            ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
-            ax.loglog(x, errest, '-g*', label='error estimator', linewidth=1.5)
-            if with_mc_data:
-                ax.loglog(x, mcH1, '-b^', label='MC H1 error', linewidth=1.5)
+        # --------
+        # figure 2
+        # --------
+        fig2 = plt.figure()
+        if options.withTitles:
+            fig2.suptitle("efficiency residual estimator")
+        ax = fig2.add_subplot(111)
+        for P,D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['estimator', 'residual', 'tail', 'MC H1A', 'MC L2', 'efficiency']
+            else:
+                LABELS = ["_nolegend_" for _ in range(7)]
+            X = D["DOFS"]
+            ax.loglog(X, D["ERROR-EST"], '-g*', label=LABELS[0], linewidth=1.5)
+            ax.loglog(X, D["ERROR-RES"], '-.cx', label=LABELS[1], linewidth=1.5)
+            ax.loglog(X, D["ERROR-TAIL"], '-.m>', label=LABELS[2], linewidth=1.5)
+            if D["WITH-MC"]:
+                ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label=LABELS[3])
+                ax.loglog(X, D["MC-ERROR-L2"], '-ro', label=LABELS[4])
+                ax.loglog(X, D["EFFICIENCY"], '-.b>', label=LABELS[5], linewidth=1.5)
             plt.xlabel("overall degrees of freedom", fontsize=14)
             plt.ylabel("energy error (efficiency)", fontsize=14)
             leg = plt.legend(loc='lower left')
-            ltext = leg.get_texts()  # all the text.Text instance in the legend
-            plt.setp(ltext, fontsize=12)    # the legend text fontsize
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
             ax.grid(True)
             fig2.savefig(os.path.join(options.experiment_dir, 'fig2-estimator.pdf'))
             fig2.savefig(os.path.join(options.experiment_dir, 'fig2-estimator.png'))
-        
+
+
+        if False:                
             # --------
             # figure 3
             # --------
