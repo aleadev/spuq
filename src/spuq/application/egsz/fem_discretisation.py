@@ -55,6 +55,26 @@ def get_default(x, default_x):
     """Returns the first parameter if not None, otherwise the second."""
     return x if x is not None else default_x
 
+###################################################
+# FEniCS Hacks
+###################################################
+
+def _assemble_system(a, L, bcs, facet_function):
+    # Mean hack to work around a bug in the FEniCS assemble_system
+    # function that doesn't treat the exterior facet domains correctly
+    # (Note: we assemble twice to get the right type and size of the
+    # matrix A and vector b. This is pretty inefficient, but remember:
+    # it's a hack that should be obsolete when the FEniCS guys have
+    # their code fixed)
+    A = dolfin.assemble(a)
+    b = dolfin.assemble(L)
+    a = dolfin.fem.Form(a, subdomains={'exterior_facet': facet_function})
+    L = dolfin.fem.Form(L, subdomains={'exterior_facet': facet_function})
+    # somehow the SystemAssembler seems to work in contrast to
+    # assemble_system
+    sa = dolfin.SystemAssembler()
+    sa.assemble(A, b, a, L, bcs)
+    return A, b
 
 ###################################################
 # Weak Forms
@@ -95,13 +115,21 @@ class WeakForm(object):
                 L += dot(gj, v) * ds(j)
         return L
 
-    def neumann_form_list(self, boundaries, g, mesh):
+    @takes(anything, anything, anything, dolfin.Mesh)
+    def neumann_facet_function(self, boundaries, g, mesh):
         boundaries = make_list(boundaries)
         g = make_list(g, len(boundaries))
         # create FacetFunction to mark different Neumann boundaries with ids 0, 1, ...
         parts = FacetFunction("size_t", mesh, 0)
         for j, bnd_domain in enumerate(boundaries):
             bnd_domain.mark(parts, j + 1)
+        return parts
+
+    @takes(anything, anything, anything, dolfin.Mesh)
+    def neumann_form_list(self, boundaries, g, mesh):
+        boundaries = make_list(boundaries)
+        g = make_list(g, len(boundaries))
+        parts = self.neumann_facet_function(boundaries, g, mesh)
 	# create Neumann measures wrt Neumann boundaries
         ds = Measure("ds")[parts]
 	# return Neumann data together with boundary measures
@@ -281,7 +309,8 @@ class FEMDiscretisationBase(FEMDiscretisation):
             bcs = self.create_dirichlet_bcs(V, self.uD, self.dirichlet_boundary)
 
         # assemble linear form
-        _, F = assemble_system(a, L, bcs)
+        facet_function = self.weak_form.neumann_facet_function(self.neumann_boundary, self.g, V.mesh())
+        _, F = _assemble_system(a, L, bcs, facet_function)
         return F
 
     @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction), optional(bool))
