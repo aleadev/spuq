@@ -251,6 +251,29 @@ if options.withFigures:
             fig2b.savefig(os.path.join(options.experiment_dir, 'fig2b-estimator.png'))
 
         # ---------
+        # figure 2c
+        # ---------
+        fig2c = plt.figure()
+        if options.withTitles:
+            fig2c.suptitle("active multiindices")
+        ax = fig2c.add_subplot(111)
+        for P, D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['active mi']
+            else:
+                LABELS = ["_nolegend_"]
+            X = D["DOFS"]
+            ax.loglog(X, D["NUM-MI"], '--y+', label=LABELS[0], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("number active mi", fontsize=14)
+            leg = plt.legend(loc='lower left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig2c.savefig(os.path.join(options.experiment_dir, 'fig2c-mi.pdf'))
+            fig2c.savefig(os.path.join(options.experiment_dir, 'fig2c-mi.png'))
+
+        # ---------
         # figure 2p
         # ---------
         LABELS = ['estimator', 'residual', 'tail', 'MC H1A']
