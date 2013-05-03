@@ -75,12 +75,13 @@ def run_MC(opts, conf):
     FILE_SOLUTION = 'SFEM2-SOLUTIONS-P{0}.pkl'.format(CONF_FEM_degree)
     FILE_STATS = 'SIM2-STATS-P{0}.pkl'.format(CONF_FEM_degree)
 
-    logger.info("loading solutions from %s" % os.path.join(PATH_SOLUTION, FILE_SOLUTION))
+    print "LOADING solutions from %s" % os.path.join(PATH_SOLUTION, FILE_SOLUTION)
+    logger.info("LOADING solutions from %s" % os.path.join(PATH_SOLUTION, FILE_SOLUTION))
     # load solutions
     with open(os.path.join(PATH_SOLUTION, FILE_SOLUTION), 'rb') as fin:
         w_history = pickle.load(fin)
     # load simulation data
-    logger.info("loading statistics from %s" % os.path.join(PATH_SOLUTION, FILE_STATS))
+    logger.info("LOADING statistics from %s" % os.path.join(PATH_SOLUTION, FILE_STATS))
     with open(os.path.join(PATH_SOLUTION, FILE_STATS), 'rb') as fin:
         sim_stats = pickle.load(fin)
 
@@ -96,7 +97,7 @@ def run_MC(opts, conf):
     if CONF_runs > 0:
         # determine reference mesh
         w = w_history[-1]
-        ref_mesh, _ = create_joint_mesh([w[mu].mesh for mu in w.active_indices()])        
+        ref_mesh = w.basis.basis.mesh        
         for _ in range(CONF_ref_mesh_refine):
             ref_mesh = refine(ref_mesh)
         ref_maxm = CONF_sampling_order if CONF_sampling_order > 0 else w.max_order + CONF_sampling_order_increase
@@ -145,7 +146,9 @@ def run_MC(opts, conf):
     # save updated data
     if opts.saveData:
         # save updated statistics
-        logger.info("saving statistics into %s" % os.path.join(PATH_SOLUTION, FILE_STATS))
+        print "SAVING statistics into %s" % os.path.join(PATH_SOLUTION, FILE_STATS)
+        print sim_stats[-1].keys()
+        logger.info("SAVING statistics into %s" % os.path.join(PATH_SOLUTION, FILE_STATS))
         with open(os.path.join(PATH_SOLUTION, FILE_STATS), 'wb') as fout:
             pickle.dump(sim_stats, fout)
     

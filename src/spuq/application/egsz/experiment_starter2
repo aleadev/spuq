@@ -234,7 +234,10 @@ class ExperimentStarter(object):
             print("="*60)
             print("starting MC")
             print("="*60)
-            run_MC(self.opts, self.conf)
+            for p in range(self.conf["SFEM"]["FEM_degree_min"], self.conf["SFEM"]["FEM_degree_max"]+1):
+                print("\n"+"*"*20+"FEM degree "+str(p)+"*"*20+"\n")
+                self.conf["SFEM"]["FEM_degree"] = p
+                run_MC(self.opts, self.conf)
 
 # -----------------------------------------------------------------------------
 

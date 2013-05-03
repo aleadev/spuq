@@ -1,4 +1,4 @@
-from dolfin import Mesh, UnitSquare, UnitInterval, compile_subdomains
+from dolfin import Mesh, UnitSquareMesh, UnitInterval, compile_subdomains
 import os
 import numpy as np
 
@@ -38,7 +38,7 @@ class SampleDomain(object):
     @classmethod
     def _square(cls, **kwargs):
         N = kwargs['initial_mesh_N']
-        mesh0 = UnitSquare(N, N)
+        mesh0 = UnitSquareMesh(N, N)
         maxx, minx, maxy, miny = 1, 0, 1, 0
         # setup boundary parts
         top, bottom, left, right = compile_subdomains([  'near(x[1], 1.) && on_boundary',
@@ -53,7 +53,7 @@ class SampleDomain(object):
 
     @classmethod
     def _cooks(cls, **kwargs):
-        mesh = UnitSquare(10, 5)
+        mesh = UnitSquareMesh(10, 5)
         def cooks_domain(x, y):
             return [48 * x, 44 * (x + y) - 18 * x * y]
         mesh.coordinates()[:] = np.array(cooks_domain(mesh.coordinates()[:, 0], mesh.coordinates()[:, 1])).transpose()

@@ -82,7 +82,7 @@ for fname in glob(LOAD_STATS_FN):
         # evaluate additional data
         D["NUM-MI"] = [len(m) for m in D["MI"]]
         try:
-            D["EFFICIENCY"] = [est / err for est, err in zip(D["ERROR-EST"], D["ERROR-H1A"])]
+            D["EFFICIENCY"] = [est / err for est, err in zip(D["ERROR-EST"], D["MC-ERROR-H1A"])]
             D["WITH-MC"] = True
         except:
             D["WITH-MC"] = False
@@ -505,7 +505,7 @@ if options.withMI:
     print "generating multi-index data for last iterations..."
     for P,D in SIM_STATS.iteritems():
         itnr = len(D["MI"]) - 1
-        print "# multi-indices and dimensions for '{0}' at iteration %{1}".format(options.experiment_dir, itnr)
+        print "# multi-indices and dimensions for '{0}' at iteration {1}".format(options.experiment_dir, itnr)
         with file(os.path.join(options.experiment_dir, 'MI-P{0}-{1}.txt'.format(P, itnr)), 'w') as f:
             for mu in D["MI"][-1]:
                 ms = str(mu)
