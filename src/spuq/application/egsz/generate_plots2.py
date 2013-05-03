@@ -46,86 +46,49 @@ optparser.add_option('--noTitles', '--no-titles',
 options, args = optparser.parse_args()
 if len(args) < 1:
     optparser.error('No experiment directory specified (use -h/--help for help)')
-elif len(args) > 2:
+elif len(args) > 1:
     optparser.error('Too many arguments (use -h/--help for help)')
-else:
-    options.experiment_dir = args[0]
-    if len(args) > 1:
-        options.iteration_level = int(args[1])
-    else:
-        options.iteration_level = -1
+# else:
+#     options.experiment_dir = args[0]
+#     if len(args) > 1:
+#         options.iteration_level = int(args[1])
+#     else:
+#         options.iteration_level = -1
 
 # ==================
 # B Import Solutions
 # ==================
+from glob import glob
 import pickle
 
-LOAD_SOLUTION = 'SIM2-SOLUTIONS.pkl'
-LOAD_STATS = 'SIM2-STATS.pkl'
-
-print "loading solutions from %s" % os.path.join(options.experiment_dir, LOAD_SOLUTION)
-# load solutions
-with open(os.path.join(options.experiment_dir, 'SFEM2-SOLUTIONS.pkl'), 'rb') as fin:
-    w_history = pickle.load(fin)
 # load simulation data
-print "loading statistics from %s" % os.path.join(options.experiment_dir, LOAD_STATS)
-with open(os.path.join(options.experiment_dir, LOAD_STATS), 'rb') as fin:
-    sim_stats = pickle.load(fin)
-print "sim_stats has %s iterations" % len(sim_stats)
-itnr = options.iteration_level if options.iteration_level > 0 else len(w_history) + options.iteration_level
-
-
-# ==================
-# C Generate Figures
-# ==================
-if options.withFigures and len(sim_stats) > 1:
-    try:
-        # prepare data
-        x = [s["DOFS"] for s in sim_stats]
-        L2 = [s["ERR-L2"] for s in sim_stats]
-        H1 = [s["ERR-H1A"] for s in sim_stats]
-        errest = [s["XI"] for s in sim_stats]
-        res_part = [s["RES-PART"] for s in sim_stats]
-        tail_part = [s["TAIL-PART"] for s in sim_stats]
+LOAD_STATS_FN = os.path.join(options.experiment_dir, 'SIM2-STATS-P*.pkl')
+SIM_STATS = {}
+for fname in glob(LOAD_STATS_FN):
+    P = fname[fname.find("-P")+2:fname.find(".pkl")]
+    print "loading P{0} statistics from {1}".format(P,fname)
+    with open(fname, 'rb') as fin:
+        sim_stats = pickle.load(fin)
+    print "sim_stats has %s iterations" % len(sim_stats)
+    
+    # prepare data
+    D = {}
+    if len(sim_stats) > 0:
+        for k in sim_stats[0].keys():
+            D[k] = [s[k] for s in sim_stats]
+        # evaluate additional data
+        D["NUM-MI"] = [len(m) for m in D["MI"]]
         try:
-            mcL2 = [s["MC-L2ERR"] for s in sim_stats]
-            mcH1 = [s["MC-H1AERR"] for s in sim_stats]
-            mcL2_a0 = [s["MC-L2ERR_a0"] for s in sim_stats]
-            mcH1_a0 = [s["MC-H1AERR_a0"] for s in sim_stats]
-            effest = [est / err for est, err in zip(errest, mcH1)]
-            with_mc_data = True
+            D["EFFICIENCY"] = [est / err for est, err in zip(D["ERROR-EST"], D["ERROR-H1A"])]
+            D["WITH-MC"] = True
         except:
-            with_mc_data = False
-        mi = [s["MI"] for s in sim_stats]
-        num_mi = [len(m) for m in mi]
-        try:
-            marking_res = [s["MARKING-RES"] for s in sim_stats]
-            marking_proj = [s["MARKING-TAIL"] for s in sim_stats]
-        except:
-            marking_res = None
-            marking_proj = None
-        time_estimator = [s["TIME-ESTIMATOR"] for s in sim_stats]
-        time_residual = [s["TIME-RESIDUAL"] for s in sim_stats]
-        time_projection = [s["TIME-TAIL"] for s in sim_stats]
-        time_marking = [s["TIME-MARKING"] for s in sim_stats]
-        reserrmu = defaultdict(list)
-        for rem in _reserrmu:
-            for mu, v in rem:
-                reserrmu[mu].append(v)
-        projerrmu = defaultdict(list)
-        for rem in _projerrmu:
-            for mu, v in rem:
-                projerrmu[mu].append(v)
-#        mu_max_dim = [max(w.dim.values()) for w in w_history]
-        mu_max_dim = [max(w[mu]._fefunc.function_space().dim() for mu in w.active_indices()) for w in w_history]
-        dofs = [sum(w[mu]._fefunc.function_space().dim() for mu in w.active_indices()) for w in w_history]
-        print "ERROR ESTIMATOR", errest
-#        print "MU MAX", mu_max_dim
-        print "DOFS", dofs
-        if with_mc_data:
-            print "efficiency", [est / err for est, err in zip(errest, mcH1)]
+            D["WITH-MC"] = False
+            print "WARNING: No MC data found!"
+        SIM_STATS[P] = D
+    else:
+        print "SKIPPING P{0} data since it is empty!".format(P)
 
-        
+
 #================    ===============================
 #character           description
 #================    ===============================
@@ -158,7 +121,12 @@ if options.withFigures and len(sim_stats) > 1:
 #================    ===============================
 # colors = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
         
-        
+# ==================
+# C Generate Figures
+# ==================
+if options.withFigures:
+       
+    try:        
         # --------
         # figure 1
         # --------
@@ -166,16 +134,16 @@ if options.withFigures and len(sim_stats) > 1:
         if options.withTitles:
             fig1.suptitle("residual estimator")
         ax = fig1.add_subplot(111)
-        ax.loglog(x, num_mi, '--y+', label='active mi', linewidth=1.5)
-        ax.loglog(x, errest, '-g*', label='estimator', linewidth=1.5)
-        ax.loglog(x, res_part, '-.cx', label='residual', linewidth=1.5)
-        _pp = map(lambda v: v if v > 1e-6 else 0, proj_part)
-        ax.loglog(x[1:], _pp[1:], '-.m>', label='projection', linewidth=1.5)
-        pcgoff = len([1 for i in pcg_part if i < 1e-10])
-        ax.loglog(x[pcgoff:], pcg_part[pcgoff:], '-.b>', label='pcg', linewidth=1.5)
-        if with_mc_data:
-            ax.loglog(x, mcH1, '-b^', label='MC H1 error')
-            ax.loglog(x, mcL2, '-ro', label='MC L2 error')
+        for P,D in SIM_STATS.iteritems():
+            X = D["DOFS"]
+            ax.loglog(X, D["NUM-MI"], '--y+', label='active mi', linewidth=1.5)
+            ax.loglog(X, D["ERROR-EST"], '-g*', label='estimator P%i'%P, linewidth=1.5)
+            ax.loglog(X, D["ERROR-RES"], '-.cx', label='residual', linewidth=1.5)
+            ax.loglog(X, D["ERROR-TAIL"], '-.m>', label='tail', linewidth=1.5)
+            if D["WITH-MC"]:
+                ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label='MC H1A')
+                ax.loglog(X, D["MC-ERROR-L2"], '-ro', label='MC L2')
+                ax.loglog(X, D["EFFICIENCY"], '-.b>', label='efficiency', linewidth=1.5)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error (number active multi-indices)")
             
@@ -192,8 +160,8 @@ if options.withFigures and len(sim_stats) > 1:
         leg = plt.legend(ncol=1, loc='center right', bbox_to_anchor=(1.05, 0.2))
         ltext = leg.get_texts()  # all the text.Text instance in the legend
         plt.setp(ltext, fontsize=12)    # the legend text fontsize
-        fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-all.pdf'))
-        fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-all.png'))
+        fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-overview.pdf'))
+        fig1.savefig(os.path.join(options.experiment_dir, 'fig1-estimator-overview.png'))
 
         if False:        
             # --------
@@ -232,12 +200,6 @@ if options.withFigures and len(sim_stats) > 1:
                     mu, v = muv
                     ms = str(mu)
                     ms = ms[ms.find('=') + 1:-1]
-                    
-                    # NOTE: EGSZ paper specific fixes --- remove later!
-                    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    while len(v) > 1 and (v[0] < 1e-10 or v[0] < v[1]):
-                        v = v[1:]
-                    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     
             if len(v) > 1:
                         ax.loglog(x[-len(v):], v, '-g<', label=ms)
@@ -308,8 +270,8 @@ if options.withFigures and len(sim_stats) > 1:
                 plt.xlabel("iteration")
                 plt.ylabel("degrees of freedom")
                 leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
-                    ltext = leg.get_texts()  # all the text.Text instance in the legend
-                plt.setp(ltext, fontsize='small')    # the legend text fontsize
+                legtext = leg.get_texts()  # all the text.Text instance in the legend
+                plt.setp(legtext, fontsize='small')    # the legend text fontsize
                 ax.grid(True)
                 fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.pdf'))
                 fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.png'))
@@ -480,10 +442,11 @@ if options.withFigures and len(sim_stats) > 1:
            
             if options.showFigures:
                 plt.show()  # this invalidates the figure instances...
-        except:
-            import traceback
-            print traceback.format_exc()
-            print "skipped plotting since matplotlib is not available..."
+            
+    except:
+        import traceback
+        print traceback.format_exc()
+        print "skipped plotting since matplotlib is not available..."
     
     
 # # ==================
@@ -548,52 +511,3 @@ if options.withMI:
             f.write(mis + "\n")
         f.write("overall dofs = %i and %i active multi-indices for iteration %i\n" % (dofs, len(w.active_indices()), itnr))
     print "overall dofs =", dofs
-
-# ==========================
-# F Generate SAMPLE SOLUTION
-# ==========================
-#    # plot sample solution
-#    if opts.plotSolution:
-#        w = w_history[-1]
-#        # get random field sample and evaluate solution (direct and parametric)
-#        RV_samples = coeff_field.sample_rvs()
-#        ref_maxm = w_history[-1].max_order
-#        sub_spaces = w[Multiindex()].basis.num_sub_spaces
-#        degree = w[Multiindex()].basis.degree
-#        maxh = min(w[Multiindex()].basis.minh / 4, CONF_max_h)
-#        maxh = w[Multiindex()].basis.minh
-#        projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
-#        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
-#        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
-#        sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
-#    
-#        # plot
-#        print sub_spaces
-#        if sub_spaces == 0:
-#            viz_p = plot(sample_sol_param._fefunc, title="parametric solution")
-#            viz_d = plot(sample_sol_direct._fefunc, title="direct solution")
-#            if ref_maxm > 0:
-#                viz_v = plot(sol_variance._fefunc, title="solution variance")
-#    
-#            # debug---
-#            if not True:        
-#                for mu in w.active_indices():
-#                    for i, wi in enumerate(w_history):
-#                        if i == len(w_history) - 1 or True:
-#                            plot(wi[mu]._fefunc, title="parametric solution " + str(mu) + " iteration " + str(i))
-#    #                        plot(wi[mu]._fefunc.function_space().mesh(), title="parametric solution " + str(mu) + " iteration " + str(i), axes=True)
-#                    interactive()
-#            # ---debug
-#            
-##            for mu in w.active_indices():
-##                plot(w[mu]._fefunc, title="parametric solution " + str(mu))
-#        else:
-#            mesh_param = sample_sol_param._fefunc.function_space().mesh()
-#            mesh_direct = sample_sol_direct._fefunc.function_space().mesh()
-#            wireframe = True
-#            viz_p = plot(sample_sol_param._fefunc, title="parametric solution", mode="displacement", mesh=mesh_param, wireframe=wireframe)#, rescale=False)
-#            viz_d = plot(sample_sol_direct._fefunc, title="direct solution", mode="displacement", mesh=mesh_direct, wireframe=wireframe)#, rescale=False)
-#            
-##            for mu in w.active_indices():
-##                viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
-#        interactive()
