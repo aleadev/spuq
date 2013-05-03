@@ -65,8 +65,8 @@ import pickle
 LOAD_STATS_FN = os.path.join(options.experiment_dir, 'SIM2-STATS-P*.pkl')
 SIM_STATS = {}
 for fname in glob(LOAD_STATS_FN):
-    P = int(fname[fname.find("-P")+2:fname.find(".pkl")])
-    print "loading P{0} statistics from {1}".format(P,fname)
+    P = int(fname[fname.find("-P") + 2:fname.find(".pkl")])
+    print "loading P{0} statistics from {1}".format(P, fname)
     with open(fname, 'rb') as fin:
         sim_stats = pickle.load(fin)
     print "sim_stats has %s iterations" % len(sim_stats)
@@ -76,8 +76,8 @@ for fname in glob(LOAD_STATS_FN):
     if len(sim_stats) > 0:
         print sim_stats[0].keys()
         for k in sim_stats[0].keys():
-            print "DATA", k
-            if k not in ["CONF","OPTS"]:
+#            print "DATA", k
+            if k not in ["CONF", "OPTS"]:
                 D[k] = [s[k] for s in sim_stats]
         # evaluate additional data
         D["NUM-MI"] = [len(m) for m in D["MI"]]
@@ -135,9 +135,9 @@ if options.withFigures:
         # --------
         fig1 = plt.figure()
         if options.withTitles:
-            fig1.suptitle("residual estimator")
+            fig1.suptitle("residual estimator overview")
         ax = fig1.add_subplot(111)
-        for P,D in SIM_STATS.iteritems():
+        for P, D in SIM_STATS.iteritems():
             if P == SIM_STATS.keys()[0]:
                 LABELS = ['active mi', 'estimator', 'residual', 'tail', 'MC H1A', 'MC L2', 'efficiency']
             else:
@@ -177,18 +177,18 @@ if options.withFigures:
         if options.withTitles:
             fig2.suptitle("efficiency residual estimator")
         ax = fig2.add_subplot(111)
-        for P,D in SIM_STATS.iteritems():
+        for P, D in SIM_STATS.iteritems():
             if P == SIM_STATS.keys()[0]:
                 LABELS = ['estimator', 'residual', 'tail', 'MC H1A', 'MC L2', 'efficiency']
             else:
-                LABELS = ["_nolegend_" for _ in range(7)]
+                LABELS = ["_nolegend_" for _ in range(6)]
             X = D["DOFS"]
             ax.loglog(X, D["ERROR-EST"], '-g*', label=LABELS[0], linewidth=1.5)
             ax.loglog(X, D["ERROR-RES"], '-.cx', label=LABELS[1], linewidth=1.5)
             ax.loglog(X, D["ERROR-TAIL"], '-.m>', label=LABELS[2], linewidth=1.5)
             if D["WITH-MC"]:
                 ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label=LABELS[3])
-                ax.loglog(X, D["MC-ERROR-L2"], '-ro', label=LABELS[4])
+#                ax.loglog(X, D["MC-ERROR-L2"], '-ro', label=LABELS[4])
                 ax.loglog(X, D["EFFICIENCY"], '-.b>', label=LABELS[5], linewidth=1.5)
             plt.xlabel("overall degrees of freedom", fontsize=14)
             plt.ylabel("energy error (efficiency)", fontsize=14)
@@ -198,6 +198,81 @@ if options.withFigures:
             ax.grid(True)
             fig2.savefig(os.path.join(options.experiment_dir, 'fig2-estimator.pdf'))
             fig2.savefig(os.path.join(options.experiment_dir, 'fig2-estimator.png'))
+
+        # ---------
+        # figure 2a
+        # ---------
+        fig2a = plt.figure()
+        if options.withTitles:
+            fig2a.suptitle("residual estimator")
+        ax = fig2a.add_subplot(111)
+        for P, D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['estimator', 'MC H1A', 'efficiency']
+            else:
+                LABELS = ["_nolegend_" for _ in range(3)]
+            X = D["DOFS"]
+            ax.loglog(X, D["ERROR-EST"], '-g*', label=LABELS[0], linewidth=1.5)
+            if D["WITH-MC"]:
+                ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label=LABELS[1], linewidth=1.5)
+                ax.loglog(X, D["EFFICIENCY"], '-.b>', label=LABELS[2], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("energy error (efficiency)", fontsize=14)
+            leg = plt.legend(loc='lower left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig2a.savefig(os.path.join(options.experiment_dir, 'fig2a-estimator.pdf'))
+            fig2a.savefig(os.path.join(options.experiment_dir, 'fig2a-estimator.png'))
+
+        # ---------
+        # figure 2b
+        # ---------
+        fig2b = plt.figure()
+        if options.withTitles:
+            fig2b.suptitle("residual estimator")
+        ax = fig2b.add_subplot(111)
+        for P, D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['estimator', 'MC H1A']
+            else:
+                LABELS = ["_nolegend_" for _ in range(2)]
+            X = D["DOFS"]
+            ax.loglog(X, D["ERROR-EST"], '-g*', label=LABELS[0], linewidth=1.5)
+            if D["WITH-MC"]:
+                ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label=LABELS[1], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("energy error", fontsize=14)
+            leg = plt.legend(loc='lower left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig2b.savefig(os.path.join(options.experiment_dir, 'fig2b-estimator.pdf'))
+            fig2b.savefig(os.path.join(options.experiment_dir, 'fig2b-estimator.png'))
+
+        # ---------
+        # figure 2p
+        # ---------
+        LABELS = ['estimator', 'residual', 'tail', 'MC H1A']
+        for P, D in SIM_STATS.iteritems():
+            fig2p = plt.figure()
+            if options.withTitles:
+                fig2p.suptitle("residual estimator P%i" % P)
+            ax = fig2p.add_subplot(111)
+            X = D["DOFS"]
+            ax.loglog(X, D["ERROR-EST"], '-g*', label=LABELS[0], linewidth=1.5)
+            ax.loglog(X, D["ERROR-RES"], '-.cx', label=LABELS[1], linewidth=1.5)
+            ax.loglog(X, D["ERROR-TAIL"], '-.m>', label=LABELS[2], linewidth=1.5)
+            if D["WITH-MC"]:
+                ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label=LABELS[3], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("energy error", fontsize=14)
+            leg = plt.legend(loc='lower left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig2p.savefig(os.path.join(options.experiment_dir, 'fig2-estimator-P%i.pdf' % P))
+            fig2p.savefig(os.path.join(options.experiment_dir, 'fig2-estimator-P%i.png' % P))
 
 
         if False:                
@@ -511,7 +586,7 @@ if options.withFigures:
 # ==================
 if options.withMI:
     print "generating multi-index data for last iterations..."
-    for P,D in SIM_STATS.iteritems():
+    for P, D in SIM_STATS.iteritems():
         itnr = len(D["MI"]) - 1
         print "# multi-indices and dimensions for '{0}' at iteration {1}".format(options.experiment_dir, itnr)
         with file(os.path.join(options.experiment_dir, 'MI-P{0}-{1}.txt'.format(P, itnr)), 'w') as f:
