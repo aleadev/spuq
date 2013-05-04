@@ -255,8 +255,31 @@ if options.withFigures:
         # ---------
         fig2c = plt.figure()
         if options.withTitles:
-            fig2c.suptitle("active multiindices")
+            fig2c.suptitle("residual estimator")
         ax = fig2c.add_subplot(111)
+        for P, D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['estimator']
+            else:
+                LABELS = ["_nolegend_"]
+            X = D["DOFS"]
+            ax.loglog(X, D["ERROR-EST"], '-g*', label=LABELS[0], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("energy error", fontsize=14)
+            leg = plt.legend(loc='lower left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig2c.savefig(os.path.join(options.experiment_dir, 'fig2c-estimator.pdf'))
+            fig2c.savefig(os.path.join(options.experiment_dir, 'fig2c-estimator.png'))
+
+        # ---------
+        # figure 2d
+        # ---------
+        fig2d = plt.figure()
+        if options.withTitles:
+            fig2d.suptitle("active multiindices")
+        ax = fig2d.add_subplot(111)
         for P, D in SIM_STATS.iteritems():
             if P == SIM_STATS.keys()[0]:
                 LABELS = ['active mi']
@@ -270,8 +293,8 @@ if options.withFigures:
             legtext = leg.get_texts()  # all the text.Text instance in the legend
             plt.setp(legtext, fontsize=12)    # the legend text fontsize
             ax.grid(True)
-            fig2c.savefig(os.path.join(options.experiment_dir, 'fig2c-mi.pdf'))
-            fig2c.savefig(os.path.join(options.experiment_dir, 'fig2c-mi.png'))
+            fig2d.savefig(os.path.join(options.experiment_dir, 'fig2d-mi.pdf'))
+            fig2d.savefig(os.path.join(options.experiment_dir, 'fig2d-mi.png'))
 
         # ---------
         # figure 2p
