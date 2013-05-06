@@ -33,7 +33,6 @@ class Marking(object):
         eta_local = np.sqrt(eta_local)
         eta_local_ind = [(x, i) for i, x in enumerate(eta_local)]
         eta_local_ind = sorted(eta_local_ind, key=itemgetter(0), reverse=True)
-#        print "XXXXX", eta_local_ind
         logger.info("(mark_x) global residual is %f, want to mark for %f", global_eta, theta_x * global_eta)
         # verify global eta by summing up
         assert fabs(global_eta - np.sqrt(sum([x ** 2 for x in eta_local]))) < 1e-10
@@ -48,6 +47,15 @@ class Marking(object):
 #            print "ETA_CELL", eta_cell, eta_cell[0] ** 2, marked_eta
             mesh_markers.add(eta_cell[1])
             marked_eta += eta_cell[0] ** 2
+        
+#        # DEBUG ---
+#        if len(eta_local) / len(mesh_markers) > 10 or len(mesh_markers) < 10:
+#            print "X"*20, eta_local_ind[:20]
+#            print "Y"*20, sorted([x for x in eta_local], reverse=True)[:20]
+#            print "Z"*20, sorted([x ** 2 for x in eta_local], reverse=True)[:20]
+#            print "A"*20, sum([x ** 2 for x in eta_local])
+#        # --- DEBUG
+        
         logger.info("(mark_x) MARKED elements: %s (of %s)", len(mesh_markers), len(eta_local))
         return mesh_markers
 
@@ -114,8 +122,32 @@ class Marking(object):
             w[mu] = V.basis.new_vector()
 
     @classmethod
-    def refine_osc(cls, w, coeff, M):
-        osc_refinements = 0
-        # TODO
-        return osc_refinements
-    
+    def refine_osc(cls, w, coeff_field, a=1):
+        Cadelta = 1.0
+        mesh_maxh = w.basis.basis.mesh.hmax()
+        coeff_min_val, coeff_max_grad = 1e10, 0.0
+        suppLambda = supp(w.active_indices())
+        if len(suppLambda) > 0:
+            try:
+    #            a0_f = coeff_field.mean_func
+                print "suppLambda", suppLambda
+                for m in suppLambda:
+                    print "\tm:", m
+                    _, max_grad = coeff_field.max_vals[m]
+                    min_val, _ = coeff_field.min_vals[m]
+                    coeff_min_val, coeff_max_grad = min(coeff_min_val, min_val), max(coeff_max_grad, max_grad)
+                # determine (4.14) c_{a,\delta}
+                Cadelta = mesh_maxh * coeff_max_grad / coeff_min_val
+            except:
+                logger.error("coefficient does not provide max_val and max_grad. OSC refinement not supported for this case...")
+        
+            # determine maximal mesh size to resolve coefficient oscillations
+            print mesh_maxh, Cadelta
+            maxh = a * mesh_maxh / Cadelta
+            
+            # create appropriate mesh by refinement and project current solution
+            new_w = w.refine_maxh(maxh)
+            return new_w, maxh
+        else:
+            logger.info("SKIP OSC refinement since only active mi is deterministic.")
+            return w, 1.0

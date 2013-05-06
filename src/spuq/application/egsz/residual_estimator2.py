@@ -259,8 +259,7 @@ class ResidualEstimator(object):
         M = min(w.max_order + add_maxm, len(coeff_field))
         normw = prepare_norm_w(energynorm, w)
         # retrieve (sufficiently fine) function space for maximum norm evaluation
-        V = w[Multiindex()].basis.refine_maxh(maxh)
-        
+        V = w[Multiindex()].basis.refine_maxh(maxh)[0]
         # evaluate estimator contributions of (3.16)
         from collections import defaultdict
         # === (a) zeta ===

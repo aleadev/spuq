@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 def prepare_rhs(A, w, coeff_field, pde):
     b = 0 * w
     zero = Multiindex()
-    b[zero].coeffs = pde.assemble_rhs(basis=b[zero].basis, coeff=coeff_field.mean_func, 
+    b[zero].coeffs = pde.assemble_rhs(basis=b[zero].basis, coeff=coeff_field.mean_func,
                                       withNeumannBC=True)
     
     f = pde.f
@@ -95,7 +95,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     theta_x=0.4, # residual marking bulk parameter
                     theta_y=0.4, # tail bound marking bulk paramter
                     maxh=0.1, # maximal mesh width for coefficient maximum norm evaluation
-                    add_maxm=20, # maximal search length for new new multiindices (to be added to max order of solution w)
+                    add_maxm=100, # maximal search length for new new multiindices (to be added to max order of solution w)
                     # residual error
                     quadrature_degree= -1,
                     # pcg solver
@@ -205,7 +205,7 @@ def AdaptiveSolver(A, coeff_field, pde,
             if do_refinement["RES"]:
                 cell_ids = []
                 if not do_uniform_refinement:        
-                    if global_eta > rho * global_zeta:
+                    if global_eta > rho * global_zeta or not do_refinement["TAIL"]:
                         logger.info("REFINE RES")
                         with timing(msg="Marking.mark_x", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-MARK-RES", stats=stats)):
                             cell_ids = Marking.mark_x(global_eta, eta_local, theta_x)
@@ -242,9 +242,10 @@ def AdaptiveSolver(A, coeff_field, pde,
             if do_refinement["OSC"]:
                 logger.info("REFINE OSC")
                 with timing(msg="Marking.refine_osc", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-OSC", stats=stats)):
-                    osc_refinements = Marking.refine_osc(w, pde.coeff, M)
+                    w, maxh = Marking.refine_osc(w, pde.coeff)
+                    logger.info("coefficient oscillations require maxh %i" % maxh)
             else:
-                logger.info("SKIP tail refinement")
+                logger.info("SKIP oscillation refinement")
             
             logger.info("MARKING was carried out with %s (res) cells and %s (mi) new multiindices", len(cell_ids), len(new_mi))
             stats["MARKING-RES"] = len(cell_ids)

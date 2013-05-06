@@ -39,7 +39,7 @@ def get_projection_basis(mesh0, mesh_refinements=None, maxh=None, degree=1, sub_
             V = VectorFunctionSpace(mesh0, family, degree)
             assert V.num_sub_spaces() == sub_spaces
         B = FEniCSBasis(V)
-        return B.refine_maxh(maxh, True)
+        return B.refine_maxh(maxh, True)[0]
 
 
 def get_projected_solution(w, mu, proj_basis):

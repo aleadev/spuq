@@ -31,7 +31,7 @@ def make_list(x, length=None):
     """Make a sequence type out of some item if it not already is one"""
     if not isinstance(x, collections.Sequence):
         x = [x]
-    if length is not None and len(x)==1:
+    if length is not None and len(x) == 1:
         x = x * length
     return x
 
@@ -187,7 +187,7 @@ class PoissonWeakForm(EllipticWeakForm):
         a = coeff
         Du = self.differential_op(u)
         Dsigma = dot(nabla_grad(a), Du)
-        if element_degree(u)>=2:
+        if element_degree(u) >= 2:
             Dsigma += a * div(Du)
         return Dsigma
 
@@ -217,7 +217,7 @@ class NavierLameWeakForm(EllipticWeakForm):
         Du = self.differential_op(u)
         I = Identity(u.cell().d)
         Dsigma = 2.0 * mu * div(Du) + dot(nabla_grad(lmbda), tr(Du) * I)
-        if element_degree(u)>=2:
+        if element_degree(u) >= 2:
             Dsigma += lmbda * div(tr(Du) * I)
         return Dsigma
 
@@ -385,6 +385,7 @@ class FEMDiscretisationBase(FEMDiscretisation):
     def neumann_residual(self, coeff, v, nu, mesh, homogeneous=False):
         """Neumann boundary residual."""
         form = []
+        a = coeff
         boundaries = self.neumann_boundary
         g = self.g
         if boundaries is not None:
@@ -393,7 +394,7 @@ class FEMDiscretisationBase(FEMDiscretisation):
 
             g, ds = self.weak_form.neumann_form_list(boundaries, g, mesh)
             for j, gj in enumerate(g):
-                Nbres = gj - dot(self.weak_form.flux(v, coeff), nu)
+                Nbres = gj - a * dot(self.weak_form.flux(v, coeff), nu)
                 form.append((inner(Nbres, Nbres), ds(j)))
         return form
 
@@ -420,10 +421,10 @@ class FEMDiscretisationBase(FEMDiscretisation):
 
 
 class FEMPoisson(FEMDiscretisationBase):
-    def __init__(self, a=Constant(1.0), f=Constant(1.0), 
+    def __init__(self, a=Constant(1.0), f=Constant(1.0),
                  dirichlet_boundary=[default_Dirichlet_boundary], uD=[Constant(0.0)],
                  neumann_boundary=None, g=None):
-        super(FEMPoisson, self).__init__(PoissonWeakForm(), a, f, 
+        super(FEMPoisson, self).__init__(PoissonWeakForm(), a, f,
                                          dirichlet_boundary, uD,
                                          neumann_boundary, g)
 
@@ -432,7 +433,7 @@ class FEMNavierLame(FEMDiscretisationBase):
     def __init__(self, mu, lmbda, f=Constant((0.0, 0.0)),
                  dirichlet_boundary=[default_Dirichlet_boundary], uD=[Constant((0.0, 0.0))],
                  neumann_boundary=None, g=None):
-        super(FEMNavierLame, self).__init__(NavierLameWeakForm(), (mu, lmbda), f, 
+        super(FEMNavierLame, self).__init__(NavierLameWeakForm(), (mu, lmbda), f,
                                             dirichlet_boundary, uD,
                                             neumann_boundary, g)
 

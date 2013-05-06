@@ -290,7 +290,7 @@ class ResidualEstimator(object):
             a0_f = a0_f[0]
             am_f = am_f[0]
         # create discretisation space
-        V_coeff = w[mu].basis.refine_maxh(maxh)
+        V_coeff, _, _, _ = w[mu].basis.refine_maxh(maxh)
         # interpolate coefficient functions on mesh
         f_coeff = V_coeff.new_vector(sub_spaces=0)
 #        print "evaluateLocalProjectionError"
@@ -432,7 +432,7 @@ class ResidualEstimator(object):
                 a0_f = a0_f[0]
             # retrieve (sufficiently fine) function space for maximum norm evaluation
             # NOTE: we use the deterministic mesh since it is assumed to be the finest
-            V = w[Multiindex()].basis.refine_maxh(maxh)
+            V, _, _, _ = w[Multiindex()].basis.refine_maxh(maxh)
             # determine min \overline{a} on D (approximately)
             f = FEniCSVector.from_basis(V, sub_spaces=0)
             f.interpolate(a0_f)

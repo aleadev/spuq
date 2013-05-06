@@ -78,16 +78,18 @@ class FEniCSBasis(FEMBasis):
         new_basis = FEniCSBasis(new_fs)
         prolongate = new_basis.project_onto
         restrict = self.project_onto
-        return (new_basis, prolongate, restrict)
+        return new_basis, prolongate, restrict
 
     def refine_maxh(self, maxh, uniform=False):
         """Refine mesh of FEM basis such that maxh of mesh is smaller than given value."""
-        if maxh <= 0 or self.mesh.hmax() < maxh:
-            return self
+        if maxh <= 0 or self.mesh.hmax() < maxh:            
+            return self, self.project_onto, self.project_onto, 0
         ufl = self._fefs.ufl_element()
         mesh = self.mesh
+        num_cells_refined = 0
         if uniform:
             while mesh.hmax() > maxh:
+                num_cells_refined += mesh.num_cells()
                 mesh = refine(mesh)         # NOTE: this global refine results in a red-refinement as opposed to bisection in the adaptive case
         else:
             while mesh.hmax() > maxh:
@@ -96,13 +98,16 @@ class FEniCSBasis(FEMBasis):
                 for c in cells(mesh):
                     if c.diameter() > maxh:
                         cell_markers[c.index()] = True
+                        num_cells_refined += 1
                 mesh = refine(mesh, cell_markers)
-#        if isinstance(self._fefs, VectorFunctionSpace):
         if self._fefs.num_sub_spaces() > 1:
             new_fefs = VectorFunctionSpace(mesh, ufl.family(), ufl.degree())
         else:
             new_fefs = FunctionSpace(mesh, ufl.family(), ufl.degree())
-        return FEniCSBasis(new_fefs, self._ptype)
+        new_basis = FEniCSBasis(new_fefs)
+        prolongate = new_basis.project_onto
+        restrict = self.project_onto
+        return new_basis, prolongate, restrict, num_cells_refined
 
     @takes(anything, "FEniCSVector", anything)
     def project_onto(self, vec, ptype=None):

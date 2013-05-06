@@ -478,6 +478,14 @@ class MultiVectorSharedBasis(MultiVector):
             mv[mi] = prolongate(self[mi])
         return mv
 
+    def refine_maxh(self, maxh):
+        new_basis, prolongate, _, num_cells_refined = self.basis.basis.refine_maxh(maxh)
+        logger.info("refined {0} cells to achieve maxh {1}".format(num_cells_refined, maxh))
+        mv = self.__class__()
+        for mi in self.keys():
+            mv[mi] = prolongate(self[mi])
+        return mv
+
     def project(self, vec_src, dest):
         """Project the source vector onto the basis of the destination vector."""
         if not isinstance(dest, Basis):
