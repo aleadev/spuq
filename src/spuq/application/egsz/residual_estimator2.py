@@ -189,8 +189,13 @@ class ResidualEstimator(object):
             if isinstance(am_f, tuple):
                 am_f = am_f[0]
             # determine ||a_m/\overline{a}||_{L\infty(D)} (approximately)
-            f.interpolate(am_f)
-            max_am = f.max_val
+            try:
+                # use exact bounds if defined
+                max_am = am_f.max_val
+            except:
+                # otherwise interpolate
+                f.interpolate(am_f)
+                max_am = f.max_val
             ainftym = max_am / min_a0
             assert isinstance(ainftym, float)
             return ainftym
