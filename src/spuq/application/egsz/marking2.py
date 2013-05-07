@@ -128,19 +128,18 @@ class Marking(object):
         coeff_min_val, coeff_max_grad = 1e10, 0.0
         suppLambda = supp(w.active_indices())
         if len(suppLambda) > 0:
-#            try:
-    #            a0_f = coeff_field.mean_func
-            print "suppLambda", suppLambda
-            for m in suppLambda:
-                coeff, _ = coeff_field[m]
-                print type(coeff), coeff
-                min_val, max_grad = abs(coeff.min_val), abs(coeff.max_grad)
-                coeff_min_val, coeff_max_grad = min(coeff_min_val, min_val), max(coeff_max_grad, max_grad)
-                print "\tm:", m, min_val, max_grad, coeff_min_val, coeff_max_grad
-            # determine (4.14) c_{a,\delta}
-            Cadelta = mesh_maxh * coeff_max_grad / coeff_min_val
-#            except:
-#                logger.error("coefficient does not provide max_val and max_grad. OSC refinement not supported for this case...")
+            try:
+#                 a0_f = coeff_field.mean_func
+#                print "suppLambda", suppLambda
+                for m in suppLambda:
+                    coeff, _ = coeff_field[m]
+                    min_val, max_grad = abs(coeff.min_val), abs(coeff.max_grad)
+                    coeff_min_val, coeff_max_grad = min(coeff_min_val, min_val), max(coeff_max_grad, max_grad)
+                    logger.debug("\tm:", m, min_val, max_grad, coeff_min_val, coeff_max_grad)
+                # determine (4.14) c_{a,\delta}
+                Cadelta = mesh_maxh * coeff_max_grad / coeff_min_val
+            except:
+                logger.error("coefficient does not provide max_val and max_grad. OSC refinement not supported for this case...")
         
             # determine maximal mesh size to resolve coefficient oscillations
             print mesh_maxh, Cadelta
