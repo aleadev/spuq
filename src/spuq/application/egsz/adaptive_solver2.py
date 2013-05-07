@@ -242,8 +242,8 @@ def AdaptiveSolver(A, coeff_field, pde,
             if do_refinement["OSC"]:
                 logger.info("REFINE OSC")
                 with timing(msg="Marking.refine_osc", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-OSC", stats=stats)):
-                    w, maxh = Marking.refine_osc(w, pde.coeff)
-                    logger.info("coefficient oscillations require maxh %i" % maxh)
+                    w, maxh = Marking.refine_osc(w, coeff_field)
+                    logger.info("coefficient oscillations require maxh %f with current mesh maxh %f" % (maxh, w.basis.basis.mesh.hmax()))
             else:
                 logger.info("SKIP oscillation refinement")
             

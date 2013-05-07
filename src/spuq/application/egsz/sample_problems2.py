@@ -4,6 +4,7 @@ from math import ceil
 from numpy.random import random, shuffle
 from scipy.special import zeta
 from collections import namedtuple
+import numpy as np
 
 from spuq.application.egsz.coefficient_field import ParametricCoefficientField
 from spuq.application.egsz.multi_vector import MultiVectorSharedBasis
@@ -29,16 +30,16 @@ class SampleProblem(object):
     NAVIER_LAME = "navier_lame"
     pde_types = [POISSON, NAVIER_LAME]
 
-    # Definitions for coefficient fields
+    # Definitions for coefficient fields, min/max values and max gradient in 1D and 2D
     func_defs = dict()
-    func_defs[("cos", 1)] = "A*B*cos(freq*pi*m*x[0])"
-    func_defs[("cos", 2)] = "A*B*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])"
-    func_defs[("sin", 1)] = "A*B*sin(freq*pi*(m+1)*x[0])"
-    func_defs[("sin", 2)] = "A*B*sin(freq*pi*(m+1)*x[0])*sin(freq*pi*(n+1)*x[1])"
-    func_defs[("monomials", 1)] = "A*B*pow(x[0],freq*m)"
-    func_defs[("monomials", 2)] = "A*B*pow(x[0],freq*m)*pow(x[1],freq*n)"
-    func_defs[("constant", 1)] = "A*B*1.0"
-    func_defs[("constant", 1)] = "1.0+A-A+B-B"
+    func_defs[("cos", 1)] = "A*B*cos(freq*pi*m*x[0])", "-A*B", "A*B", "A*B*m*freq*pi"
+    func_defs[("cos", 2)] = "A*B*cos(freq*pi*m*x[0])*cos(freq*pi*n*x[1])", "-A*B", "A*B", "A*B*freq*pi*(m+n)"
+    func_defs[("sin", 1)] = "A*B*sin(freq*pi*(m+1)*x[0])", "-A*B", "A*B", "A*B*(m+1)*freq*pi"
+    func_defs[("sin", 2)] = "A*B*sin(freq*pi*(m+1)*x[0])*sin(freq*pi*(n+1)*x[1])", "-A*B", "A*B", "A*B*freq*pi*(m+n+2)"
+    func_defs[("monomials", 1)] = "A*B*pow(x[0],freq*m)", None, None, None
+    func_defs[("monomials", 2)] = "A*B*pow(x[0],freq*m)*pow(x[1],freq*n)", None, None, None
+    func_defs[("constant", 1)] = "A*B*1.0", "A*B", "A*B", "0.0"
+    func_defs[("constant", 1)] = "1.0+A-A+B-B", "1.0", "1.0", "0.0"
     func_defs[("constant", 2)] = func_defs[("constant", 1)]
 
     old_coeff_types = dict()
@@ -48,7 +49,7 @@ class SampleProblem(object):
     old_coeff_types["linear"] = ("monomials", "constant")
     old_coeff_types["constant"] = ("constant", "constant")
 
-    # Defintions for right hand side functiosn
+    # Definitions for right hand side functions
     defaults = dict()
     defaults[(NAVIER_LAME, "rhs")] = "zero"
     defaults[(POISSON, "rhs")] = "constant"
@@ -193,20 +194,41 @@ class SampleProblem(object):
         logger.info("amp function: %s", str([ampfunc(i) for i in range(10)]))
         element = FiniteElement('Lagrange', ufl.triangle, 1)
         # NOTE: the explicit degree of the expression should influence the quadrature order during assembly
+        # TODO: this needs some serious thoughts!
         degree = 3
 
         mis = MultiindexSet.createCompleteOrderSet(dim)
         for i in range(freqskip + 1):
             mis.next()
 
-        a0 = Expression("B", element=element, B=scale)
+        def generate_expression(func, freq, A, B, m, n, degree, element):
+            func, min_val, max_val, max_grad = func
+            if n is None:
+                ex = Expression(func, freq=freq, A=A, B=B,
+                                    m=m, degree=degree, element=element)
+            else:
+                ex = Expression(func, freq=freqscale, A=A, B=B,
+                                    m=m, n=n, degree=degree, element=element)
+            try:            
+                for k, v in {"freq":freq, "A":A, "B":B, "m":m, "n":n, "pi":"np.pi"}.iteritems():
+                    v = str(v)
+                    min_val = min_val.replace(k, v)
+                    max_val = max_val.replace(k, v)
+                    max_grad = max_grad.replace(k, v)
+                ex.min_val = eval(min_val)
+                ex.max_val = eval(max_val)
+                ex.max_grad = eval(max_grad)
+            except:
+                logger.info("no min/max info available for coefficients")
+            return ex
+            
+        a0 = generate_expression(("B", "B", "B", "1.0"), freq=freqscale, A=1, B=scale, m=0, n=None, degree=0, element=element)
         if dim == 1:
-            a = (Expression(func, freq=freqscale, A=ampfunc(i), B=scale,
-                            m=int(mu[0]), degree=degree, element=element) for i, mu in enumerate(mis))
+            a = (generate_expression(func=func, freq=freqscale, A=ampfunc(i), B=scale,
+                            m=int(mu[0]), n=None, degree=degree, element=element) for i, mu in enumerate(mis))
         else:
-            a = (Expression(func, freq=freqscale, A=ampfunc(i), B=scale,
-                            m=int(mu[0]), n=int(mu[1]),
-                            degree=degree, element=element) for i, mu in enumerate(mis))
+            a = (generate_expression(func=func, freq=freqscale, A=ampfunc(i), B=scale,
+                            m=int(mu[0]), n=int(mu[1]), degree=degree, element=element) for i, mu in enumerate(mis))
 
         if secondparam is not None:
             from itertools import izip
