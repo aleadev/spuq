@@ -177,6 +177,7 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats["TIME-REFINE-RES"] = 0
         stats["TIME-MARK-TAIL"] = 0
         stats["TIME-REFINE-TAIL"] = 0
+        stats["TIME-REFINE-OSC"] = 0
         stats["MI"] = [mu for mu in w.active_indices()]
         stats["DIM"] = w.dim
         if refinement == 0 or start_iteration < refinement:

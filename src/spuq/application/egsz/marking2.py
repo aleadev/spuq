@@ -142,7 +142,7 @@ class Marking(object):
                 logger.error("coefficient does not provide max_val and max_grad. OSC refinement not supported for this case...")
         
             # determine maximal mesh size to resolve coefficient oscillations
-            print mesh_maxh, Cadelta
+            logger.debug("OSC marking maxh {0} and Cadelta {1}".format(mesh_maxh, Cadelta))
             maxh = a * mesh_maxh / Cadelta
             
             # create appropriate mesh by refinement and project current solution
