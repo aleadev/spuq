@@ -101,6 +101,7 @@ def run_MC(opts, conf):
         for _ in range(CONF_ref_mesh_refine):
             ref_mesh = refine(ref_mesh)
         ref_maxm = CONF_sampling_order if CONF_sampling_order > 0 else w.max_order + CONF_sampling_order_increase
+        stored_rv_samples = []
         for i, w in enumerate(w_history):
 #            if i == 0:
 #                continue
@@ -129,7 +130,7 @@ def run_MC(opts, conf):
             if MC_RUNS > 0:
                 logger.info("STARTING %s MC RUNS", MC_RUNS)
 #                L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
-                L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, ref_mesh, ref_maxm, MC_RUNS, MC_N, MC_HMAX)
+                L2err, H1err, L2err_a0, H1err_a0, N = sample_error_mc(w, pde, A, coeff_field, ref_mesh, ref_maxm, MC_RUNS, MC_N, MC_HMAX, stored_rv_samples)
                 # combine current and previous results
                 sim_stats[i]["MC-N"] = N + old_stats["MC-N"]
                 sim_stats[i]["MC-ERROR-L2"] = (L2err * N + old_stats["MC-ERROR-L2"]) / sim_stats[i]["MC-N"]

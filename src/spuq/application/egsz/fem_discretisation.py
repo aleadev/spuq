@@ -309,8 +309,11 @@ class FEMDiscretisationBase(FEMDiscretisation):
             bcs = self.create_dirichlet_bcs(V, self.uD, self.dirichlet_boundary)
 
         # assemble linear form
-        facet_function = self.weak_form.neumann_facet_function(self.neumann_boundary, self.g, V.mesh())
-        _, F = _assemble_system(a, L, bcs, facet_function)
+        if True:    # activate quick hack for system assembler
+            facet_function = self.weak_form.neumann_facet_function(self.neumann_boundary, self.g, V.mesh())
+            _, F = _assemble_system(a, L, bcs, facet_function)
+        else:
+            _, F = assemble_system(a, L, bcs)
         return F
 
     @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction), optional(bool))
@@ -436,4 +439,3 @@ class FEMNavierLame(FEMDiscretisationBase):
         super(FEMNavierLame, self).__init__(NavierLameWeakForm(), (mu, lmbda), f,
                                             dirichlet_boundary, uD,
                                             neumann_boundary, g)
-

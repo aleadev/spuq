@@ -98,6 +98,7 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
         A0 = cache.A
         A_m = cache.A_m
         b = cache.b
+        logger.debug("compute_direct_sample_solution: CACHE USED")
         print "CACHE USED"
     except AttributeError:
         with timing(msg="direct_sample_sol: compute A_0, b", logfunc=logger.info):
@@ -105,6 +106,7 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
             A0 = pde.assemble_lhs(basis=proj_basis, coeff=a, withDirichletBC=False)
             b = pde.assemble_rhs(basis=proj_basis, coeff=a, withDirichletBC=False)
             A_m = [None] * maxm
+            logger.debug("compute_direct_sample_solution: CACHE NOT USED")
             print "CACHE NOT USED"
         if cache is not None:
             cache.A = A0
