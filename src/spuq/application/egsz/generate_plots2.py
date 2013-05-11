@@ -586,7 +586,7 @@ if options.withMesh:
         figM = plt.figure()
         figM.suptitle("mesh P%i" % P)
         ax = figM.add_subplot(111, aspect='equal')
-        plt.axis('off')
+#        plt.axis('off')
         mesh = D["MESH"]
         verts = mesh.coordinates()
         cells = mesh.cells()
@@ -608,7 +608,7 @@ if options.withMesh:
                     xlist.append(verts[i][0])
                     ylist.append(verts[i][1])
                 plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
-    
+
         figM.savefig(os.path.join(options.experiment_dir, 'mesh-P%i.pdf' % P))
         figM.savefig(os.path.join(options.experiment_dir, 'mesh-P%i.png' % P))
 
