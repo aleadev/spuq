@@ -36,10 +36,14 @@ optparser.add_option('--showFigures', '--show-figures',
                      action='store_true', default=False, dest='showFigures',
                      help='show several figures')
 
-# optparser.add_option('--withMeshes', '--with-meshes',
-#                      action='store_true', default=False, dest='withMesh',
-#                      help='export meshes')
-# 
+optparser.add_option('--withMeshes', '--with-meshes',
+                      action='store_true', default=False, dest='withMesh',
+                      help='export meshes')
+
+optparser.add_option('--meshDofs', '--mesh-dofs',
+                     type='int', default=0, dest='meshDofs',
+                     help='export meshes that are just larger than given mesh dofs (if possible)')
+ 
 # optparser.add_option('--withSolution', '--with-solution',
 #                      action='store_true', default=False, dest='withSolution',
 #                      help='export sample parametric and direct solution')
@@ -104,10 +108,21 @@ for fname in glob(LOAD_STATS_FN):
             print "WARNING: No MC data found!"
         # ...from w_history
         D["NUM-Y"] = [len(supp(w.active_indices())) + 1 for w in w_history]
+        D["MESH-CELLS"] = [w.basis.basis.mesh.num_cells() for w in w_history]
         D["MESH-HMIN"] = [w.basis.basis.mesh.hmin() for w in w_history]
         D["MESH-HMAX"] = [w.basis.basis.mesh.hmax() for w in w_history]
         D["MESH-HMINinv"] = [1 / h ** 2 for h in D["MESH-HMIN"]]
         D["MESH-HMAXinv"] = [1 / h ** 2 for h in D["MESH-HMAX"]]
+        
+        # meshes
+        if options.withMesh:
+            if options.meshDofs > 0:
+                for i, dofs in enumerate(D["DOFS"]):
+                    if dofs >= options.meshDofs or i == len(D["DOFS"]) - 1:
+                        D["MESH"] = w_history[i].basis.basis.mesh
+                        break
+            else:
+                D["MESH"] = w_history[-1].basis.basis.mesh
         w_history = None
         # store data for plotting
         SIM_STATS[P] = D
@@ -176,14 +191,6 @@ if options.withFigures:
                 ax.loglog(X, D["EFFICIENCY"], '-.b>', label=LABELS[6], linewidth=1.5)
         plt.xlabel("overall degrees of freedom")
         plt.ylabel("energy error (number active multi-indices)")
-            
-#        t = np.arange(1, num_mi[-1] * 2, 1)
-#        ax2 = ax.twinx()
-#        ax.plot(x, num_mi, '--y+', label='active mi', linewidth=1.5)
-#        ax2.set_ylabel('number active multiindices')
-##        for tl in ax2.get_yticklabels():
-##            tl.set_color('b')
-
         plt.axhline(y=0)
         plt.axvline(x=0)
         ax.grid(True)
@@ -380,7 +387,7 @@ if options.withFigures:
             else:
                 LABELS = ["_nolegend_", "_nolegend_", "_nolegend_"]
             X = D["DOFS"]
-            ax.loglog(X, D["CELLS"], '--r+', label=LABELS[0], linewidth=1.5)
+            ax.loglog(X, D["MESH-CELLS"], '--r+', label=LABELS[0], linewidth=1.5)
             ax.loglog(X, D["MESH-HMINinv"], '-y<', label=LABELS[1], linewidth=1.5)
             ax.loglog(X, D["MESH-HMAXinv"], '-g>', label=LABELS[2], linewidth=1.5)
             plt.xlabel("overall degrees of freedom", fontsize=14)
@@ -402,7 +409,7 @@ if options.withFigures:
                 fig3p.suptitle("mesh sizes P%i" % P)
             ax = fig3p.add_subplot(111)
             X = D["DOFS"]
-            ax.loglog(X, D["CELLS"], '--r+', label=LABELS[0], linewidth=1.5)
+            ax.loglog(X, D["MESH-CELLS"], '--r+', label=LABELS[0], linewidth=1.5)
             ax.loglog(X, D["MESH-HMINinv"], '-y<', label=LABELS[1], linewidth=1.5)
             ax.loglog(X, D["MESH-HMAXinv"], '-g>', label=LABELS[2], linewidth=1.5)
             plt.xlabel("overall degrees of freedom", fontsize=14)
@@ -570,46 +577,40 @@ if options.withFigures:
         print "skipped plotting since matplotlib is not available..."
     
     
-# # ==================
-# # D Generate Meshes
-# # ==================
-# if options.withMesh:
-#     from matplotlib import collections
-#     print "generating meshes for iteration", itnr
-#     w = w_history[options.iteration_level]
-#     for mu in w.active_indices():
-#         print "\t", mu
-#         mustr = str(mu).replace(' ', '')
-#         mustr = mustr[mustr.find("[") + 1: mustr.find("]")]
-#         fig1 = plt.figure()
-# #        fig1.suptitle("mesh [%s] (iteration %i)" % (mustr, itnr))
-#         fig1.suptitle("mesh [%s]" % mustr)
-#         ax = fig1.add_subplot(111, aspect='equal')
-#         plt.axis('off')
-#         mesh = w[mu].mesh
-#         verts = mesh.coordinates()
-#         cells = mesh.cells()
-#         
-#         plot_method = 1
-#         if plot_method == 0:    # NOTE: this was proposed as a faster method - which in fact does not work properly!
-#             xlist, ylist = [], []
-#             for c in cells:
-#                 for i in c:
-#                     xlist.append(verts[i][0])
-#                     ylist.append(verts[i][1])
-#                 xlist.append(None)
-#                 ylist.append(None)
-#             plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
-#         elif plot_method == 1:
-#             for c in cells:
-#                 xlist, ylist = [], []
-#                 for i in c:
-#                     xlist.append(verts[i][0])
-#                     ylist.append(verts[i][1])
-#                 plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
-# 
-#         fig1.savefig(os.path.join(options.experiment_dir, 'mesh%i-%s.pdf' % (itnr, mustr)))
-#         fig1.savefig(os.path.join(options.experiment_dir, 'mesh%i-%s.png' % (itnr, mustr)))
+# ==================
+# D Generate Meshes
+# ==================
+if options.withMesh:
+    from matplotlib import collections
+    for P, D in SIM_STATS.iteritems():
+        figM = plt.figure()
+        figM.suptitle("mesh P%i" % P)
+        ax = figM.add_subplot(111, aspect='equal')
+        plt.axis('off')
+        mesh = D["MESH"]
+        verts = mesh.coordinates()
+        cells = mesh.cells()
+        
+        plot_method = 1
+        if plot_method == 0:    # NOTE: this was proposed as a faster method - which in fact does not work properly!
+            xlist, ylist = [], []
+            for c in cells:
+                for i in c:
+                    xlist.append(verts[i][0])
+                    ylist.append(verts[i][1])
+                xlist.append(None)
+                ylist.append(None)
+            plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
+        elif plot_method == 1:
+            for c in cells:
+                xlist, ylist = [], []
+                for i in c:
+                    xlist.append(verts[i][0])
+                    ylist.append(verts[i][1])
+                plt.fill(xlist, ylist, facecolor='none', alpha=1, edgecolor='b')
+    
+        figM.savefig(os.path.join(options.experiment_dir, 'mesh-P%i.pdf' % P))
+        figM.savefig(os.path.join(options.experiment_dir, 'mesh-P%i.png' % P))
 
 
 # ==================
