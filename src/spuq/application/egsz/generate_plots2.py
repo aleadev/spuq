@@ -1,5 +1,7 @@
 from __future__ import division
 
+from spuq.application.egsz.multi_vector import supp
+
 import optparse
 import numpy as np
 import os
@@ -8,6 +10,13 @@ from collections import defaultdict
 from operator import itemgetter
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import logging
+
+# suppress UFL/FFC warnings
+fenics_logger = logging.getLogger("FFC")
+fenics_logger.setLevel(logging.WARNING)
+fenics_logger = logging.getLogger("UFL")
+fenics_logger.setLevel(logging.WARNING)
 
 # ==================
 # A Parse Arguments
@@ -70,6 +79,12 @@ for fname in glob(LOAD_STATS_FN):
     with open(fname, 'rb') as fin:
         sim_stats = pickle.load(fin)
     print "sim_stats has %s iterations" % len(sim_stats)
+
+    fname_w = fname.replace("STATS", "SOLUTIONS").replace("SIM", "SFEM")
+    print "loading P{0} statistics from {1}".format(P, fname_w)
+    with open(fname_w, 'rb') as fin:
+        w_history = pickle.load(fin)
+    print "w_history has %s iterations" % len(w_history)
     
     # prepare data
     D = {}
@@ -87,6 +102,14 @@ for fname in glob(LOAD_STATS_FN):
         except:
             D["WITH-MC"] = False
             print "WARNING: No MC data found!"
+        # ...from w_history
+        D["NUM-Y"] = [len(supp(w.active_indices())) + 1 for w in w_history]
+        D["MESH-HMIN"] = [w.basis.basis.mesh.hmin() for w in w_history]
+        D["MESH-HMAX"] = [w.basis.basis.mesh.hmax() for w in w_history]
+        D["MESH-HMINinv"] = [1 / h ** 2 for h in D["MESH-HMIN"]]
+        D["MESH-HMAXinv"] = [1 / h ** 2 for h in D["MESH-HMAX"]]
+        w_history = None
+        # store data for plotting
         SIM_STATS[P] = D
     else:
         print "SKIPPING P{0} data since it is empty!".format(P)
@@ -289,12 +312,36 @@ if options.withFigures:
             ax.loglog(X, D["NUM-MI"], '--y+', label=LABELS[0], linewidth=1.5)
             plt.xlabel("overall degrees of freedom", fontsize=14)
             plt.ylabel("number active mi", fontsize=14)
-            leg = plt.legend(loc='lower left')
+            leg = plt.legend(loc='upper left')
             legtext = leg.get_texts()  # all the text.Text instance in the legend
             plt.setp(legtext, fontsize=12)    # the legend text fontsize
             ax.grid(True)
             fig2d.savefig(os.path.join(options.experiment_dir, 'fig2d-mi.pdf'))
             fig2d.savefig(os.path.join(options.experiment_dir, 'fig2d-mi.png'))
+
+        # ---------
+        # figure 2e
+        # ---------
+        fig2e = plt.figure()
+        if options.withTitles:
+            fig2e.suptitle("active multiindices/stochastic dimensions")
+        ax = fig2e.add_subplot(111)
+        for P, D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['active mi', 'active dim']
+            else:
+                LABELS = ["_nolegend_", "_nolegend_"]
+            X = D["DOFS"]
+            ax.loglog(X, D["NUM-MI"], '--y+', label=LABELS[0], linewidth=1.5)
+            ax.loglog(X, D["NUM-Y"], '-g>', label=LABELS[1], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("active mi/stochastic dim", fontsize=14)
+            leg = plt.legend(loc='upper left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig2e.savefig(os.path.join(options.experiment_dir, 'fig2e-mi.pdf'))
+            fig2e.savefig(os.path.join(options.experiment_dir, 'fig2e-mi.png'))
 
         # ---------
         # figure 2p
@@ -313,104 +360,62 @@ if options.withFigures:
                 ax.loglog(X, D["MC-ERROR-H1A"], '-b^', label=LABELS[3], linewidth=1.5)
             plt.xlabel("overall degrees of freedom", fontsize=14)
             plt.ylabel("energy error", fontsize=14)
-            leg = plt.legend(loc='lower left')
+            leg = plt.legend(loc='upper right')
             legtext = leg.get_texts()  # all the text.Text instance in the legend
             plt.setp(legtext, fontsize=12)    # the legend text fontsize
             ax.grid(True)
             fig2p.savefig(os.path.join(options.experiment_dir, 'fig2-estimator-P%i.pdf' % P))
             fig2p.savefig(os.path.join(options.experiment_dir, 'fig2-estimator-P%i.png' % P))
 
+        # --------
+        # figure 3
+        # --------
+        fig3 = plt.figure()
+        if options.withTitles:
+            fig3.suptitle("mesh sizes")
+        ax = fig3.add_subplot(111)
+        for P, D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['cells', '1/min{h}^2', '1/max{h}^2']
+            else:
+                LABELS = ["_nolegend_", "_nolegend_", "_nolegend_"]
+            X = D["DOFS"]
+            ax.loglog(X, D["CELLS"], '--r+', label=LABELS[0], linewidth=1.5)
+            ax.loglog(X, D["MESH-HMINinv"], '-y<', label=LABELS[1], linewidth=1.5)
+            ax.loglog(X, D["MESH-HMAXinv"], '-g>', label=LABELS[2], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("cells and 1/h^2", fontsize=14)
+            leg = plt.legend(loc='upper left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mesh.pdf'))
+            fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mesh.png'))
+
+        # ---------
+        # figure 3p
+        # ---------
+        LABELS = ['cells', '1/min{h}^2', '1/max{h}^2']
+        for P, D in SIM_STATS.iteritems():
+            fig3p = plt.figure()
+            if options.withTitles:
+                fig3p.suptitle("mesh sizes P%i" % P)
+            ax = fig3p.add_subplot(111)
+            X = D["DOFS"]
+            ax.loglog(X, D["CELLS"], '--r+', label=LABELS[0], linewidth=1.5)
+            ax.loglog(X, D["MESH-HMINinv"], '-y<', label=LABELS[1], linewidth=1.5)
+            ax.loglog(X, D["MESH-HMAXinv"], '-g>', label=LABELS[2], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("cells and 1/h^2", fontsize=14)
+            leg = plt.legend(loc='upper left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig3p.savefig(os.path.join(options.experiment_dir, 'fig3-mesh-P%i.pdf' % P))
+            fig3p.savefig(os.path.join(options.experiment_dir, 'fig3-mesh-P%i.png' % P))
+
 
         if False:                
-            # --------
-            # figure 3
-            # --------
-            max_plot_mu = 6
-            fig3 = plt.figure()
-            if options.withTitles:
-                fig3.suptitle("residual contributions of multi-indices")
-            ax = fig3.add_subplot(111)
-            reserrmu = sorted(reserrmu.iteritems(), key=itemgetter(1), reverse=True)
-            for i, muv in enumerate(reserrmu):
-                if i < max_plot_mu:
-                    mu, v = muv
-                    ms = str(mu)
-                    ms = ms[ms.find('=') + 1:-1]
-                    
-            if len(v) > 1:
-                        ax.loglog(x[-len(v):], v, '-g<', label=ms)
-            plt.xlabel("overall degrees of freedom")
-            plt.ylabel("energy error")
-            leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
-            ltext = leg.get_texts()  # all the text.Text instance in the legend
-            plt.setp(ltext, fontsize='small')    # the legend text fontsize
-            ax.grid(True)
-            fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mi-residual.pdf'))
-            fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mi-residual.png'))
-        
-            # --------
-            # figure 3b
-            # --------
-            fig3b = plt.figure()
-            fig3b.suptitle("tail contributions")
-            ax = fig3b.add_subplot(111)
-            projerrmu = sorted(projerrmu.iteritems(), key=itemgetter(1), reverse=True)
-            for i, muv in enumerate(projerrmu):
-                mu, v = muv
-                if max(v) > 1e-10 and i < max_plot_mu:
-                    ms = str(mu)
-                    ms = ms[ms.find('=') + 1:-1]
-                    _v = map(lambda v: v if v > 1e-10 else 0, v)
-                    ax.loglog(x[-len(v):], _v, '-g<', label=ms)
-            plt.xlabel("overall degrees of freedom")
-            plt.ylabel("energy error")
-            try:
-                leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
-                ltext = leg.get_texts()  # all the text.Text instance in the legend
-                plt.setp(ltext, fontsize='small')    # the legend text fontsize
-                ax.grid(True)
-                fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.pdf'))
-                fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mi-projection.png'))
-                has_projection = True
-            except:
-                has_projection = False
-        
-            # --------
-            # figure 3c
-            # --------
-            if options.iteration_level > 0:
-                fig3c = plt.figure()
-                fig3c.suptitle("multi-index activation and refinement (iteration %i)" % itnr)
-                ax = fig3c.add_subplot(111)
-                w = w_history[options.iteration_level]
-                mudim = sorted([(mu, w[mu].dim) for mu in w.active_indices()], key=itemgetter(1), reverse=True)
-            
-                for i, muv in enumerate(mudim):
-                    mu, v = muv
-                    if i < max_plot_mu:
-                        ms = str(mu)
-                        ms = ms[ms.find('=') + 1:-1]
-                    
-                        d, idx = [], itnr
-                        while idx >= 0:
-                            try:
-                                d.append(w_history[idx][mu].dim)
-                                idx -= 1
-                            except:
-                                break
-                        d = d[::-1]
-    
-                        itoff = itnr - len(d) + 1
-                        if len(d) > 0:
-                                ax.plot(range(itoff, itoff + len(d)), d, '-g<', label=ms)
-                plt.xlabel("iteration")
-                plt.ylabel("degrees of freedom")
-                leg = plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.0))
-                legtext = leg.get_texts()  # all the text.Text instance in the legend
-                plt.setp(legtext, fontsize='small')    # the legend text fontsize
-                ax.grid(True)
-                fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.pdf'))
-                fig3c.savefig(os.path.join(options.experiment_dir, 'fig3c-mi-activation.png'))
         
             # --------
             # figure 3d
@@ -447,26 +452,6 @@ if options.withFigures:
             ax.grid(True)
             fig3d.savefig(os.path.join(options.experiment_dir, 'fig3d-mi-activation-final.pdf'))
             fig3d.savefig(os.path.join(options.experiment_dir, 'fig3d-mi-activation-final.png'))
-    
-            # --------
-            # figure 4
-            # --------
-            if has_projection:
-                fig4 = plt.figure()
-                if options.withTitles:
-                    fig4.suptitle("projection $\zeta$")
-                ax = fig4.add_subplot(111)
-                _pmz = map(lambda v: v if v > 1e-10 else 0, proj_max_zeta)
-                ax.loglog(x[1:], _pmz[1:], '-g<', label='max $\zeta$')
-                ax.loglog(x[1:], proj_max_inactive_zeta[1:], '-b^', label='max inactive $\zeta$')
-                plt.xlabel("overall degrees of freedom")
-                plt.ylabel("energy error")
-                leg = plt.legend(loc='upper right')
-                ltext = leg.get_texts()  # all the text.Text instance in the legend
-                plt.setp(ltext, fontsize='small')    # the legend text fontsize
-                ax.grid(True)
-                fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.pdf'))
-                fig4.savefig(os.path.join(options.experiment_dir, 'fig4-projection-zeta.png'))
         
             # --------
             # figure 5
