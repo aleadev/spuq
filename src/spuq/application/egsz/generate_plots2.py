@@ -351,6 +351,33 @@ if options.withFigures:
             fig2e.savefig(os.path.join(options.experiment_dir, 'fig2e-mi.png'))
 
         # ---------
+        # figure 2f
+        # ---------
+        try:
+            fig2f = plt.figure()
+            if options.withTitles:
+                fig2f.suptitle("active multiindices and C_{a,\delta}")
+            ax = fig2f.add_subplot(111)
+            for P, D in SIM_STATS.iteritems():
+                if P == SIM_STATS.keys()[0]:
+                    LABELS = ['active mi', 'C_{a,\delta}']
+                else:
+                    LABELS = ["_nolegend_", "_nolegend_"]
+                X = D["DOFS"]
+                ax.loglog(X, D["NUM-MI"], '--y+', label=LABELS[0], linewidth=1.5)
+                ax.loglog(X, D["CADELTA"], '-g>', label=LABELS[1], linewidth=1.5)
+                plt.xlabel("overall degrees of freedom", fontsize=14)
+                plt.ylabel("active mi/C_{a,\delta}", fontsize=14)
+                leg = plt.legend(loc='upper left')
+                legtext = leg.get_texts()  # all the text.Text instance in the legend
+                plt.setp(legtext, fontsize=12)    # the legend text fontsize
+                ax.grid(True)
+                fig2f.savefig(os.path.join(options.experiment_dir, 'fig2f-mi.pdf'))
+                fig2f.savefig(os.path.join(options.experiment_dir, 'fig2f-mi.png'))
+        except:
+            pass
+
+        # ---------
         # figure 2p
         # ---------
         LABELS = ['estimator', 'residual', 'tail', 'MC H1A']
@@ -374,13 +401,13 @@ if options.withFigures:
             fig2p.savefig(os.path.join(options.experiment_dir, 'fig2-estimator-P%i.pdf' % P))
             fig2p.savefig(os.path.join(options.experiment_dir, 'fig2-estimator-P%i.png' % P))
 
-        # --------
-        # figure 3
-        # --------
-        fig3 = plt.figure()
+        # ---------
+        # figure 3a
+        # ---------
+        fig3a = plt.figure()
         if options.withTitles:
-            fig3.suptitle("mesh sizes")
-        ax = fig3.add_subplot(111)
+            fig3a.suptitle("mesh sizes")
+        ax = fig3a.add_subplot(111)
         for P, D in SIM_STATS.iteritems():
             if P == SIM_STATS.keys()[0]:
                 LABELS = ['cells', '1/min{h}^2', '1/max{h}^2']
@@ -396,8 +423,31 @@ if options.withFigures:
             legtext = leg.get_texts()  # all the text.Text instance in the legend
             plt.setp(legtext, fontsize=12)    # the legend text fontsize
             ax.grid(True)
-            fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mesh.pdf'))
-            fig3.savefig(os.path.join(options.experiment_dir, 'fig3-mesh.png'))
+            fig3a.savefig(os.path.join(options.experiment_dir, 'fig3a-mesh.pdf'))
+            fig3a.savefig(os.path.join(options.experiment_dir, 'fig3a-mesh.png'))
+
+        # ---------
+        # figure 3b
+        # ---------
+        fig3b = plt.figure()
+        if options.withTitles:
+            fig3b.suptitle("mesh sizes")
+        ax = fig3b.add_subplot(111)
+        for P, D in SIM_STATS.iteritems():
+            if P == SIM_STATS.keys()[0]:
+                LABELS = ['cells']
+            else:
+                LABELS = ["_nolegend_"]
+            X = D["DOFS"]
+            ax.loglog(X, D["MESH-CELLS"], '--r+', label=LABELS[0], linewidth=1.5)
+            plt.xlabel("overall degrees of freedom", fontsize=14)
+            plt.ylabel("cells", fontsize=14)
+            leg = plt.legend(loc='upper left')
+            legtext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(legtext, fontsize=12)    # the legend text fontsize
+            ax.grid(True)
+            fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mesh.pdf'))
+            fig3b.savefig(os.path.join(options.experiment_dir, 'fig3b-mesh.png'))
 
         # ---------
         # figure 3p

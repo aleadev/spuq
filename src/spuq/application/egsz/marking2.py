@@ -148,7 +148,7 @@ class Marking(object):
             
             # create appropriate mesh by refinement and project current solution
             new_w = w.refine_maxh(maxh)
-            return new_w, maxh
+            return new_w, maxh, Cadelta
         else:
             logger.info("SKIP OSC refinement since only active mi is deterministic.")
-            return w, 1.0
+            return w, 1.0, Cadelta

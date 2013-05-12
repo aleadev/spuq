@@ -174,6 +174,8 @@ def AdaptiveSolver(A, coeff_field, pde,
         stats["ERROR-TAIL"] = global_zeta
         stats["MARKING-RES"] = 0
         stats["MARKING-MI"] = 0
+#        stats["MARKING-OSC"] = 0
+        stats["CADELTA"] = 0
         stats["TIME-MARK-RES"] = 0
         stats["TIME-REFINE-RES"] = 0
         stats["TIME-MARK-TAIL"] = 0
@@ -244,8 +246,9 @@ def AdaptiveSolver(A, coeff_field, pde,
             if do_refinement["OSC"]:
                 logger.info("REFINE OSC")
                 with timing(msg="Marking.refine_osc", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-REFINE-OSC", stats=stats)):
-                    w, maxh = Marking.refine_osc(w, coeff_field, refine_osc_factor)
-                    logger.info("coefficient oscillations require maxh %f with current mesh maxh %f" % (maxh, w.basis.basis.mesh.hmax()))
+                    w, maxh, Cadelta = Marking.refine_osc(w, coeff_field, refine_osc_factor)
+                    logger.info("coefficient oscillations require maxh %f with current mesh maxh %f and Cadelta %f" % (maxh, w.basis.basis.mesh.hmax(), Cadelta))
+                    stats["CADELTA"] = Cadelta
             else:
                 logger.info("SKIP oscillation refinement")
             
