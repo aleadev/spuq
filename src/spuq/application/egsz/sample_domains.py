@@ -1,4 +1,4 @@
-from dolfin import Mesh, UnitSquareMesh, UnitInterval, compile_subdomains
+from dolfin import Mesh, UnitSquareMesh, UnitInterval, compile_subdomains, DomainBoundary
 import os
 import numpy as np
 
@@ -18,7 +18,7 @@ class SampleDomain(object):
                                           'near(x[0], 1.) && on_boundary'])
         left.minx = minx
         right.maxx = maxx
-        return mesh0, {'left':left, 'right':right}, 1
+        return mesh0, {'left':left, 'right':right, 'all': DomainBoundary()}, 1
     
     @classmethod
     def _lshape(cls, **kwargs):
@@ -33,7 +33,7 @@ class SampleDomain(object):
         top.maxy = maxy
         bottom.miny = miny
         left.minx = minx
-        return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right}, 2
+        return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right, 'all': DomainBoundary()}, 2
 
     @classmethod
     def _square(cls, **kwargs):
@@ -49,7 +49,7 @@ class SampleDomain(object):
         bottom.miny = miny
         left.minx = minx
         right.maxx = maxx
-        return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right}, 2
+        return mesh0, {'top':top, 'bottom':bottom, 'left':left, 'right':right, 'all': DomainBoundary()}, 2
 
     @classmethod
     def _cooks(cls, **kwargs):
@@ -84,4 +84,4 @@ class SampleDomain(object):
         bottom.maxx = maxx
         left.minx = minx
         right.maxx = maxx
-        return mesh, {'top':top, 'bottom':bottom, 'left':left, 'right':right, 'llc':llc, 'lrc':lrc, 'tlc':tlc, 'trc':trc}, 2
+        return mesh, {'top':top, 'bottom':bottom, 'left':left, 'right':right, 'llc':llc, 'lrc':lrc, 'tlc':tlc, 'trc':trc, 'all': DomainBoundary()}, 2

@@ -95,17 +95,18 @@ class SampleProblem(object):
 
     boundary_defs[(POISSON, "dirichlet_zero_left")] = [BoundaryDef(type=DIRICHLET, where=LEFT, func=Constant(0.0))]
     boundary_defs[(POISSON, 0)] = boundary_defs[(POISSON, "dirichlet_zero_left")]
+
     boundary_defs[(POISSON, "dirichlet_inhomogeneous")] = [BoundaryDef(type=DIRICHLET, where=LEFT, func=Constant(0.0)),
                                                            BoundaryDef(type=DIRICHLET, where=RIGHT, func=Constant(1.0))]
     boundary_defs[(POISSON, 1)] = boundary_defs[(POISSON, "dirichlet_inhomogeneous")]
-    boundary_defs[(POISSON, "dirichlet_zero_all")] = [BoundaryDef(type=DIRICHLET, where=LEFT, func=Constant(0.0)),
-                                                      BoundaryDef(type=DIRICHLET, where=RIGHT, func=Constant(0.0)),
-                                                      BoundaryDef(type=DIRICHLET, where=TOP, func=Constant(0.0)),
-                                                      BoundaryDef(type=DIRICHLET, where=BOTTOM, func=Constant(0.0))]
+
+    boundary_defs[(POISSON, "dirichlet_zero_all")] = [BoundaryDef(type=DIRICHLET, where="all", func=Constant(0.0))]
     boundary_defs[(POISSON, 2)] = boundary_defs[(POISSON, "dirichlet_zero_all")]
+
     boundary_defs[(POISSON, "dirichlet_neumann1")] = [BoundaryDef(type=DIRICHLET, where=LEFT, func=Constant(0.0)),
                                                       BoundaryDef(type=NEUMANN, where=RIGHT, func=Constant(1.0))]
     boundary_defs[(POISSON, 3)] = boundary_defs[(POISSON, "dirichlet_neumann1")]
+
     boundary_defs[(POISSON, "dirichlet_neumann2")] = [BoundaryDef(type=DIRICHLET, where=TOP, func=Constant(1.0)),
                                                       BoundaryDef(type=NEUMANN, where=RIGHT, func=Constant(1.0))]
     boundary_defs[(POISSON, 4)] = boundary_defs[(POISSON, "dirichlet_neumann2")]

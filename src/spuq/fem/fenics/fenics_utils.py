@@ -6,7 +6,6 @@ from dolfin import (FunctionSpace, Expression, dx, inner,
                     assemble, Constant, DirichletBC, refine,
                     Function, norm, Mesh, CellFunction, cells,
                     GenericMatrix, GenericVector)
-from dolfin.cpp import BoundaryCondition
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 
@@ -45,7 +44,7 @@ def poisson_bilinear_form(coeff_func, V):
     return a
 
 
-@takes(anything, (BoundaryCondition, NoneType, object), optional(FunctionSpace))
+@takes(anything, (DirichletBC, NoneType, object), optional(FunctionSpace))
 def apply_bc(fenics_obj, bc=DEFAULT_BC, V=None):
     if bc is not None:
         if bc is DEFAULT_BC:
@@ -56,9 +55,9 @@ def apply_bc(fenics_obj, bc=DEFAULT_BC, V=None):
     return fenics_obj
 
 
-@takes(GenericMatrix, (BoundaryCondition, sequence_of(BoundaryCondition)))
+@takes(GenericMatrix, (DirichletBC, sequence_of(DirichletBC)))
 def _remove_boundary_entries(A, bcs):
-    if not isinstance(bcs, BoundaryCondition):
+    if not isinstance(bcs, DirichletBC):
         for bc in bcs:
             remove_boundary_entries(A, bc)
     else:
@@ -74,7 +73,7 @@ def _remove_boundary_entries(A, bcs):
         A.apply("insert")
 
 
-@takes(GenericMatrix, (BoundaryCondition, sequence_of(BoundaryCondition)))
+@takes(GenericMatrix, (DirichletBC, sequence_of(DirichletBC)))
 def get_dirichlet_mask(A, bcs):
     import collections
     if not isinstance(bcs, collections.Iterable):
@@ -86,9 +85,9 @@ def get_dirichlet_mask(A, bcs):
     return mask
 
 
-@takes(GenericVector, (BoundaryCondition, sequence_of(BoundaryCondition)), bool)
+@takes(GenericVector, (DirichletBC, sequence_of(DirichletBC)), bool)
 def set_dirichlet_bc_entries(u, bcs, homogeneous):
-    if not isinstance(bcs, BoundaryCondition):
+    if not isinstance(bcs, DirichletBC):
         for bc in bcs:
             set_dirichlet_bc_entries(u, bc, homogeneous)
     else:
@@ -101,7 +100,7 @@ def set_dirichlet_bc_entries(u, bcs, homogeneous):
             u[dofs] = np.array(vals)
 
 
-@takes((Expression, Function), FunctionSpace, (BoundaryCondition, NoneType, object))
+@takes((Expression, Function), FunctionSpace, (DirichletBC, NoneType, object))
 def assemble_poisson_matrix(coeff_func, V, bc=DEFAULT_BC):
     a = poisson_bilinear_form(coeff_func, V)
     A = assemble(a)
@@ -122,14 +121,14 @@ def assemble_l2_gramian_matrix(V):
     return assemble(b)
 
 
-@takes((Expression, Function), FunctionSpace, (BoundaryCondition, NoneType, object))
+@takes((Expression, Function), FunctionSpace, (DirichletBC, NoneType, object))
 def rhs_linear_form(coeff_func, V):
     v = TestFunction(V)
     L = coeff_func * v * dx
     return L
 
 
-@takes((Expression, Function), FunctionSpace, (BoundaryCondition, NoneType, object))
+@takes((Expression, Function), FunctionSpace, (DirichletBC, NoneType, object))
 def assemble_rhs(coeff_func, V, bc=DEFAULT_BC):
     L = rhs_linear_form(coeff_func, V)
     b = apply_bc(L, bc)

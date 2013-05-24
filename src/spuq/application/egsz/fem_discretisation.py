@@ -59,22 +59,27 @@ def get_default(x, default_x):
 # FEniCS Hacks
 ###################################################
 
-def _assemble_system(a, L, bcs, facet_function):
-    # Mean hack to work around a bug in the FEniCS assemble_system
-    # function that doesn't treat the exterior facet domains correctly
-    # (Note: we assemble twice to get the right type and size of the
-    # matrix A and vector b. This is pretty inefficient, but remember:
-    # it's a hack that should be obsolete when the FEniCS guys have
-    # their code fixed)
-    A = dolfin.assemble(a)
-    b = dolfin.assemble(L)
-    a = dolfin.fem.Form(a, subdomains={'exterior_facet': facet_function})
-    L = dolfin.fem.Form(L, subdomains={'exterior_facet': facet_function})
-    # somehow the SystemAssembler seems to work in contrast to
-    # assemble_system
-    sa = dolfin.SystemAssembler()
-    sa.assemble(A, b, a, L, bcs)
-    return A, b
+NEEDS_HACK=False
+if NEEDS_HACK:
+    def _assemble_system(a, L, bcs, facet_function):
+        # Mean hack to work around a bug in the FEniCS assemble_system
+        # function that doesn't treat the exterior facet domains correctly
+        # (Note: we assemble twice to get the right type and size of the
+        # matrix A and vector b. This is pretty inefficient, but remember:
+        # it's a hack that should be obsolete when the FEniCS guys have
+        # their code fixed)
+        A = dolfin.assemble(a)
+        b = dolfin.assemble(L)
+        a = dolfin.fem.Form(a, subdomains={'exterior_facet': facet_function})
+        L = dolfin.fem.Form(L, subdomains={'exterior_facet': facet_function})
+        # somehow the SystemAssembler seems to work in contrast to
+        # assemble_system
+        sa = dolfin.SystemAssembler()
+        sa.assemble(A, b, a, L, bcs)
+        return A, b
+else:
+    def _assemble_system(a, L, bcs, facet_function):
+        return assemble_system(a, L, bcs, exterior_facet_domains=facet_function)
 
 ###################################################
 # Weak Forms
