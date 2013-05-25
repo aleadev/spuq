@@ -431,7 +431,7 @@ if options.withFigures:
         # ---------
         fig3b = plt.figure()
         if options.withTitles:
-            fig3b.suptitle("mesh sizes")
+            fig3b.suptitle("mesh cells")
         ax = fig3b.add_subplot(111)
         for P, D in SIM_STATS.iteritems():
             if P == SIM_STATS.keys()[0]:

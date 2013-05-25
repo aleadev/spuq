@@ -89,9 +89,11 @@ if options.withFigures and len(sim_stats) > 1:
             proj_inactive_zeta_all = []
             for i in range(len(sim_stats)):
                 try:
-                        proj_inactive_zeta_all.append(sum(sim_stats[-(i + 1)]["PROJ-INACTIVE-ZETA"].values()))
+#                        proj_inactive_zeta_all.append(sum(sim_stats[-(i + 1)]["PROJ-INACTIVE-ZETA"].values()))
+                        proj_inactive_zeta_all.append(sqrt(sum(map(lambda x:x ** 2, sim_stats[-(i + 1)]["PROJ-INACTIVE-ZETA"].values()))))
                 except:
                     pass
+            proj_inactive_zeta_all = proj_inactive_zeta[::-1]
         except:
             proj_inactive_zeta = None
             proj_inactive_zeta_all = None
@@ -112,12 +114,16 @@ if options.withFigures and len(sim_stats) > 1:
     	except:
     	    marking_res = None
     	    marking_proj = None
-        time_pcg = [s["TIME-PCG"] for s in sim_stats]
-        time_estimator = [s["TIME-ESTIMATOR"] for s in sim_stats]
-        time_residual = [s["TIME-RESIDUAL"] for s in sim_stats]
-        time_projection = [s["TIME-PROJECTION"] for s in sim_stats]
-        time_inactive_mi = [s["TIME-INACTIVE-MI"] for s in sim_stats]
-        time_marking = [s["TIME-MARKING"] for s in sim_stats]
+        try:
+            time_pcg = [s["TIME-PCG"] for s in sim_stats]
+            time_estimator = [s["TIME-ESTIMATOR"] for s in sim_stats]
+            time_residual = [s["TIME-RESIDUAL"] for s in sim_stats]
+            time_projection = [s["TIME-PROJECTION"] for s in sim_stats]
+            time_inactive_mi = [s["TIME-INACTIVE-MI"] for s in sim_stats]
+            time_marking = [s["TIME-MARKING"] for s in sim_stats]
+            with_timings = True
+        except:
+            with_timings = False
         reserrmu = defaultdict(list)
         for rem in _reserrmu:
             for mu, v in rem:
@@ -384,25 +390,26 @@ if options.withFigures and len(sim_stats) > 1:
         # --------
         # figure 5
         # --------
-        fig5 = plt.figure()
-        if options.withTitles:
-            fig5.suptitle("timings")
+        if with_timings:
+            fig5 = plt.figure()
+            if options.withTitles:
+                fig5.suptitle("timings")
 #        ax = fig5.add_subplot(111, aspect='equal')
-        ax = fig5.add_subplot(111)
-        ax.loglog(x, time_pcg, '--g<', label='pcg')
-        ax.loglog(x, time_estimator, '-b^', label='estimator overall')
-        ax.loglog(x, time_projection, '--kd', label='projection')
-        ax.loglog(x, time_residual, '--ms', label='residual')
-        ax.loglog(x, time_inactive_mi, '--c+', label='inactive_mi')
-        ax.loglog(x, time_marking, '-ro', label='marking')
-        plt.xlabel("overall degrees of freedom")
-        plt.ylabel("time in seconds")
-        leg = plt.legend(loc='lower right')
-        ltext = leg.get_texts()  # all the text.Text instance in the legend
-        plt.setp(ltext, fontsize='small')    # the legend text fontsize
-        ax.grid(True)
-        fig5.savefig(os.path.join(options.experiment_dir, 'fig5-timings.pdf'))
-        fig5.savefig(os.path.join(options.experiment_dir, 'fig5-timings.png'))
+            ax = fig5.add_subplot(111)
+            ax.loglog(x, time_pcg, '--g<', label='pcg')
+            ax.loglog(x, time_estimator, '-b^', label='estimator overall')
+            ax.loglog(x, time_projection, '--kd', label='projection')
+            ax.loglog(x, time_residual, '--ms', label='residual')
+            ax.loglog(x, time_inactive_mi, '--c+', label='inactive_mi')
+            ax.loglog(x, time_marking, '-ro', label='marking')
+            plt.xlabel("overall degrees of freedom")
+            plt.ylabel("time in seconds")
+            leg = plt.legend(loc='lower right')
+            ltext = leg.get_texts()  # all the text.Text instance in the legend
+            plt.setp(ltext, fontsize='small')    # the legend text fontsize
+            ax.grid(True)
+            fig5.savefig(os.path.join(options.experiment_dir, 'fig5-timings.pdf'))
+            fig5.savefig(os.path.join(options.experiment_dir, 'fig5-timings.png'))
         
         # --------
         # figure 6
@@ -530,7 +537,8 @@ if options.withFigures and len(sim_stats) > 1:
         pp.savefig(fig3d)
     	if has_projection:
 	        pp.savefig(fig4)
-        pp.savefig(fig5)
+        if with_timings:
+            pp.savefig(fig5)
     	if has_projection:
 	        pp.savefig(fig6)
 	        pp.savefig(fig7)
