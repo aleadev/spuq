@@ -72,7 +72,7 @@ for fname in glob(LOAD_STATS_FN):
     else:
         print "SKIPPING P{0} data since it is empty!".format(P)
 
-    # export data
+    # export all data
     with file(os.path.join(options.experiment_dir, 'SIMDATA-export.txt'), 'w') as f:
         for P, D in SIM_STATS.iteritems():
             f.write("==== P{0} ====\n".format(P))
@@ -97,3 +97,25 @@ for fname in glob(LOAD_STATS_FN):
 #                    f.write("\nMC-ERROR-L2\n" + str(D["MC-ERROR-L2"]))
 #                    f.write("\nEFFICIENCY\n" + str(D["EFFICIENCY"]))
                 f.write("\n\n")
+
+    # export data for TeX plotting
+    for P, D in SIM_STATS.iteritems():
+        print "==== exporting P{0} ====".format(P)
+        with file(os.path.join(options.experiment_dir, 'SIMDATA-P%i.dat' % P), 'w') as f:
+            mcstr = "\terror" if D["WITH-MC"] else ""
+            f.write("dofs\terres%st\tefficiency\tmi\n" % mcstr)
+            for i, d in enumerate(D["DOFS"]):
+                f.write(str(d) + "\t")
+                if options.singleP:
+                    f.write("\nERROR-EST\n" + str(D["EST"]))
+                    f.write("\nNUM-MI\n" + str(D["NUM-MI"]))
+                    if D["WITH-MC"]:
+                        f.write("\nMC-ERROR-H1A\n" + str(D["MC-H1ERR"]))
+                        f.write("\nEFFICIENCY\n" + str(D["EFFICIENCY"]))
+                else:
+                    f.write("\nERROR-EST\n" + str(D["ERROR-EST"]))
+                    f.write("\nNUM-MI\n" + str(D["NUM-MI"]))
+                    if D["WITH-MC"]:
+                        f.write("\nMC-ERROR-H1A\n" + str(D["MC-ERROR-H1A"]))
+                        f.write("\nEFFICIENCY\n" + str(D["EFFICIENCY"]))
+                    f.write("\n\n")
