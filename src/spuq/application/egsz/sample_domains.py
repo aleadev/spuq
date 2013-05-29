@@ -29,7 +29,7 @@ class SampleDomain(object):
         top, bottom, left, right = compile_subdomains([  'near(x[1], 1.) && on_boundary',
                                                          'near(x[1], -1.) && on_boundary',
                                                          'near(x[0], -1.) && on_boundary',
-                                                         'x[0]>=0. && x[1]<1. && x[1]>=-1. && on_boundary'])
+                                                         'x[0]>=0. && x[1]<=1. && x[1]>=-1. && on_boundary'])
         top.maxy = maxy
         bottom.miny = miny
         left.minx = minx
@@ -63,11 +63,11 @@ class SampleDomain(object):
         llc, lrc, tlc, trc = compile_subdomains(['near(x[0], 0.) && near(x[1], 0.)',
                                                          'near(x[0], 48.) && near(x[1], 0.)',
                                                          'near(x[0], 0.) && near(x[1], 60.)',
-                                                         'near(x[0], 48.) && near(x[1], 60.)'])    
-        top, bottom, left, right = compile_subdomains([  'x[0] > 0. && x[0] < 48. && x[1] >= 44. && on_boundary',
-                                                         'x[0] > 0. && x[0] < 48. && x[1] <= 44. && on_boundary',
+                                                         'near(x[0], 48.) && near(x[1], 60.)'])
+        top, bottom, left, right = compile_subdomains([  'x[0] >= 0. && x[0] <= 48. && x[1] >= 44. && on_boundary',
+                                                         'x[0] >= 0. && x[0] <= 48. && x[1] <= 44. && on_boundary',
                                                          'near(x[0], 0.) && on_boundary',
-                                                         'near(x[0], 48.) && on_boundary'])    
+                                                         'near(x[0], 48.) && on_boundary'])
         # the corners
         llc.minx = minx
         llc.miny = miny
