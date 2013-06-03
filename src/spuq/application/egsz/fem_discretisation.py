@@ -403,7 +403,7 @@ class FEMDiscretisationBase(FEMDiscretisation):
             g, ds = self.weak_form.neumann_form_list(boundaries, g, mesh)
             for j, gj in enumerate(g):
                 Nbres = gj - a * dot(self.weak_form.flux(v, coeff), nu)
-                form.append((inner(Nbres, Nbres), ds(j)))
+                form.append((Nbres, ds(j)))
         return form
 
     @property
