@@ -2,6 +2,7 @@
 from dolfin import (TrialFunction, TestFunction, FunctionSpace, VectorFunctionSpace, Identity, Measure, FacetFunction,
                     dot, nabla_grad, div, tr, sym, inner, assemble, dx, Constant, DirichletBC, assemble_system, cells)
 import dolfin
+import ufl.expr
 
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.fem.fenics.fenics_vector import FEniCSVector
@@ -16,7 +17,7 @@ from abc import ABCMeta, abstractmethod
 
 default_Dirichlet_boundary = lambda x, on_boundary: on_boundary
 
-CoefficientFunction = (dolfin.Expression, dolfin.GenericFunction, tuple_of((dolfin.Expression, dolfin.GenericFunction, float, int)))
+CoefficientFunction = (dolfin.Expression, dolfin.GenericFunction, ufl.expr.Expr, tuple_of((dolfin.Expression, dolfin.GenericFunction, ufl.expr.Expr, float, int)))
 FormFunction = (dolfin.Argument, dolfin.Function)
 LoadingFunction = (dolfin.Coefficient)
 BoundaryType = (anything)

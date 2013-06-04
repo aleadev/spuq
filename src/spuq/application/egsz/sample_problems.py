@@ -107,6 +107,10 @@ class SampleProblem(object):
     boundary_defs[(POISSON, "dirichlet_neumann2")] = [BoundaryDef(type=DIRICHLET, where=TOP, func=Constant(1.0)),
                                                       BoundaryDef(type=NEUMANN, where=RIGHT, func=Constant(1.0))]
     boundary_defs[(POISSON, 4)] = boundary_defs[(POISSON, "dirichlet_neumann2")]
+    boundary_defs[(POISSON, "dirichlet_neumann_sin")] = [BoundaryDef(type=DIRICHLET, where=LEFT, func=Constant(0.0)),
+                                                         BoundaryDef(type=NEUMANN, where=BOTTOM, func=Expression("A*sin(f*(x[0]-x0))", A=10, f=3.141*3, x0=0)),
+                                                         BoundaryDef(type=NEUMANN, where=RIGHT, func=Constant(0.0))]
+    boundary_defs[(POISSON, 5)] = boundary_defs[(POISSON, "dirichlet_neumann_sin")]
 
     # definitions for random variables
     UNIFORM = "uniform"

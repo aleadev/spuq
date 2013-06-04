@@ -131,6 +131,18 @@ def compute_direct_sample_solution(pde, RV_samples, coeff_field, A, maxm, proj_b
     return FEniCSVector(Function(proj_basis._fefs, X))
 
 
+def compute_solution_flux(pde, RV_samples, coeff_field, u, maxm, proj_basis, vec_proj_basis):
+    a = coeff_field.mean_func
+    for m in range(maxm):
+        a_m = RV_samples[m] * coeff_field[m][0]
+        a = a + a_m
+    print type(a)
+    uN = u._fefunc
+    uN = project(u._fefunc, proj_basis._fefs)
+    s = pde.weak_form.flux(uN, a)
+    return FEniCSVector(project(s, vec_proj_basis._fefs))
+
+
 def compute_direct_sample_solution_old(pde, RV_samples, coeff_field, A, maxm, proj_basis):
     a = coeff_field.mean_func
     for m in range(maxm):

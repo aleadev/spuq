@@ -10,7 +10,7 @@ from spuq.application.egsz.multi_operator import MultiOperator, ASSEMBLY_TYPE
 from spuq.application.egsz.sample_problems import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
-from spuq.application.egsz.sampling import compute_parametric_sample_solution, compute_direct_sample_solution, compute_solution_variance
+from spuq.application.egsz.sampling import compute_parametric_sample_solution, compute_direct_sample_solution, compute_solution_variance, compute_solution_flux
 from spuq.application.egsz.sampling import get_projection_basis
 from spuq.application.egsz.multi_vector import MultiVectorWithProjection
 from spuq.math_utils.multiindex import Multiindex
@@ -398,4 +398,38 @@ def run_SFEM(opts, conf):
             
 #            for mu in w.active_indices():
 #                viz_p = plot(w[mu]._fefunc, title="parametric solution: " + str(mu), mode="displacement", mesh=mesh_param, wireframe=wireframe)
+        interactive()
+
+
+    if opts.plotFlux:
+        w = w_history[-1]
+        # get random field sample and evaluate solution (direct and parametric)
+        RV_samples = coeff_field.sample_rvs()
+        ref_maxm = w_history[-1].max_order
+        sub_spaces = w[Multiindex()].basis.num_sub_spaces
+        degree = w[Multiindex()].basis.degree
+        maxh = min(w[Multiindex()].basis.minh / 4, CONF_max_h)
+        maxh = w[Multiindex()].basis.minh
+        projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=sub_spaces)
+        vec_projection_basis = get_projection_basis(mesh0, maxh=maxh, degree=degree, sub_spaces=2)
+        sample_sol_param = compute_parametric_sample_solution(RV_samples, coeff_field, w, projection_basis)
+        sample_sol_direct = compute_direct_sample_solution(pde, RV_samples, coeff_field, A, ref_maxm, projection_basis)
+        sol_variance = compute_solution_variance(coeff_field, w, projection_basis)
+    
+        sol_param_flux = compute_solution_flux(pde, RV_samples, coeff_field, sample_sol_param, ref_maxm, projection_basis, vec_projection_basis)
+        sol_direct_flux = compute_solution_flux(pde, RV_samples, coeff_field, sample_sol_direct, ref_maxm, projection_basis, vec_projection_basis)
+
+        # plot
+        if sub_spaces == 0:
+            #viz_p = plot(sol_param_flux._fefunc, title="parametric solution flux")
+            flux_x, flux_y = sol_param_flux._fefunc.split(deepcopy=True)
+            viz_x = plot(flux_x, title="parametric solution flux x")
+            viz_y = plot(flux_y, title="parametric solution flux y")
+
+            flux_x, flux_y = sol_direct_flux._fefunc.split(deepcopy=True)
+            viz_x = plot(flux_x, title="direct solution flux x")
+            viz_y = plot(flux_y, title="direct solution flux y")
+
+        else:
+            raise Exception("not implemented");
         interactive()

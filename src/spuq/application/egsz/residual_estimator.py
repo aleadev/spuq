@@ -193,7 +193,7 @@ class ResidualEstimator(object):
         # add Neumann residuals
         if R_Nb is not None:
             for rj, dsj in R_Nb:
-                res_form = res_form + (1 / a0_s) * h * s * dot(rj, rj) * dsj
+                res_form = res_form + h * (1 / a0_s) * dot(rj, rj) * s * dsj
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)

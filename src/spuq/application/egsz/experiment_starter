@@ -105,6 +105,9 @@ class ExperimentStarter(object):
         optparser.add_option('--plotMesh', '--plot-mesh',
                              action='store_true', default=False, dest='plotMesh',
                              help='Plot the meshes.')
+        optparser.add_option('--plotFlux', '--plot-flux',
+                             action='store_true', default=False, dest='plotFlux',
+                             help='Plot the fluxes of the solution.')
         
         optparser.add_option('--clear', type='choice', choices=['none', 'all', 'SFEM', 'MC'], dest='clear', default='none',
                              help='clear data, CLEAR one of ' + repr(['none', 'all', 'SFEM', 'MC']))
