@@ -33,7 +33,7 @@ tolerance = 0.1
 max_iterations = 15
 
 # set Neumann boundary condition on right edge
-with_Neumann = False
+with_Neumann = True
 
 # set domain (lshape or Cook's membrane)
 Cooks_membrane = False
@@ -132,8 +132,8 @@ for i in range(max_iterations):
 
     # mark Neumann boundary
     if with_Neumann:
-#        Neumann_parts = MeshFunction("sizet", mesh, 0)
-        Neumann_parts = FacetFunction("sizet", mesh, 0)
+#        Neumann_parts = MeshFunction("size_t", mesh, 0)
+        Neumann_parts = FacetFunction("size_t", mesh, 0)
         right.mark(Neumann_parts, 1)
         # TODO: write out FacetFunction to check boundaries
          
@@ -147,7 +147,7 @@ for i in range(max_iterations):
         # define boundary measures
         ds = Measure("ds")[Neumann_parts]
         # shear load (Neumann boundary)
-        g = Constant((0.0, 0.3))
+        g = Constant((0.0, 0.5))
         L += dot(g, v) * ds(1)
 
     # setup boundary condition at left end
