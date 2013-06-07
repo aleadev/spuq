@@ -24,7 +24,7 @@ from numpy import array, sqrt
 
 # Error tolerance
 tolerance = 0.1
-max_iterations = 1
+max_iterations = 10
 
 # Refinement fraction
 fraction = 0.4
@@ -44,18 +44,18 @@ left.minx = minx
 right.maxx = maxx
 boundaries = {'top':top, 'bottom':bottom, 'left':left, 'right':right}
 
-# set all but left boundary as Neumann boundary
-Neumann_parts = FacetFunction("size_t", mesh, 0)
-top.mark(Neumann_parts, 1)
-right.mark(Neumann_parts, 2)
-bottom.mark(Neumann_parts, 3)
-# define boundary measures
-ds = Measure("ds")[Neumann_parts]
 # define Neumann fluxes
-g = (Constant(0.0), Constant(1.0), Constant(0.0))
+g = (Constant(0.0), Expression("A*sin(3.*pi*x[1])", A=10), Constant(0.0))
 
 # adaptation loop
 for i in range(max_iterations):
+    # set all but left boundary as Neumann boundary
+    Neumann_parts = FacetFunction("size_t", mesh, 0)
+    top.mark(Neumann_parts, 1)
+    right.mark(Neumann_parts, 2)
+    bottom.mark(Neumann_parts, 3)
+    # define boundary measures
+    ds = Measure("ds")[Neumann_parts]
 
     # Define variational problem
     V = FunctionSpace(mesh, "CG", 1)
@@ -64,8 +64,8 @@ for i in range(max_iterations):
     f = Constant("1.0")
     a = inner(grad(v), grad(u)) * dx
     L = v * f * dx
-    for j, rj in enumerate(g):
-        L += inner(rj, v) * ds(j + 1)
+    for j, gj in enumerate(g):
+        L += inner(gj, v) * ds(j + 1)
 
     # setup Dirichlet BC at left boundary
     c0 = Constant(0.0)
@@ -88,9 +88,9 @@ for i in range(max_iterations):
     # Define form for assembling error indicators
     eta = (h ** 2 * R_T ** 2 * w * dx + avg(h) * avg(inner(R_dT, R_dT)) * 2 * avg(w) * dS)
     # add Neumann terms
-    for j, rj in enumerate(g):
-        R_NT = rj - inner(grad(u_h), n)
-        eta += h * w * inner(R_NT, R_NT) * ds(j)
+    for j, gj in enumerate(g):
+        R_NT = gj - inner(grad(u_h), n)
+        eta += h * w * inner(R_NT, R_NT) * ds(j + 1)
 
     # Assemble error indicators
     eta_indicator = assemble(eta)
