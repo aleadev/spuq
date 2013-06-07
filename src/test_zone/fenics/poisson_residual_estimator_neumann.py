@@ -24,13 +24,13 @@ from numpy import array, sqrt
 
 # Error tolerance
 tolerance = 0.1
-max_iterations = 10
+max_iterations = 1
 
 # Refinement fraction
 fraction = 0.4
 
 # Create initial mesh
-N = 5
+N = 10
 mesh = UnitSquareMesh(N, N)
 maxx, minx, maxy, miny = 1, 0, 1, 0
 # setup boundary parts
@@ -45,7 +45,7 @@ right.maxx = maxx
 boundaries = {'top':top, 'bottom':bottom, 'left':left, 'right':right}
 
 # define Neumann fluxes
-g = (Constant(0.0), Expression("A*sin(3.*pi*x[1])", A=10), Constant(0.0))
+g = (Constant(0.0), Expression("A*sin(3.*pi*x[1])", A=0), Constant(0.0))
 
 # adaptation loop
 for i in range(max_iterations):
@@ -86,14 +86,34 @@ for i in range(max_iterations):
     h = CellSize(mesh)
 
     # Define form for assembling error indicators
+    eta1 = h ** 2 * R_T ** 2 * w * dx
+    eta2 = 0 * w * dx + avg(h) * avg(inner(R_dT, R_dT)) * 2 * avg(w) * dS
+    eta3 = 0 * w * dx
     eta = (h ** 2 * R_T ** 2 * w * dx + avg(h) * avg(inner(R_dT, R_dT)) * 2 * avg(w) * dS)
     # add Neumann terms
     for j, gj in enumerate(g):
         R_NT = gj - inner(grad(u_h), n)
         eta += h * w * inner(R_NT, R_NT) * ds(j + 1)
+        eta3 += h * w * inner(R_NT, R_NT) * ds(j + 1)
 
     # Assemble error indicators
     eta_indicator = assemble(eta)
+    eta_indicator1 = assemble(eta1)
+    eta_indicator2 = assemble(eta2)
+    eta_indicator3 = assemble(eta3)
+#    print "eta1", eta_indicator1.array()
+#    print "eta2", eta_indicator2.array()
+#    print "eta3", eta_indicator3.array()
+    e1 = Function(DG, eta_indicator1)
+    e2 = Function(DG, eta_indicator2)
+    e3 = Function(DG, eta_indicator3)
+    V1 = FunctionSpace(refine(refine(mesh)), 'CG', 1)
+    f1 = interpolate(e1, V1)
+    f2 = interpolate(e2, V1)
+    f3 = interpolate(e3, V1)
+    plot(f1, title='volume residual')
+    plot(f2, title='edge residual')
+    plot(f3, title='Neumann residual')
 
     # Calculate error
     error_estimate = sqrt(sum(i for i in eta_indicator.array()))
@@ -121,8 +141,8 @@ for i in range(max_iterations):
     mesh = refine(mesh, cell_markers)
 
 # Plot final solution
-plot(u_h)
-plot(mesh)
+plot(u_h, title='solution')
+plot(mesh, title='mesh')
 
 # Hold plots
 interactive()
