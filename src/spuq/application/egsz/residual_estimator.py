@@ -228,7 +228,7 @@ class ResidualEstimator(object):
         print "edge =", etaE
         print "Neumann =", etaNb
 
-        if True:        
+        if False:        
             plot_indicators(((eta, "overall residual"), (etaT_indicator, "volume residual"), (etaE_indicator, "edge residual"), (etaNb_indicator, "Neumann residual")), mesh)
         # ---debug
         

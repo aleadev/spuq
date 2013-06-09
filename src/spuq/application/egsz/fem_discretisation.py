@@ -33,7 +33,7 @@ def make_list(x, length=None):
     if not isinstance(x, collections.Sequence):
         x = [x]
     if length is not None:
-        if length == 1:
+        if len(x) == 1:
             x = x * length
         assert len(x) == length
 
@@ -63,7 +63,7 @@ def get_default(x, default_x):
 # FEniCS Hacks
 ###################################################
 
-NEEDS_HACK=False
+NEEDS_HACK = False
 if NEEDS_HACK:
     def _assemble_system(a, L, bcs, facet_function):
         # Mean hack to work around a bug in the FEniCS assemble_system
@@ -138,9 +138,9 @@ class WeakForm(object):
         boundaries = make_list(boundaries)
         g = make_list(g, len(boundaries))
         parts = self.neumann_facet_function(boundaries, g, mesh)
-	# create Neumann measures wrt Neumann boundaries
+        # create Neumann measures wrt Neumann boundaries
         ds = Measure("ds")[parts]
-	# return Neumann data together with boundary measures
+        # return Neumann data together with boundary measures
         return [(gj, ds(j)) for j, gj in enumerate(g, 1)]
 
 

@@ -49,7 +49,7 @@ def setup_vector(mesh, pde, degree=1, maxh=None):
 def prepare_rhs(A, w, coeff_field, pde):
     b = 0 * w
     zero = Multiindex()
-    b[zero].coeffs = pde.assemble_rhs(basis=b[zero].basis, coeff=coeff_field.mean_func, 
+    b[zero].coeffs = pde.assemble_rhs(basis=b[zero].basis, coeff=coeff_field.mean_func,
                                       withNeumannBC=True)
     
     f = pde.f
@@ -126,6 +126,7 @@ def AdaptiveSolver(A, coeff_field, pde,
                     error_eps=1e-2,
                     # refinements
                     max_refinements=5,
+                    max_dof=1e10,
                     do_refinement={"RES":True, "PROJ":True, "MI":False},
                     do_uniform_refinement=False,
                     w_history=None,
@@ -212,9 +213,12 @@ def AdaptiveSolver(A, coeff_field, pde,
         
         logger.debug("squared error components: eta=%s  delta=%s  zeta=%", errors[0], errors[1], errors[2])
 
-        # exit when either error threshold or max_refinements is reached
+        # exit when either error threshold or max_refinements or max_dof is reached
         if refinement > max_refinements:
-            logger.info("skipping refinement after final solution in iteration %i", refinement)
+            logger.info("SKIPPING REFINEMENT after FINAL SOLUTION in ITERATION %i", refinement)
+            break
+        if sim_stats[refinement]["DOFS"] >= max_dof:
+            logger.info("REACHED %i DOFS, EXITING refinement loop", sim_stats[refinement]["DOFS"])
             break
         if xi <= error_eps:
             logger.info("error reached requested accuracy, xi=%f", xi)

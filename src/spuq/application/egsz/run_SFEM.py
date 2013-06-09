@@ -136,7 +136,8 @@ def run_SFEM(opts, conf):
                         # adaptive algorithm threshold
                         error_eps=CONF_error_eps,
                         # refinements
-                        max_refinements=CONF_iterations, do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
+                        max_refinements=CONF_iterations, max_dof=CONF_max_dof,
+                        do_refinement=REFINEMENT, do_uniform_refinement=CONF_uniform_refinement,
                         w_history=w_history,
                         sim_stats=sim_stats)
     
