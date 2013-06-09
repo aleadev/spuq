@@ -190,10 +190,16 @@ class ResidualEstimator(object):
         a0_s = a0_f[0] if isinstance(a0_f, tuple) else a0_f     # required for elasticity parameters
         res_form = (h ** 2 * (1 / a0_s) * dot(R_T, R_T) * s * dx
                     + avg(h) * dot(avg(R_E) / avg(a0_s), avg(R_E)) * 2 * avg(s) * dS)
+        
+        resT = h ** 2 * (1 / a0_s) * dot(R_T, R_T) * s * dx
+        resE = 0 * s * dx + avg(h) * dot(avg(R_E) / avg(a0_s), avg(R_E)) * 2 * avg(s) * dS
+        resNb = 0 * s * dx
+        
         # add Neumann residuals
         if R_Nb is not None:
             for rj, dsj in R_Nb:
                 res_form = res_form + h * (1 / a0_s) * dot(rj, rj) * s * dsj
+                resNb += h * (1 / a0_s) * dot(rj, rj) * s * dsj
 
         # FEM evaluate residual on mesh
         eta = assemble(res_form)
@@ -203,12 +209,41 @@ class ResidualEstimator(object):
         eta_indicator = eta_indicator[dofs]
         global_error = sqrt(sum(e for e in eta))
 
-#        # debug ---        
-#        print "==========RESIDUAL ESTIMATOR============"
-#        print "eta", eta
-#        print "eta_indicator", eta_indicator
-#        print "global =", global_error
-#        # ---debug
+        # debug ---
+        etaT = assemble(resT)
+        etaT_indicator = etaT #np.array([sqrt(e) for e in etaT])
+        etaT = sqrt(sum(e for e in etaT))
+        etaE = assemble(resE)
+        etaE_indicator = etaE #np.array([sqrt(e) for e in etaE])
+        etaE = sqrt(sum(e for e in etaE))
+        etaNb = assemble(resNb)
+        etaNb_indicator = etaNb #np.array([sqrt(e) for e in etaNb])
+        etaNb = sqrt(sum(e for e in etaNb))
+        
+        print "==========RESIDUAL ESTIMATOR============"
+        print "eta", eta
+        print "eta_indicator", eta_indicator
+        print "global =", global_error
+        print "volume =", etaT
+        print "edge =", etaE
+        print "Neumann =", etaNb
+        
+        from dolfin import plot, interpolate, refine, Function
+        DG1 = FunctionSpace(mesh, 'DG', 0)
+        V1 = FunctionSpace(refine(mesh), 'CG', 1)
+        eR = Function(DG1, eta)
+        eT = Function(DG1, etaT_indicator)
+        eE = Function(DG1, etaE_indicator)
+        eNb = Function(DG1, etaNb_indicator)
+        fR = interpolate(eR, V1) 
+        fT = interpolate(eT, V1) 
+        fE = interpolate(eE, V1) 
+        fNb = interpolate(eNb, V1) 
+        plot(fR, title="overall residual")
+        plot(fT, title="volume residual")
+        plot(fE, title="edge residual")
+        plot(fNb, title=" Neumann residual", interactive=True)
+        # ---debug
         
         # restore quadrature degree
         parameters["form_compiler"]["quadrature_degree"] = quadrature_degree_old
