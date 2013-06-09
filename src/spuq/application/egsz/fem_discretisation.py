@@ -32,8 +32,11 @@ def make_list(x, length=None):
     """Make a sequence type out of some item if it not already is one"""
     if not isinstance(x, collections.Sequence):
         x = [x]
-    if length is not None and len(x) == 1:
-        x = x * length
+    if length is not None:
+        if length == 1:
+            x = x * length
+        assert len(x) == length
+
     return x
 
 
@@ -112,13 +115,12 @@ class WeakForm(object):
     @takes(anything, dolfin.FunctionSpaceBase, collections.Sequence, collections.Sequence)
     def neumann_linear_form(self, V, neumann_boundary, g, L=None):
         """Return or add up the linear form L(v) coming from the Neumann boundary"""
-        g, ds = self.neumann_form_list(neumann_boundary, g, V.mesh())
         v = dolfin.TrialFunction(V)
-        for j, gj in enumerate(g):
+        for g_j, ds_j in self.neumann_form_list(neumann_boundary, g, V.mesh()):
             if L is None:
-                L = dot(gj, v) * ds(j)
+                L = dot(g_j, v) * ds_j
             else:
-                L += dot(gj, v) * ds(j)
+                L += dot(g_j, v) * ds_j
         return L
 
     @takes(anything, anything, anything, dolfin.Mesh)
@@ -127,8 +129,8 @@ class WeakForm(object):
         g = make_list(g, len(boundaries))
         # create FacetFunction to mark different Neumann boundaries with ids 0, 1, ...
         parts = FacetFunction("size_t", mesh, 0)
-        for j, bnd_domain in enumerate(boundaries):
-            bnd_domain.mark(parts, j + 1)
+        for j, bnd_domain in enumerate(boundaries, 1):
+            bnd_domain.mark(parts, j)
         return parts
 
     @takes(anything, anything, anything, dolfin.Mesh)
@@ -139,7 +141,7 @@ class WeakForm(object):
 	# create Neumann measures wrt Neumann boundaries
         ds = Measure("ds")[parts]
 	# return Neumann data together with boundary measures
-        return g, ds
+        return [(gj, ds(j)) for j, gj in enumerate(g, 1)]
 
 
 class EllipticWeakForm(WeakForm):
@@ -401,10 +403,9 @@ class FEMDiscretisationBase(FEMDiscretisation):
             if homogeneous:
                 g = zero_function(v.function_space())
 
-            g, ds = self.weak_form.neumann_form_list(boundaries, g, mesh)
-            for j, gj in enumerate(g):
-                Nbres = gj - a * dot(self.weak_form.flux(v, coeff), nu)
-                form.append((Nbres, ds(j)))
+            for g_j, ds_j in self.weak_form.neumann_form_list(boundaries, g, mesh):
+                r_j = g_j - a * dot(self.weak_form.flux(v, coeff), nu)
+                form.append((r_j, ds_j))
         return form
 
     @property

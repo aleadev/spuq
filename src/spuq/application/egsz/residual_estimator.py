@@ -239,10 +239,11 @@ class ResidualEstimator(object):
         fT = interpolate(eT, V1) 
         fE = interpolate(eE, V1) 
         fNb = interpolate(eNb, V1) 
-        plot(fR, title="overall residual")
-        plot(fT, title="volume residual")
-        plot(fE, title="edge residual")
-        plot(fNb, title=" Neumann residual", interactive=True)
+        if False:
+            plot(fR, title="overall residual")
+            plot(fT, title="volume residual")
+            plot(fE, title="edge residual")
+            plot(fNb, title=" Neumann residual", interactive=True)
         # ---debug
         
         # restore quadrature degree
