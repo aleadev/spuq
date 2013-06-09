@@ -5,7 +5,7 @@ from dolfin import (FunctionSpace, Expression, dx, inner,
                     nabla_grad, TrialFunction, TestFunction,
                     assemble, Constant, DirichletBC, refine,
                     Function, norm, Mesh, CellFunction, cells,
-                    GenericMatrix, GenericVector)
+                    GenericMatrix, GenericVector, interpolate, plot)
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 
@@ -156,6 +156,22 @@ def error_norm(vec1, vec2, normstr="L2"):
                 return norm(errfunc, normstr)
             else:
                 return normstr(errfunc)
+
+
+def plot_indicators(indicators, mesh, refinements=1, interactive=True):
+    DG = FunctionSpace(mesh, 'DG', 0)
+    for _ in range(refinements):
+        mesh = refine(mesh)
+    V = FunctionSpace(refine(mesh), 'CG', 1)
+    if len(indicators) == 1 and not isinstance(indicators[0], (list, tuple)):
+        indicators = [indicators]
+    for eta, title in indicators:
+        e = Function(DG, eta)
+        f = interpolate(e, V) 
+        plot(f, title=title)
+    if interactive:
+        from dolfin import interactive
+        interactive()
 
 
 @takes(anything, FEniCSVector)

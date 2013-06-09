@@ -39,7 +39,7 @@ from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFu
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
 from spuq.application.egsz.multi_vector import MultiVector, MultiVectorWithProjection
-from spuq.fem.fenics.fenics_utils import weighted_H1_norm
+from spuq.fem.fenics.fenics_utils import weighted_H1_norm, plot_indicators
 from spuq.linalg.vector import FlatVector
 from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.type_check import takes, anything, list_of, optional
@@ -227,23 +227,9 @@ class ResidualEstimator(object):
         print "volume =", etaT
         print "edge =", etaE
         print "Neumann =", etaNb
-        
-        from dolfin import plot, interpolate, refine, Function
-        DG1 = FunctionSpace(mesh, 'DG', 0)
-        V1 = FunctionSpace(refine(mesh), 'CG', 1)
-        eR = Function(DG1, eta)
-        eT = Function(DG1, etaT_indicator)
-        eE = Function(DG1, etaE_indicator)
-        eNb = Function(DG1, etaNb_indicator)
-        fR = interpolate(eR, V1) 
-        fT = interpolate(eT, V1) 
-        fE = interpolate(eE, V1) 
-        fNb = interpolate(eNb, V1) 
-        if False:
-            plot(fR, title="overall residual")
-            plot(fT, title="volume residual")
-            plot(fE, title="edge residual")
-            plot(fNb, title=" Neumann residual", interactive=True)
+
+        if True:        
+            plot_indicators(((eta, "overall residual"), (etaT_indicator, "volume residual"), (etaE_indicator, "edge residual"), (etaNb_indicator, "Neumann residual")), mesh)
         # ---debug
         
         # restore quadrature degree
