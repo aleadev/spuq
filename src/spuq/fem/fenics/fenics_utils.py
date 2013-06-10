@@ -227,10 +227,10 @@ def create_joint_mesh(meshes, destmesh=None, additional_refine=0):
                 # refine marked cells
                 newmesh = refine(destmesh, cf)
                 # determine parent cell association map
-                pc = newmesh.data().mesh_function("parent_cell")
+                pc = newmesh.data().array("parent_cell", newmesh.topology().dim())
                 pmap = defaultdict(list)
-                for i in range(pc.size()):
-                    pmap[pc[i]].append(i)
+                for i, cid in enumerate(pc):
+                    pmap[cid].append(i)
                 PM.append(pmap)
                 # set refined mesh as current mesh
                 destmesh = newmesh
@@ -242,10 +242,10 @@ def create_joint_mesh(meshes, destmesh=None, additional_refine=0):
             # refine uniformly
             newmesh = refine(destmesh)
             # determine parent cell association map
-            pc = newmesh.data().mesh_function("parent_cell")
+            pc = newmesh.data().array("parent_cell", newmesh.topology().dim())
             pmap = defaultdict(list)
-            for i in range(pc.size()):
-                pmap[pc[i]].append(i)
+            for i, cid in enumerate(pc):
+                pmap[cid].append(i)
             PM.append(pmap)
             # set refined mesh as current mesh
             destmesh = newmesh

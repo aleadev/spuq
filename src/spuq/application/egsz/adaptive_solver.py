@@ -159,7 +159,7 @@ def AdaptiveSolver(A, coeff_field, pde,
     import resource
     refinement = None
     for refinement in range(start_iteration, max_refinements + 1):
-        logger.info("************* REFINEMENT LOOP iteration %i (of %i) *************", refinement, max_refinements)
+        logger.info("************* REFINEMENT LOOP iteration %i (of %i or max_dof %i) *************", refinement, max_refinements, max_dof)
         # memory usage info
         logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
 

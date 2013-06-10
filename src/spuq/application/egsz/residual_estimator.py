@@ -210,26 +210,27 @@ class ResidualEstimator(object):
         global_error = sqrt(sum(e for e in eta))
 
         # debug ---
-        etaT = assemble(resT)
-        etaT_indicator = etaT #np.array([sqrt(e) for e in etaT])
-        etaT = sqrt(sum(e for e in etaT))
-        etaE = assemble(resE)
-        etaE_indicator = etaE #np.array([sqrt(e) for e in etaE])
-        etaE = sqrt(sum(e for e in etaE))
-        etaNb = assemble(resNb)
-        etaNb_indicator = etaNb #np.array([sqrt(e) for e in etaNb])
-        etaNb = sqrt(sum(e for e in etaNb))
+        if False:
+            etaT = assemble(resT)
+            etaT_indicator = etaT #np.array([sqrt(e) for e in etaT])
+            etaT = sqrt(sum(e for e in etaT))
+            etaE = assemble(resE)
+            etaE_indicator = etaE #np.array([sqrt(e) for e in etaE])
+            etaE = sqrt(sum(e for e in etaE))
+            etaNb = assemble(resNb)
+            etaNb_indicator = etaNb #np.array([sqrt(e) for e in etaNb])
+            etaNb = sqrt(sum(e for e in etaNb))
         
-        print "==========RESIDUAL ESTIMATOR============"
-        print "eta", eta
-        print "eta_indicator", eta_indicator
-        print "global =", global_error
-        print "volume =", etaT
-        print "edge =", etaE
-        print "Neumann =", etaNb
+            print "==========RESIDUAL ESTIMATOR============"
+            print "eta", eta
+            print "eta_indicator", eta_indicator
+            print "global =", global_error
+            print "volume =", etaT
+            print "edge =", etaE
+            print "Neumann =", etaNb
 
-        if False:        
-            plot_indicators(((eta, "overall residual"), (etaT_indicator, "volume residual"), (etaE_indicator, "edge residual"), (etaNb_indicator, "Neumann residual")), mesh)
+            if False:        
+                plot_indicators(((eta, "overall residual"), (etaT_indicator, "volume residual"), (etaE_indicator, "edge residual"), (etaNb_indicator, "Neumann residual")), mesh)
         # ---debug
         
         # restore quadrature degree
