@@ -446,3 +446,19 @@ class FEMNavierLame(FEMDiscretisationBase):
         super(FEMNavierLame, self).__init__(NavierLameWeakForm(), (mu, lmbda), f,
                                             dirichlet_boundary, uD,
                                             neumann_boundary, g)
+
+    @takes(anything, CoefficientFunction, FormFunction)
+    def neumann_residual(self, coeff, v, nu, mesh, homogeneous=False):
+        # the coefficient field does not influence the Neumann boundary for Navier-Lame!
+        """Neumann boundary residual."""
+        form = []
+        boundaries = self.neumann_boundary
+        g = self.g
+        if boundaries is not None:
+            if homogeneous:
+                g = zero_function(v.function_space())
+
+            for g_j, ds_j in self.weak_form.neumann_form_list(boundaries, g, mesh):
+                r_j = g_j - dot(self.weak_form.flux(v, coeff), nu)
+                form.append((r_j, ds_j))
+        return form
