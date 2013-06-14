@@ -102,20 +102,21 @@ for fname in glob(LOAD_STATS_FN):
     for P, D in SIM_STATS.iteritems():
         print "==== exporting P{0} ====".format(P)
         with file(os.path.join(options.experiment_dir, 'SIMDATA-P%i.dat' % P), 'w') as f:
-            mcstr = "\terror" if D["WITH-MC"] else ""
-            f.write("dofs\terres%st\tefficiency\tmi\n" % mcstr)
+            mcstr = "\terror\tefficiency" if D["WITH-MC"] else ""
+            f.write("dofs\terrest%s\tmi" % mcstr)
             for i, d in enumerate(D["DOFS"]):
-                f.write(str(d) + "\t")
+                f.write("\n" + str(d))
                 if options.singleP:
-                    f.write("\nERROR-EST\n" + str(D["EST"]))
-                    f.write("\nNUM-MI\n" + str(D["NUM-MI"]))
+#                    f.write("\nERROR-EST\n" + str(D["EST"]))
+#                    f.write("\nNUM-MI\n" + str(D["NUM-MI"]))
+                    f.write("\t" + str(D["EST"][i]))
                     if D["WITH-MC"]:
-                        f.write("\nMC-ERROR-H1A\n" + str(D["MC-H1ERR"]))
-                        f.write("\nEFFICIENCY\n" + str(D["EFFICIENCY"]))
+                        f.write("\t" + str(D["MC-H1ERR"][i]))
+                        f.write("\t" + str(D["EFFICIENCY"][i]))
+                    f.write("\t" + str(D["NUM-MI"][i]))
                 else:
-                    f.write("\nERROR-EST\n" + str(D["ERROR-EST"]))
-                    f.write("\nNUM-MI\n" + str(D["NUM-MI"]))
+                    f.write("\t" + str(D["ERROR-EST"][i]))
                     if D["WITH-MC"]:
-                        f.write("\nMC-ERROR-H1A\n" + str(D["MC-ERROR-H1A"]))
-                        f.write("\nEFFICIENCY\n" + str(D["EFFICIENCY"]))
-                    f.write("\n\n")
+                        f.write("\t" + str(D["MC-ERROR-H1A"][i]))
+                        f.write("\t" + str(D["EFFICIENCY"][i]))
+                    f.write("\t" + str(D["NUM-MI"][i]))
