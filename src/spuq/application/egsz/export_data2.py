@@ -60,7 +60,7 @@ for fname in glob(LOAD_STATS_FN):
         D["NUM-MI"] = [len(m) for m in D["MI"]]
         try:
             if options.singleP:
-                D["EFFICIENCY"] = [est / err for est, err in zip(D["EST"], D["MC-H1ERR"])]
+                D["EFFICIENCY"] = [sqrt(est) / err for est, err in zip(D["EST"], D["MC-H1ERR"])]
             else:
                 D["EFFICIENCY"] = [est / err for est, err in zip(D["ERROR-EST"], D["MC-ERROR-H1A"])]
             D["WITH-MC"] = True
@@ -120,3 +120,4 @@ for fname in glob(LOAD_STATS_FN):
                         f.write("\t" + str(D["MC-ERROR-H1A"][i]))
                         f.write("\t" + str(D["EFFICIENCY"][i]))
                     f.write("\t" + str(D["NUM-MI"][i]))
+            f.write("\n")
