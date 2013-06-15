@@ -60,7 +60,9 @@ for fname in glob(LOAD_STATS_FN):
         D["NUM-MI"] = [len(m) for m in D["MI"]]
         try:
             if options.singleP:
-                D["EFFICIENCY"] = [sqrt(est) / err for est, err in zip(D["EST"], D["MC-H1ERR"])]
+                # WARNING: EGSZ1 writes out the squared estimator!!!
+                D["EST"] = [sqrt(est) for est in D["EST"]]
+                D["EFFICIENCY"] = [est / err for est, err in zip(D["EST"], D["MC-H1ERR"])]
             else:
                 D["EFFICIENCY"] = [est / err for est, err in zip(D["ERROR-EST"], D["MC-ERROR-H1A"])]
             D["WITH-MC"] = True
