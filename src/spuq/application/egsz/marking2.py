@@ -73,11 +73,11 @@ class Marking(object):
         suppLambda = supp(Lambda)
         maxm = max(suppLambda)
         logger.debug("---- SUPPORT Lambda %s   maxm %s   Lambda %s ", suppLambda, maxm, Lambda)
-        new_mi = []
-        marked_zeta = 0.0
         # A modified paper marking
         # ========================
         if type == 0:
+            new_mi = []
+            marked_zeta = 0.0
             while True:
                 # break if sufficiently many new mi are selected
                 if theta_y * global_zeta <= marked_zeta or len(new_mi) >= max_new_mi or len(zeta) == 0:
@@ -114,16 +114,48 @@ class Marking(object):
         # =============================
         else:
             assert type == 1
+            # evaluate extension mi
+            # evaluate global_zeta
+            # loop n=0..N
+            #    marked_zeta = first n of extension_mi
+            #    loop m=0..M
+            #        marked_zeta += sorted_zeta[m]
+            #        if global*theta_y <= marked_zeta:
+            #            break
+            new_mi = []
+            marked_zeta = 0.0
             while True:
-                # evaluate extension mi
-                # evaluate global_zeta
-                # loop n=0..N
-                #    marked_zeta = first n of extension_mi
-                #    loop m=0..M
-                #        marked_zeta += sorted_zeta[m]
-                #        if global*theta_y <= marked_zeta:
-                #            break
-                pass
+                # break if sufficiently many new mi are selected
+                if theta_y * global_zeta <= marked_zeta or len(new_mi) >= max_new_mi or len(zeta) == 0:
+                    if len(new_mi) >= max_new_mi:
+                        logger.warn("max new_mi reached (%i) WITHOUT sufficient share of global zeta!" % len(new_mi))
+                    if len(zeta) == 0:
+                        logger.warn("NO MORE MI TO MARK!")
+                    break
+                sorted_zeta = sorted(zeta.items(), key=itemgetter(1))
+                logger.debug("SORTED ZETA %s", sorted_zeta)
+                new_zeta = sorted_zeta[-1]
+                mu = new_zeta[0]
+                zeta.pop(mu)
+                logger.debug("ADDING %s to new_mi %s", mu, new_mi)
+                assert mu not in Lambda
+                new_mi.append(mu)
+                marked_zeta = np.sqrt(marked_zeta ** 2 + new_zeta[1] ** 2)
+                # extend set of inactive potential indices if necessary (see section 5.7)
+                mu2 = mu.dec(maxm)
+                # NOTE: the following is a slight extension of the algorithm in the paper since it executed the extension on all active multiindices (and not only with the latest activated)
+    #            if mu2 in Lambda:
+                for mu2 in Lambda:
+                    minm = min(set(range(1, maxm + 2)).difference(set(suppLambda))) # find min(N\setminus supp\Lambda)
+                    new_mu = mu2.inc(minm)
+    #                assert new_mu not in Lambda
+                    if new_mu not in Lambda and new_mu not in zeta.keys():
+                        logger.debug("extending multiindex candidates by %s since %s is at the boundary of Lambda (reachable from %s), minm: %s", new_mu, mu, mu2, minm)
+                        zeta[new_mu] = eval_zeta_m(mu2, minm)
+                        global_zeta = np.sqrt(global_zeta ** 2 + zeta[new_mu] ** 2)
+                        logger.debug("new global_zeta is %f", global_zeta)
+                else:
+                    logger.debug("no further extension of multiindex candidates required")
 
         if len(zeta) == 0:
             if theta_y * global_zeta > marked_zeta:

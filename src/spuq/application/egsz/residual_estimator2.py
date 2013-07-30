@@ -28,7 +28,7 @@ The coefficients :math:`\alpha_j` follow from the recurrence coefficients
 from __future__ import division
 import numpy as np
 from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFunctionSpace, cells,
-                    Constant, FunctionSpace, TestFunction, CellSize, FacetNormal, parameters)
+                    Constant, FunctionSpace, TestFunction, CellSize, FacetNormal, parameters, inner)
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
