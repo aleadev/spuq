@@ -60,10 +60,12 @@ for fname in glob(LOAD_STATS_FN):
         D["NUM-MI"] = [len(m) for m in D["MI"]]
         try:
             if options.singleP:
+                D["DIM-Y"] = [len(supp([i[0] for i in ami])) + 1 for ami in D["MI"]]
                 # WARNING: EGSZ1 writes out the squared estimator!!!
                 D["EST"] = [sqrt(est) for est in D["EST"]]
                 D["EFFICIENCY"] = [est / err for est, err in zip(D["EST"], D["MC-H1ERR"])]
             else:
+                D["DIM-Y"] = [len(supp(ami)) + 1 for ami in D["MI"]]
                 D["EFFICIENCY"] = [est / err for est, err in zip(D["ERROR-EST"], D["MC-ERROR-H1A"])]
             D["WITH-MC"] = True
         except:
@@ -85,6 +87,7 @@ for fname in glob(LOAD_STATS_FN):
                 f.write("\nERROR-PROJ\n" + str(D["PROJ-PART"]))
                 f.write("\nERROR-PCG\n" + str(D["PCG-PART"]))
                 f.write("\nNUM-MI\n" + str(D["NUM-MI"]))
+                f.write("\nDIM-Y\n" + str(D["DIM-Y"]))
                 if D["WITH-MC"]:
                     f.write("\nMC-ERROR-H1A\n" + str(D["MC-H1ERR"]))
 #                    f.write("\nMC-ERROR-L2\n" + str(D["MC-L2ERR"]))
@@ -94,6 +97,7 @@ for fname in glob(LOAD_STATS_FN):
                 f.write("\nERROR-RES\n" + str(D["ERROR-RES"]))
                 f.write("\nERROR-TAIL\n" + str(D["ERROR-TAIL"]))
                 f.write("\nNUM-MI\n" + str(D["NUM-MI"]))
+                f.write("\nDIM-Y\n" + str(D["DIM-Y"]))
                 if D["WITH-MC"]:
                     f.write("\nMC-ERROR-H1A\n" + str(D["MC-ERROR-H1A"]))
 #                    f.write("\nMC-ERROR-L2\n" + str(D["MC-ERROR-L2"]))
@@ -105,7 +109,7 @@ for fname in glob(LOAD_STATS_FN):
         print "==== exporting P{0} ====".format(P)
         with file(os.path.join(options.experiment_dir, 'SIMDATA-P%i.dat' % P), 'w') as f:
             mcstr = "\terror\tefficiency" if D["WITH-MC"] else ""
-            f.write("dofs\terrest%s\tmi" % mcstr)
+            f.write("dofs\terrest%s\tmi\tydim" % mcstr)
             for i, d in enumerate(D["DOFS"]):
                 f.write("\n" + str(d))
                 if options.singleP:
@@ -116,10 +120,12 @@ for fname in glob(LOAD_STATS_FN):
                         f.write("\t" + str(D["MC-H1ERR"][i]))
                         f.write("\t" + str(D["EFFICIENCY"][i]))
                     f.write("\t" + str(D["NUM-MI"][i]))
+                    f.write("\t" + str(D["DIM-Y"][i]))
                 else:
                     f.write("\t" + str(D["ERROR-EST"][i]))
                     if D["WITH-MC"]:
                         f.write("\t" + str(D["MC-ERROR-H1A"][i]))
                         f.write("\t" + str(D["EFFICIENCY"][i]))
                     f.write("\t" + str(D["NUM-MI"][i]))
+                    f.write("\t" + str(D["DIM-Y"][i]))
             f.write("\n")
