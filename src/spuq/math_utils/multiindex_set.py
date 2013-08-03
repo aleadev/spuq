@@ -53,7 +53,7 @@ class MultiindexSet(object):
             p = p + 1
 
     @classmethod
-    def createCompleteOrderSet(cls, m, p=None):
+    def createCompleteOrderSet(cls, m, p=None, reversed=False):
         if p is None:
             return cls._makeGenerator(m, cls.createCompleteOrderSet)
 
@@ -68,6 +68,8 @@ class MultiindexSet(object):
                     I = np.vstack((I, np.hstack((J, Jn))))
                 return I
         arr = create(m, p)
+        if reversed:
+            arr = arr[:, ::-1]
         return cls(arr)
 
 # createFullTensorSet(m, p)

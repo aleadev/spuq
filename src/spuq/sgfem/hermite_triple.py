@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 
 def evaluate_Hermite_triple(I_a, I_b, I_c):
@@ -14,27 +15,30 @@ def evaluate_Hermite_triple(I_a, I_b, I_c):
     # it probably could be avoided altogether here...
     for i in range(m):
         ind = np.transpose(np.tile(I_a[:, i, np.newaxis, np.newaxis], [1, nb, nc]), [0, 1, 2])
-        ind = ind + strides[1] * np.transpose(np.tile(I_b[:, i, np.newaxis, np.newaxis], [1, na, nc]), [1, 0, 2])
-        ind = ind + strides[2] * np.transpose(np.tile(I_c[:, i, np.newaxis, np.newaxis], [1, na, nb]), [1, 2, 0])
-        Mi = triples[ind]
+        ind = ind + strides[0] * np.transpose(np.tile(I_b[:, i, np.newaxis, np.newaxis], [1, na, nc]), [1, 0, 2])
+        ind = ind + strides[1] * np.transpose(np.tile(I_c[:, i, np.newaxis, np.newaxis], [1, na, nb]), [1, 2, 0])
+        
+#        Mi = triples[ind] # there might be a better way to achieve this in numpy, maybe with ravel/unravel_multiindex...
+        Mi = np.reshape(triples.ravel()[ind.ravel()], (na, nb, nc))
         if i == 0:
             M = Mi
         else:
             M *= Mi
-    M = np.reshape(M, [na, nb, nc])
+#    M = np.reshape(M, [na, nb, nc]) # is this needed at all? 
     return M
 
 
-# http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
 def compute_Hermite_triples(p):
     from scipy.misc import factorial
-    I, J, K = np.mgrid[:p + 1, :p + 1, :p + 1]
+    # http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
+    K, J, I = np.mgrid[:p + 1, :p + 1, :p + 1]
     S = I + J + K
     S2 = S / 2
     ind = np.logical_and(np.logical_and(np.mod(S, 2) == 0, I <= J + K), np.logical_and(J <= J + I, K <= I + J))
 #    ind=mod(S,2)==0 & I<=J+K & J<=K+I & K<=I+J;
 
     M = np.zeros_like(S)
-    fac = factorial(np.array(range(p + 1)))
-    M[ind] = fac[I[ind]] * fac[J[ind]] * fac[K[ind]] / (fac[S2[ind] - I[ind]] * fac[S2[ind] - J[ind]] * fac[S2[ind] - K[ind]])
+    fac = factorial(np.array(range(p + 1))).astype('int32')
+    S2ind = S2[ind].astype('int32') 
+    M[ind] = fac[I[ind]] * fac[J[ind]] * fac[K[ind]] / (fac[S2ind - I[ind]] * fac[S2ind - J[ind]] * fac[S2ind - K[ind]])
     return M
