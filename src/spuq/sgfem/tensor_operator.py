@@ -4,7 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TensorOperator(Operator):
-    def __init__(self, A):
+    def __init__(self, A, B=None):
         """Initialise with single operator or list of operators."""
         pass
 
@@ -19,6 +19,7 @@ class TensorOperator(Operator):
     def __call__(self, arg):
         """Operators have call semantics."""
         return self.apply(arg)
-
-    # TODO: multiplication with scalar and operator
     
+    
+    
+    # TODO: multiplication with scalar and operator
