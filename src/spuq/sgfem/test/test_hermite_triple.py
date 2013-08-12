@@ -7,6 +7,7 @@ I = MultiindexSet.createCompleteOrderSet(4, 3, reversed=True).arr
 J = MultiindexSet.createCompleteOrderSet(4, 2, reversed=True).arr
 
 T = evaluate_Hermite_triple(I, I, J)
+print "shape of T:", T.shape
 
 fig = figure()
 spy(np.sum(T, axis=2))
