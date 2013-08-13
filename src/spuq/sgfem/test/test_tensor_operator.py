@@ -13,15 +13,16 @@ def prepare_deterministic_operators(pde, coeff, M, mesh, degree):
     FS = FEniCSBasis(fs)
     am_f = [coeff.mean_func]
     am_f.extend([coeff_field[m][0] for m in range(M-1)])
-    return [pde.assemble_operator(basis=FS, coeff=f) for f in am_f]
+    return [pde.assemble_operator(basis=FS, coeff=f) for f in am_f], FS
 
-def prepare_stochastic_operators(N, p):
-    I = MultiindexSet.createCompleteOrderSet(N, p).arr
-    H = evaluate_Hermite_triple(I, I, I)
+def prepare_stochastic_operators(N, p1, p2):
+    I = MultiindexSet.createCompleteOrderSet(N, p1).arr
+    J = MultiindexSet.createCompleteOrderSet(N, p2).arr
+    H = evaluate_Hermite_triple(I, I, J)
     print H.shape
     return [H[:,:,k] for k in range(H.shape[2])]
 
-def prepare_vectors():
+def prepare_vectors(size):
     pass
 
 # def setupMultiVector(cls, mis, pde, mesh, degree):
@@ -53,20 +54,20 @@ pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(2, 
 # =======================
 
 # setup deterministic operators
-M, degree = 5, 1
-K = prepare_deterministic_operators(pde, coeff_field, M, mesh, degree)
+M, degree = 15, 1
+K, FS = prepare_deterministic_operators(pde, coeff_field, M, mesh, degree)
 print len(K)
 
 # setup stochastic operators
-N, p = 5, 2
-D = prepare_stochastic_operators(M, p)
+N, p1, p2 = 4, 3, 2
+D = prepare_stochastic_operators(N, p1, p2)
 print len(D)
 
 # construct combined tensor operator
 A = TensorOperator(K, D)
 
 # setup tensor vector
-u = prepare_vectors(A.size)
+u = prepare_vectors([FS.dim, D[0].shape[0]])
 u = TensorVector(u)
 
 
