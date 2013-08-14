@@ -30,6 +30,9 @@ class TensorVector(Vector):
     def __setitem__(self, i, val):
         self.V[i] = val
 
+    def __len__(self):
+        return len(self.V)
+    
 #     def transpose(self):
 #         pass
 # 

@@ -19,7 +19,6 @@ def prepare_stochastic_operators(N, p1, p2):
     I = MultiindexSet.createCompleteOrderSet(N, p1).arr
     J = MultiindexSet.createCompleteOrderSet(N, p2).arr
     H = evaluate_Hermite_triple(I, I, J)
-    print H.shape
     return [H[:,:,k] for k in range(H.shape[2])]
 
 def prepare_vectors(J, FS):
@@ -33,7 +32,7 @@ def prepare_vectors(J, FS):
 mis = [Multiindex(mis) for mis in MultiindexSet.createCompleteOrderSet(0, 1)]
 
 # setup domain and meshes
-mesh, boundaries, dim = SampleDomain.setupDomain("square", initial_mesh_N=5)
+mesh, boundaries, dim = SampleDomain.setupDomain("square", initial_mesh_N=3)
 mesh = SampleProblem.setupMesh(mesh, num_refine=0)
 
 # define coefficient field
@@ -49,21 +48,22 @@ pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(2, 
 # setup deterministic operators
 M, degree = 15, 1
 K, FS = prepare_deterministic_operators(pde, coeff_field, M, mesh, degree)
-print len(K)
+print "K", len(K)
 
 # setup stochastic operators
 N, p1, p2 = 4, 3, 2
 D = prepare_stochastic_operators(N, p1, p2)
-print len(D)
+print "D", len(D)
 
 # construct combined tensor operator
 A = TensorOperator(K, D)
 I, J, M = A.dim
-print "dim A", A.dim
+print "dim A", A.dim, D[0].shape
 
 # setup tensor vector
 u = prepare_vectors(J, FS)
 u = TensorVector(u)
+print "TensorVector", len(u), u[0]
 
 
 # test tensor operator
@@ -74,4 +74,4 @@ w = A*u
 
 # print matricisation of tensor operator
 M = A.as_matrix()
-print A
+print M.shape

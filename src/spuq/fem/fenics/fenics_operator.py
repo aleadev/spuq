@@ -26,6 +26,9 @@ class FEniCSOperatorBase(Operator):
     def dim(self):
         return self._basis.dim
 
+    def as_matrix(self):
+        return self._matrix.array()
+
 
 class FEniCSOperator(FEniCSOperatorBase):
     @takes(anything, dolfin.Matrix, FEniCSBasis, np.ndarray)

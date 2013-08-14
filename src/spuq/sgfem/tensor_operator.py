@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 def _dim(A):
     try:
-        m, n = A.shape
-        assert m == n
+        m = A.shape[0]
+        assert m == A.shape[1]
         return m
     except:
         return A.dim
@@ -25,7 +25,7 @@ class TensorOperator(Operator):
         self._domain = domain
         self._codomain = codomain
         self._reverse_kronecker = reverse_kronecker
-        self.I, self.J, self.M = _dim(A[0]), _dim(B[0]), len(A)
+        self.I, self.J, self.M = _dim(self.A[0]), _dim(self.B[0]), len(self.A)
 
     @property
     def dim(self):
@@ -42,6 +42,7 @@ class TensorOperator(Operator):
                 # create view
                 ABij = AB[xi*J:(xi+1)*J, yi*J:(yi+1)*J]
                 # add together
+#                import ipdb; ipdb.set_trace()
                 ABij = A[xi,yi]*B.as_matrix() if m == 0 else ABij + A[xi,yi]*B.as_matrix()
         return AB
 
@@ -51,7 +52,7 @@ class TensorOperator(Operator):
             # apply B to all components of vector
             Bv_m = [B.apply(v) for B, v in zip(self.B, vec)]
             # build outer product with A
-            Vm = [ sum([ai*Bv_mi for ai, Bv_mi in zip(self.A[j,:], Bv_m)]) for j in range(self.I) ]
+            Vm = [ sum([ai*Bv_mi for ai, Bv_mi in zip(self.A[m][j,:], Bv_m)]) for j in range(self.I) ]
             # add together
             V = Vm if m == 0 else V + Vm
         return V            
