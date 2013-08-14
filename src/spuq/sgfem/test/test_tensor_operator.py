@@ -5,7 +5,7 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.application.egsz.sample_problems2 import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
-from spuq.application.egsz.fem_discretisation import FEMPoisson
+from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 
 def prepare_deterministic_operators(pde, coeff, M, mesh, degree):
@@ -22,15 +22,8 @@ def prepare_stochastic_operators(N, p1, p2):
     print H.shape
     return [H[:,:,k] for k in range(H.shape[2])]
 
-def prepare_vectors(size):
-    pass
-
-# def setupMultiVector(cls, mis, pde, mesh, degree):
-#     fs = pde.function_space(mesh, degree=degree)
-#     w = MultiVectorSharedBasis()
-#     for mu in mis:
-#         w[mu] = FEniCSVector(Function(fs))
-#     return w
+def prepare_vectors(J, FS):
+    return [FS.new_vector() for _ in range(J)]
 
 
 # A setup problem
@@ -65,9 +58,11 @@ print len(D)
 
 # construct combined tensor operator
 A = TensorOperator(K, D)
+I, J, M = A.dim
+print "dim A", A.dim
 
 # setup tensor vector
-u = prepare_vectors([FS.dim, D[0].shape[0]])
+u = prepare_vectors(J, FS)
 u = TensorVector(u)
 
 

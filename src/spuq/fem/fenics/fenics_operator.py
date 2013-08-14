@@ -21,6 +21,10 @@ class FEniCSOperatorBase(Operator):
     @property
     def codomain(self):
         return self._basis
+    
+    @property
+    def dim(self):
+        return self._basis.dim
 
 
 class FEniCSOperator(FEniCSOperatorBase):
