@@ -35,15 +35,16 @@ class TensorOperator(Operator):
         """Return matrix of operator if all included operators support this."""
         import itertools as iter
         I, J, M = self.I, self.J, self.M
-        AB = np.ndarray((I*J, I*J))
+        AB = np.ndarray((I * J, I * J))
         for m in range(M):
             A, B = self.A[m], self.B[m]
             for xi, yi in iter.product(range(I), repeat=2):
-                # create view
-                ABij = AB[xi*J:(xi+1)*J, yi*J:(yi+1)*J]
                 # add together
 #                import ipdb; ipdb.set_trace()
-                ABij = A[xi,yi]*B.as_matrix() if m == 0 else ABij + A[xi,yi]*B.as_matrix()
+                if m == 0:
+                    AB[xi * J:(xi + 1) * J, yi * J:(yi + 1) * J] = A[xi, yi] * B.as_matrix()
+                else:
+                    AB[xi * J:(xi + 1) * J, yi * J:(yi + 1) * J] += A[xi, yi] * B.as_matrix()
         return AB
 
     def apply(self, vec):  # pragma: no cover
@@ -52,7 +53,8 @@ class TensorOperator(Operator):
             # apply B to all components of vector
             Bv_m = [B.apply(v) for B, v in zip(self.B, vec)]
             # build outer product with A
-            Vm = [ sum([ai*Bv_mi for ai, Bv_mi in zip(self.A[m][j,:], Bv_m)]) for j in range(self.I) ]
+            # TODO: this is the performance bottleneck!
+            Vm = [ np.sum([ai * Bv_mi for ai, Bv_mi in zip(self.A[m][j, :], Bv_m)]) for j in range(self.I) ]
             # add together
             V = Vm if m == 0 else V + Vm
         return V            
