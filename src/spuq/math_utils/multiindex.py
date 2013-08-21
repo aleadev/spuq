@@ -52,6 +52,16 @@ class Multiindex(object):
                     break
         return cmpval
 
+    def cmp_by_index(self, other):
+        assert type(self) is type(other)
+        sa = self._arr
+        oa = other._arr
+        l = len(sa) - len(oa)
+        if l <= 0:
+            return np.append(sa, np.zeros(-l)) == oa
+        else:
+            return np.append(oa, np.zeros(l)) == sa
+
     def __le__(self, other):
         cmpval = self.cmp_by_order(other)
         return cmpval <= 0

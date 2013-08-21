@@ -24,8 +24,9 @@ def prepare_deterministic_operators(pde, coeff, M, mesh, degree):
 def prepare_stochastic_operators(N, p1, p2):
     I = MultiindexSet.createCompleteOrderSet(N, p1).arr
     J = MultiindexSet.createCompleteOrderSet(N, p2).arr
-    H = evaluate_Hermite_triple(I, I, J)
-    return [H[:, :, k] for k in range(H.shape[2])]
+#    H = evaluate_Hermite_triple(I, I, J)
+    L = evaluate_Legendre_triple(I, I, J)
+    return [L[:, :, k] for k in range(L.shape[2])]
 
 def prepare_vectors(J, FS):
     return [FS.new_vector() for _ in range(J)]
