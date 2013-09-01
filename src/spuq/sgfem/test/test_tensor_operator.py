@@ -1,6 +1,7 @@
 from spuq.sgfem.tensor_operator import TensorOperator
 from spuq.sgfem.tensor_vector import TensorVector
 from spuq.sgfem.hermite_triple import evaluate_Hermite_triple
+from spuq.sgfem.legendre_triple import evaluate_Legendre_triple
 from spuq.math_utils.multiindex import Multiindex
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.application.egsz.sample_problems2 import SampleProblem
@@ -10,24 +11,23 @@ from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from matplotlib.pyplot import figure, show, spy
 import scipy.sparse as sps
 
+# use uBLAS backend for conversion to scipy sparse matrices
+from dolfin import parameters
 parameters.linear_algebra_backend = "uBLAS"
-
-# Convert DOLFIN representation to scipy sparse arrays
-rows, cols, values = A.data()
-Aa = sps.csr_matrix((values, cols, rows))
 
 def prepare_deterministic_operators(pde, coeff, M, mesh, degree):
     fs = pde.function_space(mesh, degree=degree)
     FS = FEniCSBasis(fs)
     am_f = [coeff.mean_func]
-    am_f.extend([coeff_field[m][0] for m in range(M-1)])
-    return [pde.assemble_operator(basis=FS, coeff=f) for f in am_f], FS
+    am_f.extend([coeff_field[m][0] for m in range(M - 1)])
+    return [pde.assemble_operator(basis=FS, coeff=f, scipy_sparse=True) for f in am_f], FS
 
 def prepare_stochastic_operators(N, p1, p2):
     I = MultiindexSet.createCompleteOrderSet(N, p1).arr
     J = MultiindexSet.createCompleteOrderSet(N, p2).arr
-    H = evaluate_Hermite_triple(I, I, J)
-    return [H[:,:,k] for k in range(H.shape[2])]
+#    H = evaluate_Hermite_triple(I, I, J)
+    L = evaluate_Legendre_triple(I, I)
+    return [L[:, :, k] for k in range(L.shape[2])]
 
 def prepare_vectors(J, FS):
     return [FS.new_vector() for _ in range(J)]
@@ -78,13 +78,17 @@ print "TensorVector", len(u), u[0]
 # ====================
 
 # test application of operator
-w = A*u
+w = A * u
 
 # print matricisation of tensor operator
 M = A.as_matrix()
-print "A", M.shape
+print M.shape, linalg.norm(M)
 
+# plot sparsity pattern
 fig = figure()
-#spy(K[0].as_matrix())
-#spy(M)
+spy(M)
 show()
+
+## Convert uBLAS representation to scipy sparse arrays
+#rows, cols, values = A.data()
+#Aa = sps.csr_matrix((values, cols, rows))

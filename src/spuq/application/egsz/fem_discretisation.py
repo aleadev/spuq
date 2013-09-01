@@ -238,7 +238,7 @@ class FEMDiscretisation(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def assemble_operator(self, basis, coeff, withDirichletBC=True):
+    def assemble_operator(self, basis, coeff, withDirichletBC=True, scipy_sparse=False):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
         raise NotImplementedError
 
@@ -248,7 +248,7 @@ class FEMDiscretisation(object):
         raise NotImplementedError
 
     @abstractmethod
-    def assemble_operator_inner_dofs(self, basis, coeff):
+    def assemble_operator_inner_dofs(self, basis, coeff, scipy_sparse=False):
         """Assemble the discrete problem and return as Operator
         (projected on the inner DOFs, i.e. all Dirichlet BC entries set to zero)."""
         raise NotImplementedError
@@ -325,11 +325,11 @@ class FEMDiscretisationBase(FEMDiscretisation):
         return F
 
     @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction), optional(bool))
-    def assemble_operator(self, basis, coeff=None, withDirichletBC=True):
+    def assemble_operator(self, basis, coeff=None, withDirichletBC=True, scipy_sparse=False):
         """Assemble the discrete problem (i.e. the stiffness matrix) and return as Operator."""
         coeff = get_default(coeff, self.coeff)
         matrix = self.assemble_lhs(basis, coeff, withDirichletBC=withDirichletBC)
-        return FEniCSOperator(matrix, basis)
+        return FEniCSOperator(matrix, basis, scipy_sparse=scipy_sparse)
 
     @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction), optional(bool))
     def assemble_solve_operator(self, basis, coeff=None, withDirichletBC=True):
@@ -338,14 +338,14 @@ class FEMDiscretisationBase(FEMDiscretisation):
         return FEniCSSolveOperator(matrix, basis)
 
     @takes_verbose(anything, FEniCSBasis, optional(CoefficientFunction))
-    def assemble_operator_inner_dofs(self, basis, coeff=None):
+    def assemble_operator_inner_dofs(self, basis, coeff=None, scipy_sparse=False):
         """Assemble the discrete problem and return as Operator
         (projected on the inner DOFs, i.e. all Dirichlet BC entries set to zero)."""
         coeff = get_default(coeff, self.coeff)
         matrix = self.assemble_lhs(basis, coeff)
         bcs = self.create_dirichlet_bcs(basis._fefs, self.uD, self.dirichlet_boundary)
         mask = get_dirichlet_mask(matrix, bcs)
-        return FEniCSOperator(matrix, basis, mask)
+        return FEniCSOperator(matrix, basis, mask, scipy_sparse=scipy_sparse)
 
     @takes_verbose(anything, FEniCSVector, optional(bool))
     def set_dirichlet_bc_entries(self, u, homogeneous=False):

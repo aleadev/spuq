@@ -4,6 +4,7 @@ from scipy.sparse import dok_matrix, lil_matrix, csc_matrix, csr_matrix
 from spuq.polyquad.polynomials import LegendrePolynomials
 
 def cmp_by_index(a1, a2):
+    assert a1.shape == a2.shape
 #     l1 = len(a1)
 #     l2 = len(a2)
 #     l = max(l1,l2)
@@ -31,12 +32,12 @@ def evaluate_Legendre_triple(I_a, I_b):
                     ak, bk = mui[k], muj[k]
                     a, b, c = lp.get_beta(bk)
                     if ak == bk+1:
-                        print "A", a
+#                        print "A", a
                         val += a
                     if ak == bk:
                         val -= b
                     if ak == bk-1:
-                        print "C", c
+#                        print "C", c
                         val -= c
                     if val <> 0.0:
                         L[k][i, j] = val

@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as sps
 
 import dolfin
 
@@ -9,7 +10,7 @@ from spuq.utils.type_check import takes, anything
 
 
 class FEniCSOperatorBase(Operator):
-    @takes(anything, dolfin.Matrix, FEniCSBasis)
+    @takes(anything, (dolfin.Matrix, sps.spmatrix), FEniCSBasis)
     def __init__(self, matrix, basis):
         self._matrix = matrix
         self._basis = basis
@@ -27,12 +28,21 @@ class FEniCSOperatorBase(Operator):
         return self._basis.dim
 
     def as_matrix(self):
-        return self._matrix.array()
+        try:
+            a = self._matrix.array()    # FEniCS
+        except:
+            a = self._matrix.toarray()  # scipy spmatrix
+        return a
 
 
 class FEniCSOperator(FEniCSOperatorBase):
     @takes(anything, dolfin.Matrix, FEniCSBasis, np.ndarray)
-    def __init__(self, matrix, basis, mask=None):
+    def __init__(self, matrix_, basis, mask=None, scipy_sparse=False):
+        if scipy_sparse:
+            rows, cols, values = matrix_.data()
+            matrix = sps.csr_matrix((values, cols, rows))
+        else:
+            matrix = matrix_
         FEniCSOperatorBase.__init__(self, matrix, basis)
         self._mask = mask
         
