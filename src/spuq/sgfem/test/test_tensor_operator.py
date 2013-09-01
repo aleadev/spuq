@@ -7,6 +7,14 @@ from spuq.application.egsz.sample_problems2 import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
+from matplotlib.pyplot import figure, show, spy
+import scipy.sparse as sps
+
+parameters.linear_algebra_backend = "uBLAS"
+
+# Convert DOLFIN representation to scipy sparse arrays
+rows, cols, values = A.data()
+Aa = sps.csr_matrix((values, cols, rows))
 
 def prepare_deterministic_operators(pde, coeff, M, mesh, degree):
     fs = pde.function_space(mesh, degree=degree)
@@ -74,4 +82,9 @@ w = A*u
 
 # print matricisation of tensor operator
 M = A.as_matrix()
-print M.shape
+print "A", M.shape
+
+fig = figure()
+#spy(K[0].as_matrix())
+#spy(M)
+show()

@@ -41,9 +41,11 @@ class TensorOperator(Operator):
             for xi, yi in iter.product(range(I), repeat=2):
                 # create view
                 ABij = AB[xi*J:(xi+1)*J, yi*J:(yi+1)*J]
+                print xi, yi, "--", ABij.shape, xi*J, yi*J, J
                 # add together
 #                import ipdb; ipdb.set_trace()
-                ABij = A[xi,yi]*B.as_matrix() if m == 0 else ABij + A[xi,yi]*B.as_matrix()
+                aij = A[xi,yi]
+                ABij = aij*B.as_matrix() if m == 0 else ABij + aij*B.as_matrix()                
         return AB
 
     def apply(self, vec):  # pragma: no cover
