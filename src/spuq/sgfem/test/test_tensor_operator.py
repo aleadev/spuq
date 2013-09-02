@@ -22,12 +22,16 @@ def prepare_deterministic_operators(pde, coeff, M, mesh, degree):
     am_f.extend([coeff_field[m][0] for m in range(M - 1)])
     return [pde.assemble_operator(basis=FS, coeff=f, scipy_sparse=True) for f in am_f], FS
 
-def prepare_stochastic_operators(N, p1, p2):
+def prepare_stochastic_operators(N, p1, p2=0, type='L'):
     I = MultiindexSet.createCompleteOrderSet(N, p1).arr
-    J = MultiindexSet.createCompleteOrderSet(N, p2).arr
-#    H = evaluate_Hermite_triple(I, I, J)
-    L = evaluate_Legendre_triple(I, I)
-    return [L[:, :, k] for k in range(L.shape[2])]
+    if type == 'L':
+        print "Legendre triple", I.shape
+        L = evaluate_Legendre_triple(I, I)
+    elif type == 'H':
+        J = MultiindexSet.createCompleteOrderSet(N, p2).arr
+        H = evaluate_Hermite_triple(I, I, J)
+        L = [L[:, :, k] for k in range(L.shape[2])]
+    return L
 
 def prepare_vectors(J, FS):
     return [FS.new_vector() for _ in range(J)]
@@ -54,24 +58,26 @@ pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(2, 
 # =======================
 
 # setup deterministic operators
-M, degree = 15, 1
+M, degree = 5, 1
 K, FS = prepare_deterministic_operators(pde, coeff_field, M, mesh, degree)
 print "K", len(K)
 
 # setup stochastic operators
-N, p1, p2 = 4, 3, 2
-D = prepare_stochastic_operators(N, p1, p2)
-print "D", len(D)
+#N, p1, p2 = 4, 3, 2
+p1 = 3
+#D = prepare_stochastic_operators(N, p1, p2, 'H')
+D = prepare_stochastic_operators(M, p1, 'L')
+print "D", len(D), D[0].dim
 
 # construct combined tensor operator
 A = TensorOperator(K, D)
 I, J, M = A.dim
-print "dim A", A.dim, D[0].shape
+print "TensorOperator A dim", A.dim
 
 # setup tensor vector
 u = prepare_vectors(J, FS)
 u = TensorVector(u)
-print "TensorVector", len(u), u[0]
+print "TensorVector u", len(u), u[0].shape
 
 
 # test tensor operator
