@@ -10,6 +10,7 @@ from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from matplotlib.pyplot import figure, show, spy
 import scipy.sparse as sps
+from scipy.linalg import norm
 
 # use uBLAS backend for conversion to scipy sparse matrices
 from dolfin import parameters
@@ -17,6 +18,7 @@ parameters.linear_algebra_backend = "uBLAS"
 
 def prepare_deterministic_operators(pde, coeff, M, mesh, degree):
     fs = pde.function_space(mesh, degree=degree)
+    print "OOO", fs.dim()
     FS = FEniCSBasis(fs)
     am_f = [coeff.mean_func]
     am_f.extend([coeff_field[m][0] for m in range(M - 1)])
@@ -58,16 +60,16 @@ pde, Dirichlet_boundary, uD, Neumann_boundary, g, f = SampleProblem.setupPDE(2, 
 # =======================
 
 # setup deterministic operators
-M, degree = 5, 1
+M, degree = 3, 1
 K, FS = prepare_deterministic_operators(pde, coeff_field, M, mesh, degree)
 print "K", len(K)
 
 # setup stochastic operators
 #N, p1, p2 = 4, 3, 2
-p1 = 3
+p1 = 2
 #D = prepare_stochastic_operators(N, p1, p2, 'H')
 D = prepare_stochastic_operators(M, p1, 'L')
-print "D", len(D), D[0].dim
+print "D", len(D), D[0].shape
 
 # construct combined tensor operator
 A = TensorOperator(K, D)
@@ -75,9 +77,10 @@ I, J, M = A.dim
 print "TensorOperator A dim", A.dim
 
 # setup tensor vector
-u = prepare_vectors(J, FS)
+u = prepare_vectors(I, FS)
 u = TensorVector(u)
-print "TensorVector u", len(u), u[0].shape
+print "TensorVector u", len(u), u[0].dim
+print "u as matrix shape", u.as_matrix().shape, u.flatten().shape
 
 
 # test tensor operator
@@ -88,7 +91,7 @@ w = A * u
 
 # print matricisation of tensor operator
 M = A.as_matrix()
-print M.shape, linalg.norm(M)
+print M.shape, norm(M)
 
 # plot sparsity pattern
 fig = figure()

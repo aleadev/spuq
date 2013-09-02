@@ -27,7 +27,7 @@ def evaluate_Legendre_triple(I_a, I_b):
                 # compare indices
                 cmp_ij = np.array(cmp_by_index(mui, muj))
                 # test for equality except kth component
-                if np.all(np.append(cmp_ij[:k], cmp_ij[k+1:]) == 0):
+                if np.all(np.append(cmp_ij[:k-1], cmp_ij[k:]) == 0):
                     val = 0.0
                     ak, bk = mui[k], muj[k]
                     a, b, c = lp.get_beta(bk)

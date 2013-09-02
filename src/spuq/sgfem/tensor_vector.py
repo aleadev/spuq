@@ -19,7 +19,10 @@ class TensorVector(Vector):
         raise NotImplementedError
 
     def flatten(self):
-        return np.vstack([v.array() for v in self.V])
+        return np.hstack([v.array for v in self.V])
+
+    def as_matrix(self):
+        return np.vstack([v.array for v in self.V]).T
 
     def basis(self):
         return [v.basis for v in self.V]

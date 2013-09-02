@@ -49,6 +49,18 @@ class TensorOperator(Operator):
 
     def apply(self, vec):  # pragma: no cover
         """Apply operator to vector."""
+        v = vec.as_matrix()
+        for m in range(self.M):
+            # apply B
+            Bv = np.vstack([np.dot(v[:,j],self.B[m].as_matrix()) for j in range(v.shape[1])])
+            # apply A
+            Vm = np.vstack([self.A[m].dot(Bv[:,j].T) for j in range(Bv.shape[1])])
+            # add together
+            V = Vm if m == 0 else V + Vm
+        return V
+
+    def apply_old(self, vec):  # pragma: no cover
+        """Apply operator to vector."""
         for m in range(self.M):
             # apply B to all components of vector
             Bv_m = [B.apply(v) for B, v in zip(self.B, vec)]
