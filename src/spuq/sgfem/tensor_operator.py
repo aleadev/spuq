@@ -1,7 +1,10 @@
-from spuq.linalg.operator import Operator
+import logging
 import numpy as np
 
-import logging
+from spuq.linalg.operator import Operator
+from spuq.utils.type_check import takes, anything, sequence_of
+from spuq.sgfem.tensor_vector import MatrixTensorVector
+
 logger = logging.getLogger(__name__)
 
 def _dim(A):
@@ -14,18 +17,15 @@ def _dim(A):
 
 class TensorOperator(Operator):
     """Tensor operator \sum_i A_i\otimes B_i."""
-    
-    def __init__(self, A, B, domain=None, codomain=None, reverse_kronecker=True):
+
+    @takes(anything, sequence_of(Operator), sequence_of(Operator))
+    def __init__(self, A, B, domain=None, codomain=None):
         """Initialise with lists of operators."""
         assert len(A) == len(B)
-        if not reverse_kronecker:
-            self.A, self.B = A, B
-        else:
-            self.A, self.B = B, A
+        self.A, self.B = A, B
         self._domain = domain
         self._codomain = codomain
-        self._reverse_kronecker = reverse_kronecker
-        self.I, self.J, self.M = _dim(self.A[0]), _dim(self.B[0]), len(self.A)
+        self.I, self.J, self.M = self.A[0].domain.dim, self.B[0].domain.dim, len(A)
 
     @property
     def dim(self):
@@ -34,43 +34,49 @@ class TensorOperator(Operator):
     def as_matrix(self):
         """Return matrix of operator if all included operators support this."""
         import itertools as iter
-        I, J, M = self.I, self.J, self.M
-        AB = np.ndarray((I * J, I * J))
-        for m in range(M):
-            A, B = self.A[m], self.B[m]
-            for xi, yi in iter.product(range(I), repeat=2):
+        I, J = self.I, self.J
+        AB = np.ndarray((I*J, I*J))
+        # TODO: contruct large matrix in i,j,value format
+        for m in range(self.M):
+            A = self.A[m].as_matrix().toarray()
+            B = self.B[m].as_matrix().toarray()
+            for xi, yi in iter.product(range(self.I), repeat=2):
                 # add together
 #                import ipdb; ipdb.set_trace()
                 if m == 0:
-                    AB[xi * J:(xi + 1) * J, yi * J:(yi + 1) * J] = A[xi, yi] * B.as_matrix()
+                    AB[xi * J:(xi + 1) * J, yi * J:(yi + 1) * J] = A[xi, yi] * B
                 else:
-                    AB[xi * J:(xi + 1) * J, yi * J:(yi + 1) * J] += A[xi, yi] * B.as_matrix()
+                    AB[xi * J:(xi + 1) * J, yi * J:(yi + 1) * J] += A[xi, yi] * B
         return AB
 
-    def apply(self, vec):  # pragma: no cover
-        """Apply operator to vector."""
-        v = vec.as_matrix()
+    def old_apply(self, vec):
+        X = vec#.as_matrix()
         for m in range(self.M):
             # apply B
-            Bv = np.vstack([np.dot(v[:,j],self.B[m].as_matrix()) for j in range(v.shape[1])])
+            BX = self.B[m].apply(X.T)
             # apply A
-            Vm = np.vstack([self.A[m].dot(Bv[:,j].T) for j in range(Bv.shape[1])])
+            AXB = self.A[m].apply(BX.T)
             # add together
-            V = Vm if m == 0 else V + Vm
-        return V
+            Y = AXB if m == 0 else Y + AXB
+        return vec.__class__(Y)
 
-    def apply_old(self, vec):  # pragma: no cover
+    @takes(anything, MatrixTensorVector)
+    def apply(self, vec):  # pragma: no cover
         """Apply operator to vector."""
+        X = vec
         for m in range(self.M):
-            # apply B to all components of vector
-            Bv_m = [B.apply(v) for B, v in zip(self.B, vec)]
-            # build outer product with A
-            # TODO: this is the performance bottleneck!
-            Vm = [ np.sum([ai * Bv_mi for ai, Bv_mi in zip(self.A[m][j, :], Bv_m)]) for j in range(self.I) ]
+            # apply A
+            AX = X.apply_matrix(self.A[m], 0)
+            # apply B
+            ABX = AX.apply_matrix(self.B[m], 1)
             # add together
-            V = Vm if m == 0 else V + Vm
-        return V            
-    
+            if m==0:
+                Y = ABX
+            else:
+                Y += ABX
+        return Y
+
+
     def __call__(self, arg):
         """Operators have call semantics."""
         return self.apply(arg)
