@@ -6,6 +6,7 @@ from spuq.utils.type_check import takes, anything, optional
 from spuq.utils.enum import Enum
 from spuq.linalg.operator import MatrixOperator
 from spuq.fem.fem_basis import FEMBasis
+from spuq.linalg.basis import CanonicalBasis
 
 # Set option to allow extrapolation outside mesh (for interpolation)
 dolfin.parameters["allow_extrapolation"] = True
@@ -194,3 +195,6 @@ class FEniCSBasis(FEMBasis):
                 self._fefs.num_sub_spaces() == other._fefs.num_sub_spaces() and
                 (mesh1.cells() == mesh2.cells()).all() and
                 (mesh1.coordinates() == mesh2.coordinates()).all())
+
+    def as_canonical_basis(self):
+        return CanonicalBasis(self.dim)
