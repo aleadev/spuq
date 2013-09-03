@@ -515,8 +515,10 @@ def _takes(verbose, *args, **kwargs):
 
                 # check the types of the actual call parameters
                 def format_msg(method, param, arg, checker):
-                    return "%s() got invalid parameter %s of %s instead of %s" % (
-                        method_name(method), param, checker.format_arg(arg, verbose), str(checker))                    
+                    msg = "%s() got invalid parameter %s (%s) of %s instead of %s" % (
+                        method_name(method), param, method.func_code.co_varnames[param-1], checker.format_arg(arg, verbose), str(checker))
+                    msg = "\n%s\nIn file: %s\nParameters: %s" % (msg, method.func_code.co_filename,", ".join(method.func_code.co_varnames))
+                    return msg
 
                 for i, (arg, checker) in enumerate(zip(args, checkers)):
                     if not checker.check(arg):
