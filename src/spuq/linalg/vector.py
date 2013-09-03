@@ -73,7 +73,7 @@ class Vector(MathObject):
         return NotImplemented
 
     @abstractmethod
-    def __neg__(self, other):  # pragma: no cover
+    def __neg__(self):  # pragma: no cover
         """Compute the negative of this vector."""
         return NotImplemented
 

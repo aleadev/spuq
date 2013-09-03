@@ -93,5 +93,4 @@ class MatrixTensorVector(TensorVector):
     @classmethod
     def from_list(cls, L):
         X = np.vstack(L).T
-        print "TTT", X.shape, len(L), type(L[0])
         return cls(X, TensorBasis())
