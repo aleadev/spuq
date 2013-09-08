@@ -51,7 +51,7 @@ def zero_function(V):
 
 @takes((dolfin.Argument, dolfin.Function))
 def element_degree(u):
-    """Returns true if u has an ufl_element and at least element degree 2"""
+    """Returns degree of ufl_element of u"""
     return u.function_space().ufl_element().degree()
 
 
