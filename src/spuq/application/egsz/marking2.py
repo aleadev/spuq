@@ -66,9 +66,8 @@ class Marking(object):
 
     @classmethod
     @takes(anything, (list, tuple), dict, callable, float, int)
-    def mark_y(cls, Lambda, zeta_, eval_zeta_m, theta_y, max_new_mi=100, type=0):
+    def mark_y(cls, Lambda, zeta_, eval_zeta_m, theta_y, max_new_mi=100, type=1):
         """Carry out Doerfler marking by activation of new indices."""
-        assert set(Lambda.active_indices()) == set(zeta.keys())
         zeta = zeta_
         global_zeta = np.sqrt(sum([z ** 2 for z in zeta_.values()]))
         suppLambda = supp(Lambda)

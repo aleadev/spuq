@@ -93,6 +93,7 @@ def set_dirichlet_bc_entries(u, bcs, homogeneous):
     else:
         dof2val = bcs.get_boundary_values()
         dofs = dof2val.keys()
+        dofs = map(int,dofs)
         if homogeneous:
             u[dofs] = 0.0
         else:
