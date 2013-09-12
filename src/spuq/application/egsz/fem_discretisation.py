@@ -36,7 +36,6 @@ def make_list(x, length=None):
         if len(x) == 1:
             x = x * length
         assert len(x) == length
-
     return x
 
 
