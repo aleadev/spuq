@@ -120,7 +120,7 @@ class EquilibrationEstimator(object):
 
         # define variational form
         a_eq = (dot(sigma, tau) + div(tau)*u + div(sigma)*v)*dx
-        L_eq = (-(f_mu + div(sigma_mu))*v + dot(sigma_mu, tau))*dx
+        L_eq = (-f_mu*v + dot(sigma_mu, tau))*dx
 
         # compute solution
         w_eq = Function(W)
