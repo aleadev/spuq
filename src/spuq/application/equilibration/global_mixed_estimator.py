@@ -100,14 +100,12 @@ class EquilibrationEstimator(object):
         degree = element_degree(w[mu]._fefunc)
 
         # create function spaces
-        DG = FunctionSpace(mesh, 'DG', 0)
-        RT = FunctionSpace(mesh, 'RT', degree)  # TODO: degree-1 ?
-        W = RT*DG
+        DG0 = FunctionSpace(mesh, 'DG', 0)
+        RT = FunctionSpace(mesh, 'BDM', degree)
+        W = RT*DG0
 
         # setup boundary conditions
-        bcs = pde.create_dirichlet_bcs(W.sub(1))
-
-        # TODO: treat Neumann boundary
+#        bcs = pde.create_dirichlet_bcs(W.sub(1))
 
         # debug ===
         # from dolfin import DOLFIN_EPS, DirichletBC
@@ -126,7 +124,7 @@ class EquilibrationEstimator(object):
 
         # compute solution
         w_eq = Function(W)
-        solve(a_eq == L_eq, w_eq, bcs)
+        solve(a_eq == L_eq, w_eq)
         (sigma_mixed, u_mixed) = w_eq.split()
 
 
@@ -135,7 +133,7 @@ class EquilibrationEstimator(object):
         # #############################
 
         # define error estimator
-        z = TestFunction(DG)
+        z = TestFunction(DG0)
         sigma_error = inner(sigma_mu-sigma_mixed, sigma_mu-sigma_mixed)
         eta_mu = sigma_error * z * dx
 
@@ -150,7 +148,7 @@ class EquilibrationEstimator(object):
         # evaluate global error
         eta = sqrt(sum(i**2 for i in eta_T))
         # reorder array entries for local estimators
-        dofs = [DG.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
+        dofs = [DG0.dofmap().cell_dofs(c.index())[0] for c in cells(mesh)]
         eta_T = eta_T[dofs]
 
         # restore quadrature degree
