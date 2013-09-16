@@ -35,7 +35,7 @@ class MatrixTensorVector(TensorVector):
         self.X = X
     
     def dim(self):  # pragma: no cover
-        """Return dimension of this vector"""
+        """Return dimension of this vector."""
         return self.X.shape
 
     def copy(self):  # pragma: no cover
@@ -50,20 +50,17 @@ class MatrixTensorVector(TensorVector):
     @takes(anything, Operator, int)
     #@takes(anything, (np.ndarray, sps.spmatrix), int)
     def apply_matrix(self, op, axis):
-        # TODO:
         A = op.as_matrix()
         X = np.matrix(self.X)
-        if axis==0:
+        if axis == 0:
             Y = A * X
-        elif axis==1:
+        elif axis == 1:
             Y = (A * X.T).T
         return self.__class__(Y, self._basis)
         
     @property
     def coeffs(self):
         return self.flatten()
-
-
 
     def __eq__(self, other):  # pragma: no cover
         """Test whether vectors are equal."""

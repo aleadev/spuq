@@ -70,7 +70,7 @@ class TensorOperator(Operator):
             # apply B
             ABX = AX.apply_matrix(self.B[m], 1)
             # add together
-            if m==0:
+            if m == 0:
                 Y = ABX
             else:
                 Y += ABX

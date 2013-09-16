@@ -20,6 +20,10 @@ class ScipyOperatorBase(Operator):
         self._codomain = codomain
 
     @property
+    def matrix(self):
+        return self._matrix
+
+    @property
     def domain(self):
         return self._domain
 
