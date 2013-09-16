@@ -150,7 +150,7 @@ class ResidualEstimator(object):
             for rj, dsj in R_Nb:
                 res_form = res_form + (1 / a0_s) * h * s * inner(rj, rj) * dsj
 
-        # FEM evaluate residual on mesh
+        # FEM evaluate residual estimator on mesh
         eta = assemble(res_form)
         eta_indicator = np.array([sqrt(e) for e in eta])
         # map DG dofs to cell indices

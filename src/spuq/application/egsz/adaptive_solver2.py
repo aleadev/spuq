@@ -18,6 +18,7 @@ try:
     from dolfin import (Function, FunctionSpace, cells, Constant, refine)
     from spuq.application.egsz.marking2 import Marking
     from spuq.application.egsz.residual_estimator2 import ResidualEstimator
+    from spuq.application.equilibration.global_mixed_estimator import EquilibrationEstimator
     from spuq.fem.fenics.fenics_utils import error_norm
 except:
     import traceback
@@ -29,6 +30,9 @@ except:
 
 # retrieve logger
 logger = logging.getLogger(__name__)
+
+# flag for equilibration estimator usage
+USE_EQUILIBRATION_ESTIMATOR = True
 
 
 # ============================================================
@@ -159,14 +163,21 @@ def AdaptiveSolver(A, coeff_field, pde,
         logger.debug("evaluating upper tail bound")
         with timing(msg="ResidualEstimator.evaluateUpperTailBound", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-TAIL", stats=stats)):
             global_zeta, zeta, zeta_bar, eval_zeta_m = ResidualEstimator.evaluateUpperTailBound(w, coeff_field, pde, maxh, add_maxm)
-            
-        # evaluate estimate_x
-        with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
-            global_eta, eta, eta_local = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
+
+        if USE_EQUILIBRATION_ESTIMATOR:
+            # evaluate estimate_x
+            logger.debug("evaluating residual bound (equilibration)")
+            with timing(msg="EquilibrationEstimator.evaluateEquilibrationEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
+                global_eta, eta, eta_local = EquilibrationEstimator.evaluateEquilibrationEstimator(w, coeff_field, pde, f, quadrature_degree)
+        else:
+            # evaluate estimate_x
+            logger.debug("evaluating residual bound (residual)")
+            with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
+                global_eta, eta, eta_local = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
             
         # set overall error
         xi = sqrt(global_eta ** 2 + global_zeta ** 2)
-        logger.info("Overall Estimator Error xi = %s while residual error is %s and tail error is %s", xi, global_eta, global_zeta)
+        logger.info("Overall Estimator Error xi = %s while spatial error is %s and tail error is %s", xi, global_eta, global_zeta)
 
         # store simulation data
         stats["ERROR-EST"] = xi
