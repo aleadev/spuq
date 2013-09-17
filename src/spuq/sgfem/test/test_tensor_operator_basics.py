@@ -23,15 +23,16 @@ def construct_data(k, d, m):
     D = [ScipyOperator(D_.asformat('csr'), domain=CanonicalBasis(D_.shape[0]), codomain=CanonicalBasis(D_.shape[1])) for D_ in D]
 
     # prepare vector
-    u = [np.random.rand(1,k) for _ in range(m)]
+    u = [np.random.rand(k) for _ in range(d)]
     return K, D, u
 
 
 # test tensor operator application
 # ================================
+I, J = 100, 15
 for M in [1,2,5]:
     # prepare data
-    K, D, u = construct_data(10, 15, M)
+    K, D, u = construct_data(I, J, M)
     A = TensorOperator(K, D)
     u = MatrixTensorVector.from_list(u)
     # print matricisation of tensor operator
