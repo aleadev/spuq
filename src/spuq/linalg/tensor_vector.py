@@ -1,17 +1,12 @@
 import logging
 import numpy as np
-import scipy.sparse as sps
+from spuq.linalg.tensor_basis import TensorBasis
 
 from spuq.linalg.vector import Vector, Scalar
 from spuq.linalg.operator import Operator, ComponentOperator
-from spuq.linalg.basis import Basis, CanonicalBasis
 from spuq.utils.type_check import takes, anything
 
 logger = logging.getLogger(__name__)
-
-class TensorBasis(CanonicalBasis):
-    def __init__(self):
-        super(TensorBasis, self).__init__(-1)
 
 
 class TensorVector(Vector):
@@ -23,7 +18,7 @@ class TensorVector(Vector):
         return self._basis
 
 
-class MatrixTensorVector(TensorVector):
+class FullTensor(TensorVector):
 
     @takes(anything, np.ndarray, TensorBasis)
     def __init__(self, X, basis):
@@ -47,17 +42,6 @@ class MatrixTensorVector(TensorVector):
     def as_matrix(self):
         return self.X
 
-    @takes(anything, Operator, int)
-    #@takes(anything, (np.ndarray, sps.spmatrix), int)
-    def apply_matrix_old(self, op, axis):
-        A = op.as_matrix()
-        X = np.matrix(self.X)
-        if axis == 0:
-            Y = A * X
-        elif axis == 1:
-            Y = (A * X.T).T
-        return self.__class__(Y, self._basis)
-
     @takes(anything, ComponentOperator, int)
     def apply_to_dim(self, A, axis):
         X = np.matrix(self.X)
@@ -77,7 +61,7 @@ class MatrixTensorVector(TensorVector):
  
     def __neg__(self):  # pragma: no cover
         """Compute the negative of this vector."""
-        return MatrixTensorVector(-self.X, self.basis)
+        return FullTensor(-self.X, self.basis)
  
     def __iadd__(self, other):  # pragma: no cover
         """Add another vector to this one."""
@@ -93,7 +77,7 @@ class MatrixTensorVector(TensorVector):
             raise TypeError
 
     def __inner__(self, other):
-        assert isinstance(other, MatrixTensorVector)
+        assert isinstance(other, FullTensor)
         return np.sum(np.multiply(self.X, other.X))
 
     @classmethod

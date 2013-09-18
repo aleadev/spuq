@@ -3,7 +3,7 @@ import numpy as np
 import scipy.sparse as sps
 
 from spuq.linalg.tensor_operator import TensorOperator
-from spuq.linalg.tensor_vector import MatrixTensorVector
+from spuq.linalg.tensor_vector import FullTensor
 from spuq.linalg.scipy_operator import ScipyOperator
 from spuq.linalg.basis import CanonicalBasis
 
@@ -30,7 +30,7 @@ for M in [1,2,5]:
     # prepare data
     K, D, u = construct_data(I, J, M)
     A = TensorOperator(K, D)
-    u = MatrixTensorVector.from_list(u)
+    u = FullTensor.from_list(u)
     # print matricisation of tensor operator
     Amat = A.as_matrix()
     print Amat.shape

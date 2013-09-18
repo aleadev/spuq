@@ -1,7 +1,7 @@
 from scipy.linalg import norm
 
 from spuq.linalg.tensor_operator import TensorOperator
-from spuq.linalg.tensor_vector import MatrixTensorVector
+from spuq.linalg.tensor_vector import FullTensor
 from spuq.polyquad.structure_coefficients import evaluate_triples
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.application.egsz.sample_problems2 import SampleProblem
@@ -76,8 +76,8 @@ print "TensorOperator A dim", A.dim
 
 # setup tensor vector
 u = prepare_vectors(J, FS)
-u = MatrixTensorVector.from_list(u)
-print "MatrixTensorVector u", u.dim()
+u = FullTensor.from_list(u)
+print "FullTensor u", u.dim()
 print "u as matrix shape", u.as_matrix().shape, u.flatten().shape
 
 

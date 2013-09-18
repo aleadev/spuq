@@ -24,8 +24,6 @@ class ScipyOperatorBase(BaseOperator, ComponentOperator):
         return self._matrix
 
 
-
-
 class ScipyOperator(ScipyOperatorBase):
     @takes(anything, Vector)
     def apply(self, vec):
@@ -61,4 +59,3 @@ class ScipySolveOperator(ScipyOperatorBase):
         for i in range(X.shape[1]):
             Y[:,i] = spsla.spsolve(self._matrix, X[:,i])[:,np.newaxis]
         return Y
-
