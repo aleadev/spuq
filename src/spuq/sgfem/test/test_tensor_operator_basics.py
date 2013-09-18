@@ -43,7 +43,7 @@ for M in [1,2,5]:
     M2 = [sps.kron(K_.matrix, D_.matrix) for K_, D_ in zip(K, D)]
     M2 = np.sum(M2)
 
-    print "error norm: ", norm(Amat-M2.todense()), norm(Amat-M2)
+    print "error norm: ", norm(Amat-M2.todense()), " == ", norm(Amat-M2)
 
     # test application of operator
     w = A * u
