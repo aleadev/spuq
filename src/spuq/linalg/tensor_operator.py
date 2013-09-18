@@ -1,9 +1,9 @@
 import logging
 import numpy as np
 
-from spuq.linalg.operator import Operator
+from spuq.linalg.operator import Operator, ComponentOperator
 from spuq.utils.type_check import takes, anything, sequence_of
-from spuq.sgfem.tensor_vector import MatrixTensorVector
+from spuq.linalg.tensor_vector import MatrixTensorVector
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,12 @@ def _dim(A):
     except:
         return A.dim
 
+
 class TensorOperator(Operator):
     """Tensor operator \sum_i A_i\otimes B_i."""
+    #TODO: derive from BaseOperator
 
-    @takes(anything, sequence_of(Operator), sequence_of(Operator))
+    @takes(anything, sequence_of(ComponentOperator), sequence_of(ComponentOperator))
     def __init__(self, A, B, domain=None, codomain=None):
         """Initialise with lists of operators."""
         assert len(A) == len(B)
@@ -66,9 +68,9 @@ class TensorOperator(Operator):
         X = vec
         for m in range(self.M):
             # apply A
-            AX = X.apply_matrix(self.A[m], 0)
+            AX = X.apply_to_dim(self.A[m], 0)
             # apply B
-            ABX = AX.apply_matrix(self.B[m], 1)
+            ABX = AX.apply_to_dim(self.B[m], 1)
             # add together
             if m == 0:
                 Y = ABX

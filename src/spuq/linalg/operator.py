@@ -329,7 +329,15 @@ class SummedOperator(Operator):
         return sum(map(lambda op: op.as_matrix(), self.operators))
 
 
-class MatrixOperator(BaseOperator):
+class ComponentOperator(Operator):
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def apply_to_matrix(self, X):
+        pass
+
+
+class MatrixOperator(BaseOperator, ComponentOperator):
 
     @takes(anything, np.ndarray, optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
@@ -469,8 +477,6 @@ class MultiplicationOperator(BaseOperator):
         return MultiplicationOperator(1.0 / self._a, self.domain)
 
 
-# class TensorOperator(Operator):
-#     pass
 # class ReindexOperator(AbstractOperator):
 #     def __init__(self, index_map, domain, codomain):
 #         AbstractOperator(self, domain, codomain)

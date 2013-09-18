@@ -3,7 +3,7 @@ import numpy as np
 import scipy.sparse as sps
 
 from spuq.linalg.vector import Vector, Scalar
-from spuq.linalg.operator import Operator
+from spuq.linalg.operator import Operator, ComponentOperator
 from spuq.linalg.basis import Basis, CanonicalBasis
 from spuq.utils.type_check import takes, anything
 
@@ -49,7 +49,7 @@ class MatrixTensorVector(TensorVector):
 
     @takes(anything, Operator, int)
     #@takes(anything, (np.ndarray, sps.spmatrix), int)
-    def apply_matrix(self, op, axis):
+    def apply_matrix_old(self, op, axis):
         A = op.as_matrix()
         X = np.matrix(self.X)
         if axis == 0:
@@ -57,7 +57,16 @@ class MatrixTensorVector(TensorVector):
         elif axis == 1:
             Y = (A * X.T).T
         return self.__class__(Y, self._basis)
-        
+
+    @takes(anything, ComponentOperator, int)
+    def apply_to_dim(self, A, axis):
+        X = np.matrix(self.X)
+        if axis == 0:
+            Y = A.apply_to_matrix(X)
+        elif axis == 1:
+            Y = (A.apply_to_matrix(X.T)).T
+        return self.__class__(Y, self._basis)
+
     @property
     def coeffs(self):
         return self.flatten()

@@ -1,16 +1,12 @@
-from spuq.sgfem.tensor_operator import TensorOperator
-from spuq.sgfem.tensor_vector import MatrixTensorVector
+from scipy.linalg import norm
+import numpy as np
+import scipy.sparse as sps
+
+from spuq.linalg.tensor_operator import TensorOperator
+from spuq.linalg.tensor_vector import MatrixTensorVector
 from spuq.linalg.scipy_operator import ScipyOperator
 from spuq.linalg.basis import CanonicalBasis
 
-from matplotlib.pyplot import figure, show, spy
-from scipy.linalg import norm
-
-
-import numpy as np
-import scipy as sp
-import scipy.linalg as la
-import scipy.sparse as sps
 
 def construct_data(k, d, m):
     # prepare "deterministic" matrices

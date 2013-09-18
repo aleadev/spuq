@@ -1,8 +1,9 @@
-import numpy as np
-from spuq.math_utils.multiindex_set import MultiindexSet
-from spuq.sgfem.legendre_triple import evaluate_triples
-from spuq.polyquad.polynomials import LegendrePolynomials
 from matplotlib.pyplot import figure, show, spy
+
+from spuq.math_utils.multiindex_set import MultiindexSet
+from spuq.polyquad.structure_coefficients import evaluate_triples
+from spuq.polyquad.polynomials import LegendrePolynomials
+
 
 I = MultiindexSet.createCompleteOrderSet(4, 3, reversed=True).arr
 print I

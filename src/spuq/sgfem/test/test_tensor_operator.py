@@ -1,14 +1,14 @@
-from spuq.sgfem.tensor_operator import TensorOperator
-from spuq.sgfem.tensor_vector import MatrixTensorVector
-from spuq.sgfem.legendre_triple import evaluate_triples
+from scipy.linalg import norm
+
+from spuq.linalg.tensor_operator import TensorOperator
+from spuq.linalg.tensor_vector import MatrixTensorVector
+from spuq.polyquad.structure_coefficients import evaluate_triples
 from spuq.math_utils.multiindex_set import MultiindexSet
 from spuq.application.egsz.sample_problems2 import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.fem.fenics.fenics_basis import FEniCSBasis
 from spuq.polyquad.polynomials import LegendrePolynomials
 
-from matplotlib.pyplot import figure, show, spy
-from scipy.linalg import norm
 
 # use uBLAS backend for conversion to scipy sparse matrices
 from dolfin import parameters
@@ -115,7 +115,6 @@ print "v", v
 if False:
     import numpy as np
     import scipy as sp
-    import scipy.linalg as la
     import scipy.sparse as spa
     
     
