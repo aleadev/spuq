@@ -11,7 +11,7 @@ from spuq.linalg.test_support import *
 def test_vector_is_abstract():
     assert_raises(TypeError, Vector)
 
-def test_flatvec_init():
+def test_cptensor_init():
     X1 = np.random.random([4, 3])
     X2 = np.random.random([5, 3])
     cpt = CPTensor([X1, X2], TensorBasis([CanonicalBasis(4), CanonicalBasis(5)]))
@@ -19,7 +19,7 @@ def test_flatvec_init():
     assert_equal(cpt.order, 2)
 
 
-def test_flatvec_as_array():
+def test_cptensor_as_array():
     X1 = np.random.random([4, 3])
     X2 = np.random.random([5, 3])
     cpt = CPTensor([X1, X2], TensorBasis([CanonicalBasis(4), CanonicalBasis(5)]))
@@ -28,7 +28,7 @@ def test_flatvec_as_array():
     #TODO: (check for higher order, when implemented)
 
 
-def test_flatvec_equals():
+def test_cptensor_equals():
     #TODO: (postponed, check when implemented)
     X1 = np.random.random([4, 3])
     X2 = np.random.random([5, 3])
@@ -47,10 +47,10 @@ def test_flatvec_equals():
     assert_not_equal(cpt1, cpt3)
 
 
-def test_flatvec_copy():
+def test_cptensor_copy():
     pass
 
-def test_flatvec_neg():
+def test_cptensor_neg():
     X1 = np.random.random([4, 3])
     X2 = np.random.random([5, 3])
     cpt = CPTensor([X1, X2], TensorBasis([CanonicalBasis(4), CanonicalBasis(5)]))
@@ -62,7 +62,7 @@ def test_flatvec_neg():
     cptm = CPTensor([X1, -X2], TensorBasis([CanonicalBasis(4), CanonicalBasis(5)]))
     assert_equal(-cpt, cptm)
 
-def test_flatvec_add():
+def test_cptensor_add():
     X1a = np.random.random([4, 3])
     X2a = np.random.random([5, 3])
     X1b = np.random.random([4, 2])
@@ -74,7 +74,7 @@ def test_flatvec_add():
     assert_equal(cpta + cptb, cpts)
 
 
-def test_flatvec_sub():
+def test_cptensor_sub():
     X1a = np.random.random([4, 3])
     X2a = np.random.random([5, 3])
     X1b = np.random.random([4, 2])
@@ -86,7 +86,7 @@ def test_flatvec_sub():
     assert_equal(cpta - cptb, cpts)
 
 
-def test_flatvec_mul():
+def test_cptensor_mul():
     X1 = np.random.random([4, 3])
     X2 = np.random.random([5, 3])
     s1 = 2.3
@@ -96,11 +96,18 @@ def test_flatvec_mul():
 
     assert_array_almost_equal(((s1 * s2) * cpt).flatten().as_array(), cptm.flatten().as_array())
 
-def test_flatvec_repr():
-    fv1 = FlatVector(np.array([1.0, 2, 3]))
-    assert_equal(str(fv1),
-                 "<FlatVector basis=<CanonicalBasis dim=3>, " +
-                 "coeffs=[ 1.  2.  3.]>")
+def test_cptensor_repr():
+    # TODO
+    pass
 
+def test_cptensor_inner():
+    X1a = np.random.random([4, 3])
+    X2a = np.random.random([5, 3])
+    X1b = np.random.random([4, 2])
+    X2b = np.random.random([5, 2])
+    cpta = CPTensor([X1a, X2a], TensorBasis([CanonicalBasis(4), CanonicalBasis(5)]))
+    cptb = CPTensor([X1b, X2b], TensorBasis([CanonicalBasis(4), CanonicalBasis(5)]))
+
+    assert_equal(inner(cpta, cptb), inner(cpta.flatten(), cptb.flatten()))
 
 test_main(True)

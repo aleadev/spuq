@@ -48,6 +48,11 @@ class CPTensor(TensorVector):
             raise TypeError
 
     def __inner__(self, other):
+        assert self.order == 2
+        X = self._X
+        Y = other._X
+        return np.sum(np.dot(X[0].T, Y[0]) * np.dot(X[1].T, Y[1]))
+
         raise NotImplementedError
 
     @property
@@ -60,7 +65,7 @@ class CPTensor(TensorVector):
 
     def truncate(self, R):
         assert self.order == 2
-        assert R <= self.rank
+        R = min(R, self.rank)
         Q1, R1 = np.linalg.qr(self._X[0])
         Q2, R2 = np.linalg.qr(self._X[1])
         U, s, V_T = np.linalg.svd(np.dot(R1, R2.T), full_matrices=False)
