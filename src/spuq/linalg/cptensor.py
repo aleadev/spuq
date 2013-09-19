@@ -1,14 +1,15 @@
 import logging
 import numpy as np
+from spuq.linalg.vector import Scalar
 from spuq.linalg.operator import ComponentOperator
 from spuq.linalg.tensor_basis import TensorBasis
-from spuq.linalg.tensor_vector import FullTensor
+from spuq.linalg.tensor_vector import FullTensor, TensorVector
 from spuq.utils.type_check import takes, sequence_of, anything
 
 class CPTensor(TensorVector):
     @takes(anything, sequence_of(np.ndarray), TensorBasis)
     def __init__(self, X, basis):
-        super(TensorVector, self).__init__(basis)
+        self._basis = basis
         self._X = X
 
     @takes(anything, ComponentOperator, int)
@@ -21,24 +22,26 @@ class CPTensor(TensorVector):
         """Test whether vectors are equal."""
         return (
             self._basis == other._basis and
-            all([np.all(x1 == x2) for x1, x2 in zip(self._X, other._X)])
+            np.all(self.flatten().as_array() == other.flatten().as_array())
+            # TODO: the previous line is not really efficient
+            #all([np.all(x1 == x2) for x1, x2 in zip(self._X, other._X)])
         )
 
     def __neg__(self):  # pragma: no cover
         """Compute the negative of this vector."""
         Y = [x for x in self._X]
-        Y[0] *= -1
+        Y[0] = -Y[0]
         return CPTensor(Y, self.basis)
 
     def __iadd__(self, other):  # pragma: no cover
         """Add another vector to this one."""
-        self._X = [np.hstack([x1, x2]) for x1, x2 in zip(self.X, other.X)]
+        self._X = [np.hstack([x1, x2]) for x1, x2 in zip(self._X, other._X)]
         return self
 
     def __imul__(self, other):  # pragma: no cover
         """Multiply this vector with a scalar."""
         if isinstance(other, Scalar):
-            self._X[0] *= -other
+            self._X[0] = other * self._X[0]
             return self
         else:
             raise TypeError
@@ -50,6 +53,12 @@ class CPTensor(TensorVector):
     def order(self):
         return len(self._X)
 
+    def flatten(self):
+        # TODO: implement for higher-order tensors
+        assert len(self._X) == 2
+        Y = np.dot(self._X[0], self._X[1].T)
+        return FullTensor(Y, self._basis)
+
     def to_full(self):
-        assert self.order == 2
-        return FullTensor(self._X[0]*self._X[1].T, self._basis)
+        return self.flatten()
+

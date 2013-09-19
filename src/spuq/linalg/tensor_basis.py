@@ -1,8 +1,13 @@
+import numpy as np
+
 from spuq.utils.type_check import anything, sequence_of, takes
 from spuq.linalg.basis import Basis
 
 
 class TensorBasis(Basis):
+    def gramian(self):
+        raise NotImplementedError
+
     @takes(anything, sequence_of(Basis))
     def __init__(self, bases):
         super(Basis, self).__init__()
@@ -15,7 +20,7 @@ class TensorBasis(Basis):
         return (
             type(self) is type(other) and
             len(self._bases) == len(other._bases) and
-            all(basis1 == basis2 for basis1, basis2 in zip(self,_bases, other._bases))
+            all(basis1 == basis2 for basis1, basis2 in zip(self._bases, other._bases))
         )
 
     def copy(self):

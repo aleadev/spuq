@@ -2,7 +2,7 @@ import logging
 import numpy as np
 from spuq.linalg.tensor_basis import TensorBasis
 
-from spuq.linalg.vector import Vector, Scalar
+from spuq.linalg.vector import Vector, Scalar, Flat
 from spuq.linalg.operator import Operator, ComponentOperator
 from spuq.utils.type_check import takes, anything
 
@@ -18,7 +18,10 @@ class TensorVector(Vector):
         return self._basis
 
 
-class FullTensor(TensorVector):
+class FullTensor(TensorVector, Flat):
+
+    def as_array(self):
+        return self._X
 
     @takes(anything, np.ndarray, TensorBasis)
     def __init__(self, X, basis):
@@ -27,24 +30,24 @@ class FullTensor(TensorVector):
         @param basis:
         """
         TensorVector.__init__(self, basis)
-        self.X = X
+        self._X = X
     
     def dim(self):  # pragma: no cover
         """Return dimension of this vector."""
-        return self.X.shape
+        return self._X.shape
 
     def copy(self):  # pragma: no cover
-        return self.__class__(self.X.copy(), self.basis)
+        return self.__class__(self._X.copy(), self.basis)
 
     def flatten(self):
-        return self.X.ravel()
+        return self
 
     def as_matrix(self):
-        return self.X
+        return self._X
 
     @takes(anything, ComponentOperator, int)
     def apply_to_dim(self, A, axis):
-        X = np.matrix(self.X)
+        X = np.matrix(self._X)
         if axis == 0:
             Y = A.apply_to_matrix(X)
         elif axis == 1:
@@ -57,28 +60,28 @@ class FullTensor(TensorVector):
 
     def __eq__(self, other):  # pragma: no cover
         """Test whether vectors are equal."""
-        return np.all(self.X == other.X)
+        return np.all(self._X == other._X)
  
     def __neg__(self):  # pragma: no cover
         """Compute the negative of this vector."""
-        return FullTensor(-self.X, self.basis)
+        return FullTensor(-self._X, self.basis)
  
     def __iadd__(self, other):  # pragma: no cover
         """Add another vector to this one."""
-        self.X += other.X
+        self._X += other._X
         return self
  
     def __imul__(self, other):  # pragma: no cover
         """Multiply this vector with a scalar."""
         if isinstance(other, Scalar):
-            self.X *= other
+            self._X *= other
             return self
         else:
             raise TypeError
 
     def __inner__(self, other):
         assert isinstance(other, FullTensor)
-        return np.sum(np.multiply(self.X, other.X))
+        return np.sum(np.multiply(self._X, other._X))
 
     @classmethod
     def from_list(cls, L):
