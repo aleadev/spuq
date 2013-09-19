@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from spuq.linalg.basis import CanonicalBasis
 from spuq.linalg.vector import Scalar
 from spuq.linalg.operator import ComponentOperator
 from spuq.linalg.tensor_basis import TensorBasis
@@ -53,6 +54,22 @@ class CPTensor(TensorVector):
     def order(self):
         return len(self._X)
 
+    @property
+    def rank(self):
+        return self._X[0].shape[1]
+
+    def truncate(self, R):
+        assert self.order == 2
+        assert R <= self.rank
+        Q1, R1 = np.linalg.qr(self._X[0])
+        Q2, R2 = np.linalg.qr(self._X[1])
+        U, s, V_T = np.linalg.svd(np.dot(R1, R2.T), full_matrices=False)
+        V = V_T.T
+        U = np.dot(U, np.diag(s))
+        X1 = np.dot(Q1, U)[:,:R]
+        X2 = np.dot(Q2, V)[:,:R]
+        return CPTensor([X1, X2], self.basis)
+
     def flatten(self):
         # TODO: implement for higher-order tensors
         assert len(self._X) == 2
@@ -61,4 +78,3 @@ class CPTensor(TensorVector):
 
     def to_full(self):
         return self.flatten()
-

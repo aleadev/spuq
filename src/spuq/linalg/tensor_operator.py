@@ -3,7 +3,7 @@ import numpy as np
 
 from spuq.linalg.operator import Operator, ComponentOperator
 from spuq.utils.type_check import takes, anything, sequence_of
-from spuq.linalg.tensor_vector import FullTensor
+from spuq.linalg.tensor_vector import FullTensor, TensorVector
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class TensorOperator(Operator):
             Y = AXB if m == 0 else Y + AXB
         return vec.__class__(Y)
 
-    @takes(anything, FullTensor)
+    @takes(anything, TensorVector)
     def apply(self, vec):  # pragma: no cover
         """Apply operator to vector."""
         X = vec
