@@ -12,6 +12,7 @@ defined automatically.
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from numbers import Number as Scalar
+import copy
 
 import numpy as np
 
@@ -50,17 +51,21 @@ class Vector(MathObject):
         """Return basis of this vector"""
         raise NotImplementedError
 
-    @abstractproperty
+    @property
     def dim(self):  # pragma: no cover
         """Return dimension of this vector"""
-        raise NotImplementedError
+        return self.basis.dim
 
-    @abstractmethod
     def copy(self):  # pragma: no cover
-        raise NotImplementedError
+        return copy.deepcopy(self)
 
     @abstractmethod
+    @returns(Flat)
     def flatten(self):
+        """
+        Return a flattened version of this vector, if the vector has inner structure. If the vector has no inner structure usually returns self.
+        @return: a vector that implements the `Flat` interface
+        """
         raise NotImplementedError
 
     def transpose(self):
@@ -128,8 +133,8 @@ class Vector(MathObject):
         return NotImplemented
 
     def __repr__(self):
-        return "<%s basis=%s, coeffs=%s>" % \
-               (strclass(self.__class__), self.basis, self.coeffs)
+        return "<%s basis=%s>" % \
+               (strclass(self.__class__), self.basis)
 
 
 class FlatVector(Vector, Flat):
@@ -209,6 +214,10 @@ class FlatVector(Vector, Flat):
     def __imul__(self, other):
         self._coeffs *= other
         return self
+
+    def __repr__(self):
+        return "<%s basis=%s, coeffs=%s>" % \
+               (strclass(self.__class__), self.basis, self.coeffs)
 
 
 @takes(Vector, Vector)
