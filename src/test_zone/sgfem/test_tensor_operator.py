@@ -78,7 +78,7 @@ print "TensorOperator A dim", A.dim
 u = prepare_vectors(J, FS)
 u = FullTensor.from_list(u)
 print "FullTensor u", u.dim()
-print "u as matrix shape", u.as_matrix().shape, u.flatten().shape
+print "u as matrix shape", u.as_matrix().shape, u.flatten().as_array().shape
 
 
 # test tensor operator
@@ -105,7 +105,7 @@ from spuq.application.egsz.pcg import pcg
 P = TensorOperator([K0inv], [D[0]])
 print 0*w
 b = w.copy()
-b.X += 1
+b._X += 1
 v = pcg(A, b, P, 0*w )
 
 print "v", v

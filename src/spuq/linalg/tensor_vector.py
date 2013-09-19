@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from spuq.linalg.basis import CanonicalBasis
 from spuq.linalg.tensor_basis import TensorBasis
 
 from spuq.linalg.vector import Vector, Scalar, Flat
@@ -86,4 +87,4 @@ class FullTensor(TensorVector, Flat):
     @classmethod
     def from_list(cls, L):
         X = np.vstack(L).T
-        return cls(X, TensorBasis())
+        return cls(X, TensorBasis([CanonicalBasis(X.shape[0]), CanonicalBasis(X.shape[1])]))
