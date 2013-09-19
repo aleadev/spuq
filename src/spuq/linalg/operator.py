@@ -462,11 +462,13 @@ class MatrixSolveOperator(BaseOperator):
                 (self._arr == other._arr).all())
 
 
-class MultiplicationOperator(BaseOperator):
+class MultiplicationOperator(BaseOperator, ComponentOperator):
+    @takes(anything, Scalar, Basis)
     def __init__(self, a, domain):
         self._a = a
         BaseOperator.__init__(self, domain, domain)
-        
+
+    @takes(anything, Vector)
     def apply(self, vec):
         return self._a * vec
     
@@ -476,6 +478,9 @@ class MultiplicationOperator(BaseOperator):
     def inverse(self):
         return MultiplicationOperator(1.0 / self._a, self.domain)
 
+    @takes(anything, np.ndarray)
+    def apply_to_matrix(self, X):
+        return self._a * X
 
 # class ReindexOperator(AbstractOperator):
 #     def __init__(self, index_map, domain, codomain):

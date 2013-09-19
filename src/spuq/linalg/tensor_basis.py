@@ -29,3 +29,6 @@ class TensorBasis(Basis):
     @property
     def dim(self):
         return np.prod([basis.dim for basis in self._bases])
+
+    def __getitem__(self, item):
+        return self._bases[item]
