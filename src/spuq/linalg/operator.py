@@ -44,7 +44,7 @@ class Operator(object):
     @returns(Vector)
     def apply(self, vec):  # pragma: no cover
         """Apply operator to vector which has to be in the domain of the operator"""
-        raise NotImplementedException
+        raise NotImplementedError
 
     @property
     def is_linear(self):  # pragma: no cover
@@ -54,12 +54,12 @@ class Operator(object):
     @abstractproperty
     def domain(self):  # pragma: no cover
         """Returns the basis of the domain"""
-        raise NotImplementedException
+        raise NotImplementedError
 
     @abstractproperty
     def codomain(self):  # pragma: no cover
         """Returns the basis of the codomain"""
-        raise NotImplementedException
+        raise NotImplementedError
 
     @property
     def can_transpose(self):  # pragma: no cover
@@ -74,16 +74,16 @@ class Operator(object):
     def transpose(self):  # pragma: no cover
         """Transpose the operator;
         need not be implemented"""
-        raise NotImplementedException
+        raise NotImplementedError
 
     def invert(self):  # pragma: no cover
         """Return an operator that is the inverse of this operator;
         may not be implemented"""
-        raise NotImplementedException
+        raise NotImplementedError
 
     def as_matrix(self):  # pragma: no cover
         """Return the operator in matrix form"""
-        raise NotImplementedException
+        raise NotImplementedError
 
     @takes(anything, (Scalar, Vector, "Operator"))
     def __mul__(self, other):
@@ -195,7 +195,7 @@ class ComposedOperator(Operator):
             try:
                 return self.op1.dim
             except:
-                raise NotImplementedException
+                raise NotImplementedError
 
     def apply(self, vec):
         """Apply operator to vector which should be in the domain of operator"""
