@@ -1,16 +1,14 @@
-import logging
 import numpy as np
-from spuq.linalg.basis import CanonicalBasis
 from spuq.linalg.vector import Scalar
 from spuq.linalg.operator import ComponentOperator
 from spuq.linalg.tensor_basis import TensorBasis
 from spuq.linalg.tensor_vector import FullTensor, TensorVector
 from spuq.utils.type_check import takes, sequence_of, anything
 
+
 class CPTensor(TensorVector):
-    @takes(anything, sequence_of(np.ndarray), TensorBasis)
     def __init__(self, X, basis):
-        self._basis = basis
+        super(CPTensor, self).__init__(basis)
         self._X = X
 
     @takes(anything, ComponentOperator, int)
@@ -53,8 +51,6 @@ class CPTensor(TensorVector):
         Y = other._X
         return np.sum(np.dot(X[0].T, Y[0]) * np.dot(X[1].T, Y[1]))
 
-        raise NotImplementedError
-
     @property
     def order(self):
         return len(self._X)
@@ -71,8 +67,8 @@ class CPTensor(TensorVector):
         U, s, V_T = np.linalg.svd(np.dot(R1, R2.T), full_matrices=False)
         V = V_T.T
         U = np.dot(U, np.diag(s))
-        X1 = np.dot(Q1, U)[:,:R]
-        X2 = np.dot(Q2, V)[:,:R]
+        X1 = np.dot(Q1, U)[:, :R]
+        X2 = np.dot(Q2, V)[:, :R]
         return CPTensor([X1, X2], self.basis)
 
     def flatten(self):

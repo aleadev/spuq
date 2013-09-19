@@ -1,6 +1,5 @@
 import logging
 
-from scipy.linalg import norm
 import numpy as np
 import scipy.sparse as sps
 
@@ -8,16 +7,17 @@ from spuq.linalg.cptensor import CPTensor
 from spuq.linalg.operator import MultiplicationOperator
 from spuq.linalg.tensor_basis import TensorBasis
 from spuq.linalg.tensor_operator import TensorOperator
-from spuq.linalg.tensor_vector import FullTensor
 from spuq.linalg.scipy_operator import ScipyOperator
 from spuq.linalg.basis import CanonicalBasis
 from test_zone.sgfem import pcg
 
 logger = logging.getLogger(__name__)
 
+
 def generate_matrix(n):
     A = np.random.rand(n, n) - 0.5
     return sps.csr_matrix(np.dot(A, A.T))
+
 
 def construct_operator(n1, n2, R):
     # prepare "deterministic" matrices
@@ -34,6 +34,7 @@ def construct_operator(n1, n2, R):
     basis = TensorBasis([basis1, basis2])
     return TensorOperator(A1, A2, domain=basis, codomain=basis)
 
+
 def construct_cptensor(n1, n2, R):
     # prepare vector
     basis1 = CanonicalBasis(n1)
@@ -42,6 +43,7 @@ def construct_cptensor(n1, n2, R):
     X1 = np.random.rand(n1, R)
     X2 = np.random.rand(n2, R)
     return CPTensor([X1, X2], basis)
+
 
 def construct_preconditioner(A):
     basis = A.domain
@@ -53,20 +55,24 @@ def construct_preconditioner(A):
         [MultiplicationOperator(1, domain=basis2)],
         basis)
 
+
 def rank_truncate(R_max):
     """Create a truncation function that truncates by rank"""
+
     def do_truncate(X):
         return X.truncate(R_max)
+
     return do_truncate
+
 
 def test_solve_pcg(A, P, u, f, **kwargs):
     """Solve the linear problem with given solution and show solve statistics"""
-    [u2, zeta, iter] = pcg.pcg(A, f, P, 0*u, **kwargs)
+    [u2, _, numiter] = pcg.pcg(A, f, P, 0 * u, **kwargs)
 
-    logger.info("error:  %s",  np.linalg.norm(u.flatten().as_array() - u2.flatten().as_array()))
-    logger.info("iter:   %s",  iter)
-    logger.info("norm_u: %s",  np.linalg.norm(u.flatten().as_array()))
-    logger.info("norm_f: %s",  np.linalg.norm((A*u).flatten().as_array()))
+    logger.info("error:  %s", np.linalg.norm(u.flatten().as_array() - u2.flatten().as_array()))
+    logger.info("iter:   %s", numiter)
+    logger.info("norm_u: %s", np.linalg.norm(u.flatten().as_array()))
+    logger.info("norm_f: %s", np.linalg.norm((A * u).flatten().as_array()))
 
 # test tensor operator application
 # ================================

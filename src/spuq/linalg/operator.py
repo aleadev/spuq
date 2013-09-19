@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractproperty, abstractmethod
+import time
 
 import numpy as np
 
-from spuq.utils import strclass, with_equality
+from spuq.utils import with_equality
 from spuq.utils.type_check import takes, returns, anything, optional, list_of
 from spuq.linalg.basis import Basis, CanonicalBasis, BasisMismatchError
 from spuq.linalg.vector import Scalar, Vector, FlatVector
@@ -12,20 +13,18 @@ __all__ = ["Operator", "BaseOperator", "ComposedOperator", "SummedOperator",
            "MultiplicationOperator"]
 
 
-
 def evaluate_operator_matrix(op):
     """Evaluate matrix representation of operator"""
-    import numpy as np
-    from time import time
+
     N = op.dim
     A = np.matrix(np.zeros((N, N)))
     e = FlatVector(np.zeros((N,)))
-    T = time() 
+    T = time.time()
     for i in range(N):
-        dt = time() - T
+        dt = time.time() - T
         if dt > 1:
             print "\t%i of %i (dt=%s)" % (i, N, dt)
-            T = time()
+            T = time.time()
         e.coeffs[i] = 1
         A[:, i] = op.apply(e).coeffs[:, None]
         e.coeffs[i] = 0
@@ -122,7 +121,7 @@ class Operator(object):
         of the domain"""
         if self.domain != vec.basis:
             raise BasisMismatchError(
-                "Basis don't match: domain %s vector %s" % 
+                "Basis don't match: domain %s vector %s" %
                 (str(self.domain), str(vec.basis)))
 
 
@@ -167,14 +166,14 @@ class ComposedOperator(Operator):
         """Takes two operators and returns the composition of those
         operators"""
         try:
-            assert(op1.codomain == op2.domain)
+            assert (op1.codomain == op2.domain)
         except AttributeError:
             pass
         self.op1 = op1
         self.op2 = op2
-        self.trans = None
-        self.inv = None
-        self.invtrans = None
+        self.trans = trans
+        self.inv = inv
+        self.invtrans = invtrans
 
     @property
     def domain(self):
@@ -199,11 +198,11 @@ class ComposedOperator(Operator):
 
     def apply(self, vec):
         """Apply operator to vector which should be in the domain of operator"""
-#        print "COMPOSITE", type(self.op1), type(self.op2)
+        #        print "COMPOSITE", type(self.op1), type(self.op2)
         r = self.op1.apply(vec)
-#        print "\tCOMPOSITE intermediate", type(r)
+        #        print "\tCOMPOSITE intermediate", type(r)
         r = self.op2.apply(r)
-#        print "\tCOMPOSITE ", type(r), " --> ", type(vec)
+        #        print "\tCOMPOSITE ", type(r), " --> ", type(vec)
         return r
 
     def can_transpose(self):
@@ -252,18 +251,18 @@ class SummedOperator(Operator):
     """Wrapper class for linear operators adding two operators
     """
 
-    def __init__(self, operators, factors=None, \
-                     trans=None, inv=None, invtrans=None):
+    def __init__(self, operators, factors=None,
+                 trans=None, inv=None, invtrans=None):
         """Takes two operators and returns the sum of those operators"""
         op1 = operators[0]
         for op2 in operators:
-            assert(op1.domain == op2.domain)
-            assert(op1.codomain == op2.codomain)
+            assert (op1.domain == op2.domain)
+            assert (op1.codomain == op2.codomain)
         self.operators = operators
         self.factors = factors
-        self.trans = None
-        self.inv = None
-        self.invtrans = None
+        self.trans = trans
+        self.inv = inv
+        self.invtrans = invtrans
 
     def domain(self):
         """Returns the basis of the domain"""
@@ -338,22 +337,21 @@ class ComponentOperator(Operator):
 
 
 class MatrixOperator(BaseOperator, ComponentOperator):
-
     @takes(anything, np.ndarray, optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
         if domain is None:
             domain = CanonicalBasis(arr.shape[1])
         elif domain.dim != arr.shape[1]:
             raise TypeError('size of domain basis does not match '
-                             'matrix dimensions')
+                            'matrix dimensions')
 
         if codomain is None:
             codomain = CanonicalBasis(arr.shape[0])
         elif codomain.dim != arr.shape[0]:
             raise TypeError('size of domain basis does not match '
-                             'matrix dimensions')
+                            'matrix dimensions')
 
-        assert(arr.ndim == 2)
+        assert (arr.ndim == 2)
         self._arr = np.asarray(arr)
         super(MatrixOperator, self).__init__(domain, codomain)
 
@@ -374,8 +372,8 @@ class MatrixOperator(BaseOperator, ComponentOperator):
 
     def transpose(self):
         return MatrixOperator(self._arr.T,
-                            self.codomain,
-                            self.domain)
+                              self.codomain,
+                              self.domain)
 
     def __eq__(self, other):
         return (type(self) is type(other) and
@@ -387,8 +385,8 @@ class MatrixOperator(BaseOperator, ComponentOperator):
 class DiagonalMatrixOperator(BaseOperator):
     @takes(anything, np.ndarray, Basis)
     def __init__(self, diag, domain=None, codomain=None):
-        assert(isinstance(diag, np.ndarray))
-        assert(diag.ndim == 1)
+        assert (isinstance(diag, np.ndarray))
+        assert (diag.ndim == 1)
         if domain is None:
             domain = CanonicalBasis(diag.shape[0])
         if codomain is None:
@@ -409,19 +407,18 @@ class DiagonalMatrixOperator(BaseOperator):
 
     def transpose(self):
         return DiagonalMatrixOperator(self._diag,
-                            self.codomain,
-                            self.domain)
-        
+                                      self.codomain,
+                                      self.domain)
+
     def inverse(self):
         return DiagonalMatrixOperator(1.0 / self._diag,
-                            self.codomain,
-                            self.domain)
+                                      self.codomain,
+                                      self.domain)
 
 
 class MatrixSolveOperator(BaseOperator):
-
     @takes(anything, (np.ndarray, list_of(list_of(Scalar))),
-                      optional(Basis), optional(Basis))
+           optional(Basis), optional(Basis))
     def __init__(self, arr, domain=None, codomain=None):
         if not isinstance(arr, np.ndarray):
             arr = np.array(arr, dtype=float)
@@ -429,15 +426,15 @@ class MatrixSolveOperator(BaseOperator):
             domain = CanonicalBasis(arr.shape[0])
         elif domain.dim != arr.shape[0]:
             raise TypeError('size of domain basis does not match '
-                             'matrix dimensions')
+                            'matrix dimensions')
 
         if codomain is None:
             codomain = CanonicalBasis(arr.shape[1])
         elif codomain.dim != arr.shape[1]:
             raise TypeError('size of domain basis does not match '
-                             'matrix dimensions')
+                            'matrix dimensions')
 
-        assert(arr.ndim == 2)
+        assert (arr.ndim == 2)
         self._arr = np.asarray(arr)
         super(MatrixSolveOperator, self).__init__(domain, codomain)
 
@@ -471,10 +468,10 @@ class MultiplicationOperator(BaseOperator, ComponentOperator):
     @takes(anything, Vector)
     def apply(self, vec):
         return self._a * vec
-    
+
     def transpose(self):
         return self
-    
+
     def inverse(self):
         return MultiplicationOperator(1.0 / self._a, self.domain)
 

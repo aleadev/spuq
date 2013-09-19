@@ -1,6 +1,6 @@
 """Preconditioned conjugate gradient method for the EGSZ application"""
 
-from spuq.utils.type_check import takes, optional, returns, tuple_of
+from spuq.utils.type_check import takes, optional
 
 from spuq.linalg.operator import Operator
 from spuq.linalg.vector import Vector, inner, Flat
@@ -9,14 +9,16 @@ from spuq.utils.forgetful_vector import ForgetfulVector
 __all__ = ["pcg"]
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def _identity(x):
     return x
 
+
 @takes(Operator, Vector, Operator, Vector, optional(float), optional(int))
 def pcg(A, b, P, x0, eps=1e-4, maxiter=100, truncate_func=_identity):
-
     in_tensor_format = not isinstance(b, Flat)
 
     # for most quantities in PCG (except rho) only the most recent
@@ -81,8 +83,6 @@ def pcg(A, b, P, x0, eps=1e-4, maxiter=100, truncate_func=_identity):
             print z[i].rank
             print r[i].rank
             print p[i].rank
-            print q[i-1].rank
-
-
+            print q[i - 1].rank
 
     raise Exception("PCG did not converge")
