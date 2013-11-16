@@ -32,7 +32,7 @@ except:
 logger = logging.getLogger(__name__)
 
 # flag for equilibration estimator usage
-USE_EQUILIBRATION_ESTIMATOR = True
+USE_EQUILIBRATION_ESTIMATOR = False
 
 
 # ============================================================

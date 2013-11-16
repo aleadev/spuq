@@ -66,9 +66,8 @@ class Marking(object):
 
     @classmethod
     @takes(anything, (list, tuple), dict, callable, float, int)
-    def mark_y(cls, Lambda, zeta_, eval_zeta_m, theta_y, max_new_mi=100, type=0):
+    def mark_y(cls, Lambda, zeta_, eval_zeta_m, theta_y, max_new_mi=100, type=1):
         """Carry out Doerfler marking by activation of new indices."""
-        assert set(Lambda.active_indices()) == set(zeta.keys())
         zeta = zeta_
         global_zeta = np.sqrt(sum([z ** 2 for z in zeta_.values()]))
         suppLambda = supp(Lambda)
@@ -100,6 +99,7 @@ class Marking(object):
 #                mu2 = mu.dec(maxm)
                 # NOTE: the following is a slight extension of the algorithm in the paper since it executed the extension on all active multiindices (and not only with the latest activated)
     #            if mu2 in Lambda:
+                possible_new_mu = []
                 minm = min(set(range(1, maxm + 2)).difference(set(suppLambda))) # find min(N\setminus supp\Lambda)
                 for mu2 in Lambda:
                     new_mu = mu2.inc(minm)
@@ -108,6 +108,7 @@ class Marking(object):
                     if new_mu not in zeta.keys():
 #                        logger.debug("extending multiindex candidates by %s since %s is at the boundary of Lambda (reachable from %s), minm: %s", new_mu, mu, mu2, minm)
                         logger.debug("extending multiindex candidates by %s since it is at the boundary of Lambda (reachable from %s), minm: %s", new_mu, mu2, minm)
+                        possible_new_mu += [new_mu]
                         zeta[new_mu] = eval_zeta_m(mu2, minm)
                         # update global zeta
                         global_zeta = np.sqrt(global_zeta ** 2 + zeta[new_mu] ** 2)
@@ -118,13 +119,13 @@ class Marking(object):
                         logger.debug("maximal number new mi reached!")
                     elif len(zeta) == 0:
                         logger.debug("no more new indices available!")
+                logger.info("possible new mu considered %s" % possible_new_mu)
                         
         # B minimal y-dimension marking
         # =============================
         else:
             assert type == 1
-            target_zeta = theta_y * global_zeta
-             
+
             # === EVALUATE EXTENSION ===
             # ==========================
             
@@ -133,9 +134,8 @@ class Marking(object):
             minm = min(set(range(1, maxm + 2)).difference(set(suppLambda))) # find min(N\setminus supp\Lambda)
             for mu2 in Lambda:
                 new_mu = mu2.inc(minm)
-#                assert new_mu not in Lambda
-#                if new_mu not in Lambda and new_mu not in zeta.keys() and new_mu not in new_y.keys():
-                if new_mu not in zeta.keys() and new_mu not in new_y.keys():
+                if new_mu not in Lambda and new_mu not in zeta.keys() and new_mu not in new_y.keys():
+                # if new_mu not in zeta.keys() and new_mu not in new_y.keys():
                     logger.debug("extending multiindex candidates by %s since it is at the boundary of Lambda (reachable from %s), minm: %s", new_mu, mu2, minm)
                     new_val = eval_zeta_m(mu2, minm)
                     # update global zeta
@@ -143,8 +143,10 @@ class Marking(object):
                     logger.debug("new global_zeta is %f", global_zeta)
                     # test for new y dimension
                     if len(set(supp([new_mu])).difference(set(suppLambda))) > 0:
+                        assert new_mu not in new_y.keys()
                         new_y[new_mu] = new_val
-                    else: 
+                    else:
+                        assert new_mu not in zeta.keys()
                         zeta[new_mu] = new_val                         
                 else:
                     logger.debug("no further extension of multiindex candidates required")
@@ -157,17 +159,17 @@ class Marking(object):
             sorted_new_y = sorted(new_y.items(), key=itemgetter(1))
             sum_zeta_val = np.sqrt(sum([z ** 2 for z in zeta.values()]))
             # add new dimension y while sum_zeta_val is smaller than required marking value
-            while sum_zeta_val < target_zeta and len(sorted_new_y) > 0:
+            while sum_zeta_val < theta_y*global_zeta and len(sorted_new_y) > 0:
                 # add new largest y
                 new_zeta = sorted_new_y[-1]
                 mu = new_zeta[0]
-                sorted_new_y.pop(mu)
-                logger.debug("ADDING NEW Y %s to new_mi %s while target_zeta is %s", mu, new_mi, target_zeta)
+                sorted_new_y.pop(-1)
+                logger.debug("ADDING NEW Y %s to new_mi %s while target_zeta is %s", mu, new_mi, theta_y*global_zeta)
                 assert mu not in Lambda
                 new_mi.append(mu)
-                target_zeta = np.sqrt(target_zeta ** 2 - new_zeta[1] ** 2)
+                global_zeta = np.sqrt(global_zeta ** 2 - new_zeta[1] ** 2)
             
-            if len(sorted_new_y) == 0 and zeta_val < target_zeta:
+            if len(sorted_new_y) == 0 and zeta_val < theta_y*global_zeta:
                 logger.warn("UNABLE to mark sufficiently many NEW MI!") 
 
             # === DETERMINE HIGHER ORDER ACTIVE MI EXTENSION ===
@@ -177,7 +179,7 @@ class Marking(object):
             sorted_zeta = sorted(zeta.items(), key=itemgetter(1))
             logger.debug("SORTED ZETA %s", sorted_zeta)
             marked_zeta = 0
-            while marked_zeta < target_zeta and len(sorted_zeta) > 0:
+            while marked_zeta < theta_y*global_zeta and len(sorted_zeta) > 0:
                 new_zeta = sorted_zeta[-1]
                 mu = new_zeta[0]
                 zeta.pop(mu)
@@ -186,9 +188,10 @@ class Marking(object):
                 new_mi.append(mu)
                 marked_zeta = np.sqrt(marked_zeta ** 2 + new_zeta[1] ** 2)
             zeta = sorted_zeta
+            logger.info("possible new mu considered %s and %s" % (new_y.keys(), new_mi) )
 
         if len(zeta) == 0:
-            if target_zeta > marked_zeta:
+            if theta_y*global_zeta > marked_zeta:
                 logger.warning("list of mi candidates is empty and reduction goal NOT REACHED, %f > %f!", theta_y * global_zeta, marked_zeta)
 
         if len(new_mi) > 0:
@@ -219,7 +222,8 @@ class Marking(object):
                     coeff, _ = coeff_field[m]
                     min_val, max_grad = abs(coeff.min_val), abs(coeff.max_grad)
                     coeff_min_val, coeff_max_grad = min(coeff_min_val, min_val), max(coeff_max_grad, max_grad)
-                    logger.debug("\tm:", m, min_val, max_grad, coeff_min_val, coeff_max_grad)
+                    print "DDDD", m, min_val, max_grad, coeff_min_val, coeff_max_grad
+                    logger.debug("\tm: %s %s %s %s %s" % (m, min_val, max_grad, coeff_min_val, coeff_max_grad))
                 # determine (4.14) c_{a,\delta}
                 Cadelta = mesh_maxh * coeff_max_grad / coeff_min_val
             except:
