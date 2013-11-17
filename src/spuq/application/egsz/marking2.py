@@ -180,9 +180,8 @@ class Marking(object):
             logger.debug("SORTED ZETA %s", sorted_zeta)
             marked_zeta = 0
             while marked_zeta < theta_y*global_zeta and len(sorted_zeta) > 0:
-                new_zeta = sorted_zeta[-1]
+                new_zeta = sorted_zeta.pop(-1)
                 mu = new_zeta[0]
-                zeta.pop(mu)
                 logger.debug("ADDING EXTENSION OF EXISTING MI %s to new_mi %s while marked_zeta is %s", mu, new_mi, marked_zeta)
                 assert mu not in Lambda
                 new_mi.append(mu)
