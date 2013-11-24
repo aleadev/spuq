@@ -5,7 +5,7 @@ from dolfin import (FunctionSpace, Expression, dx, inner,
                     nabla_grad, TrialFunction, TestFunction,
                     assemble, Constant, DirichletBC, refine,
                     Function, norm, Mesh, CellFunction, cells,
-                    GenericMatrix, GenericVector, interpolate, plot)
+                    GenericMatrix, GenericVector, interpolate, plot, Point)
 from spuq.application.egsz.multi_vector import MultiVector
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 
@@ -200,14 +200,22 @@ def create_joint_mesh(meshes, destmesh=None, additional_refine=0):
         numcells = [m.num_cells() for m in meshes]
         mind = numcells.index(max(numcells))
         destmesh = meshes.pop(mind)
-        
+
+    try:
+        # test for old FEniCS version < 1.2
+        destmesh.closest_cell(Point(0,0))
+        bbt = None
+    except:
+        # FEniCS > 1.2
+        bbt = destmesh.bounding_box_tree()
+
     # setup parent cells
     parents = {}
     for c in cells(destmesh):
         parents[c.index()] = [c.index()]
     PM = []
 
-    # refinement loop for destmesh    
+    # refinement loop for destmesh
     for m in meshes:
         # loop until all cells of destmesh are finer than the respective cells in the set of meshes
         while True: 
@@ -219,7 +227,12 @@ def create_joint_mesh(meshes, destmesh=None, additional_refine=0):
             # check all cells with destination sizes and mark for refinement when destination mesh is coarser (=larger)
             for c in cells(m):
                 p = c.midpoint()
-                cid = destmesh.closest_cell(p)
+                if bbt is not None:
+                    # FEniCS > 1.2
+                    cid = bbt.compute_closest_entity(p)[0]
+                else:
+                    # FEniCS < 1.2
+                    cid = destmesh.closest_cell(p)
                 if h[cid] > c.diameter():
                     cf[cid] = True
                     rc += 1

@@ -8,6 +8,7 @@ from spuq.application.egsz.multi_operator2 import MultiOperator
 from spuq.application.egsz.sample_problems2 import SampleProblem
 from spuq.application.egsz.sample_domains import SampleDomain
 from spuq.application.egsz.mc_error_sampling import sample_error_mc
+from spuq.application.egsz.generate_reference_setup import generate_reference_setup
 from spuq.utils.plot.plotter import Plotter
 try:
     from dolfin import (Function, FunctionSpace, Mesh, Constant, UnitSquare, compile_subdomains,
@@ -91,26 +92,30 @@ def run_MC(opts, conf):
     # ============================================================
     # PART C: MC Error Sampling
     # ============================================================
-    
+
+    # determine reference setting
+    ref_mesh, ref_Lambda = generate_reference_setup(PATH_SOLUTION)
+
     MC_N = CONF_N
     MC_HMAX = CONF_maxh
     if CONF_runs > 0:
         # determine reference mesh
         w = w_history[-1]
-        ref_mesh = w.basis.basis.mesh        
+        # ref_mesh = w.basis.basis.mesh
         for _ in range(CONF_ref_mesh_refine):
             ref_mesh = refine(ref_mesh)
-        ref_maxm = CONF_sampling_order if CONF_sampling_order > 0 else w.max_order + CONF_sampling_order_increase
+        # TODO: the following association with the sampling order does not make too much sense...
+        ref_maxm = CONF_sampling_order if CONF_sampling_order > 0 else max(len(mu) for mu in ref_Lambda) + CONF_sampling_order_increase
         stored_rv_samples = []
         for i, w in enumerate(w_history):
 #            if i == 0:
 #                continue
-            logger.info("MC error sampling for w[%i] (of %i)", i, len(w_history))
-            
+
             # memory usage info
             import resource
             logger.info("\n======================================\nMEMORY USED: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) + "\n======================================\n")
-            
+            logger.info("================>>> MC error sampling for w[%i] (of %i) on %i cells with maxm %i <<<================" % (i, len(w_history), ref_mesh.num_cells(), ref_maxm))
+
             MC_start = 0
             old_stats = sim_stats[i]
             if opts.continueMC:
