@@ -5,7 +5,7 @@ from spuq.math_utils.multiindex import Multiindex
 from spuq.utils.timing import timing
 
 try:
-    from dolfin import (interactive, project, errornorm, norm)
+    from dolfin import (interactive, project, errornorm, norm, parameters)
     from spuq.application.egsz.sampling import (get_projection_basis, compute_direct_sample_solution,
                                                 compute_parametric_sample_solution)
     from spuq.fem.fenics.fenics_utils import error_norm
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MCCache(object):
     pass
 
-def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_sol_cache=None, direct_sol_cache=None, stored_rv_samples=None):
+def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_sol_cache=None, direct_sol_cache=None, stored_rv_samples=None, quadrature_degree = -1):
     # create reference mesh and function space
     sub_spaces = w[Multiindex()].basis.num_sub_spaces
     degree = w[Multiindex()].basis.degree
@@ -31,6 +31,12 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
 
     # get realization of coefficient field
     err_L2, err_H1 = 0, 0
+
+    # set quadrature degree
+    if quadrature_degree > -1:
+        quadrature_degree_old = parameters["form_compiler"]["quadrature_degree"]
+        parameters["form_compiler"]["quadrature_degree"] = quadrature_degree
+        logger.debug("MC error sampling quadrature order = " + str(quadrature_degree))
 
     # setup caches for sample solutions
 #    param_sol_cache = None #param_sol_cache or MCCache()
@@ -78,11 +84,15 @@ def run_mc(err, w, pde, A, coeff_field, mesh0, ref_maxm, MC_N, MC_HMAX, param_so
             sample_sol_direct_am = sample_sol_direct - sample_sol_direct_a0
             logger.debug("-- STOCHASTIC norm L2 = %s    H1 = %s", sample_sol_direct_am.norm("L2"), sample_sol_direct_am.norm("H1"))
 
+    # restore quadrature degree
+    if quadrature_degree > -1:
+        parameters["form_compiler"]["quadrature_degree"] = quadrature_degree_old
+
     logger.info("MC Error: L2: %s, H1A: %s", err_L2, err_H1)
     err.append((err_L2, err_H1, L2_a0, H1_a0))
 
 
-def sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX, stored_rv_samples=None):
+def sample_error_mc(w, pde, A, coeff_field, mesh0, ref_maxm, MC_RUNS, MC_N, MC_HMAX, stored_rv_samples=None, quadrature_degree=-1):
     # iterate MC
     err = []
     param_sol_cache = MCCache()
