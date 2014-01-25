@@ -250,18 +250,19 @@ class ResidualEstimator(object):
                         z += ainfty * beta[-1] * normw[mu2]
                 return z
             else:
-                    m = this_m
-                    _, am_rv = coeff_field[m]
-                    beta = am_rv.orth_polys.get_beta(mu[m])
-                    ainfty = get_ainfty(m, V)
-#                    print "====zeta Z3", m, ainfty, beta[1], normw[mu], " == ", ainfty * beta[1] * normw[mu]
-                    return ainfty * beta[1] * normw[mu]
+                m = this_m
+                _, am_rv = coeff_field[m]
+                beta = am_rv.orth_polys.get_beta(mu[m])
+                ainfty = get_ainfty(m, V)
+#                print "====zeta Z3", m, ainfty, beta[1], normw[mu], " == ", ainfty * beta[1] * normw[mu]
+                return ainfty * beta[1] * normw[mu]
         
         # prepare some variables
         energynorm = pde.energy_norm
         Lambda = w.active_indices()
         suppLambda = supp(w.active_indices())
-        M = min(w.max_order + add_maxm, len(coeff_field))
+#        M = min(w.max_order + add_maxm, len(coeff_field))
+        M = w.max_order + add_maxm
         normw = prepare_norm_w(energynorm, w)
         # retrieve (sufficiently fine) function space for maximum norm evaluation
         V = w[Multiindex()].basis.refine_maxh(maxh)[0]

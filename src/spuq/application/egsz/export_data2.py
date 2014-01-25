@@ -109,7 +109,7 @@ for fname in glob(LOAD_STATS_FN):
         print "==== exporting P{0} ====".format(P)
         with file(os.path.join(options.experiment_dir, 'SIMDATA-P%i.dat' % P), 'w') as f:
             mcstr = "\terror\tefficiency" if D["WITH-MC"] else ""
-            f.write("dofs\terrest%s\tmi\tydim" % mcstr)
+            f.write("dofs\terrest%s\tmi\tydim\tcells\tsumcells\terrres\terrtail" % mcstr)
             for i, d in enumerate(D["DOFS"]):
                 f.write("\n" + str(d))
                 if options.singleP:
@@ -121,6 +121,10 @@ for fname in glob(LOAD_STATS_FN):
                         f.write("\t" + str(D["EFFICIENCY"][i]))
                     f.write("\t" + str(D["NUM-MI"][i]))
                     f.write("\t" + str(D["DIM-Y"][i]))
+                    f.write("\t" + str(int(D["CELLS"][i]/D["NUM-MI"][i])))
+                    f.write("\t" + str(D["CELLS"][i]))
+                    f.write("\t" + str(D["ERROR-RES"][i]))
+                    f.write("\t" + str(D["ERROR-TAIL"][i]))
                 else:
                     f.write("\t" + str(D["ERROR-EST"][i]))
                     if D["WITH-MC"]:
@@ -128,4 +132,8 @@ for fname in glob(LOAD_STATS_FN):
                         f.write("\t" + str(D["EFFICIENCY"][i]))
                     f.write("\t" + str(D["NUM-MI"][i]))
                     f.write("\t" + str(D["DIM-Y"][i]))
+                    f.write("\t" + str(int(D["CELLS"][i]/D["NUM-MI"][i]))
+                    f.write("\t" + str(D["CELLS"][i]))
+                    f.write("\t" + str(D["ERROR-RES"][i]))
+                    f.write("\t" + str(D["ERROR-TAIL"][i]))
             f.write("\n")
