@@ -31,9 +31,6 @@ except:
 # retrieve logger
 logger = logging.getLogger(__name__)
 
-# flag for equilibration estimator usage
-USE_EQUILIBRATION_ESTIMATOR = False
-
 
 # ============================================================
 # PART A: PCG Solver
@@ -41,6 +38,7 @@ USE_EQUILIBRATION_ESTIMATOR = False
 
 def prepare_rhs(A, w, coeff_field, pde):
     b = 0 * w
+    assert b.keys() == w.keys()
     zero = Multiindex()
     b[zero].coeffs = pde.assemble_rhs(basis=b[zero].basis, coeff=coeff_field.mean_func,
                                       withNeumannBC=True)
@@ -100,7 +98,8 @@ def AdaptiveSolver(A, coeff_field, pde,
                     theta_y=0.4, # tail bound marking bulk paramter
                     maxh=0.1, # maximal mesh width for coefficient maximum norm evaluation
                     add_maxm=100, # maximal search length for new new multiindices (to be added to max order of solution w)
-                    # residual error
+                    # estimator
+                    estimator_type = "RESIDUAL",
                     quadrature_degree= -1,
                     # pcg solver
                     pcg_eps=1e-6,
@@ -164,17 +163,23 @@ def AdaptiveSolver(A, coeff_field, pde,
         with timing(msg="ResidualEstimator.evaluateUpperTailBound", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-TAIL", stats=stats)):
             global_zeta, zeta, zeta_bar, eval_zeta_m = ResidualEstimator.evaluateUpperTailBound(w, coeff_field, pde, maxh, add_maxm)
 
-        if USE_EQUILIBRATION_ESTIMATOR:
-            # evaluate estimate_x
-            logger.debug("evaluating residual bound (equilibration)")
-            with timing(msg="EquilibrationEstimator.evaluateEquilibrationEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
-                global_eta, eta, eta_local = EquilibrationEstimator.evaluateEquilibrationEstimator(w, coeff_field, pde, f, quadrature_degree)
-        else:
+        # evaluate estimate_x
+        if estimator_type.upper() == "RESIDUAL":
             # evaluate estimate_x
             logger.debug("evaluating residual bound (residual)")
             with timing(msg="ResidualEstimator.evaluateResidualEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
                 global_eta, eta, eta_local = ResidualEstimator.evaluateResidualEstimator(w, coeff_field, pde, f, quadrature_degree)
-            
+        elif estimator_type.upper() == "EQUILIBRATION_GLOBAL":
+            logger.debug("evaluating residual bound (global equilibration)")
+            with timing(msg="GlobalEquilibrationEstimator.evaluateEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
+                global_eta, eta, eta_local = GlobalEquilibrationEstimator.evaluateEstimator(w, coeff_field, pde, f, quadrature_degree)
+        elif estimator_type.upper() == "EQUILIBRATION_GLOBAL":
+            logger.debug("evaluating residual bound (global equilibration)")
+            with timing(msg="GlobalEquilibrationEstimator.evaluateEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
+                global_eta, eta, eta_local = LocalEquilibrationEstimator.evaluateEstimator(w, coeff_field, pde, f, quadrature_degree)
+        else:
+            raise TypeError("invalid estimator type %s" %estimator_type.upper())
+
         # set overall error
         xi = sqrt(global_eta ** 2 + global_zeta ** 2)
         logger.info("Overall Estimator Error xi = %s while spatial error is %s and tail error is %s", xi, global_eta, global_zeta)

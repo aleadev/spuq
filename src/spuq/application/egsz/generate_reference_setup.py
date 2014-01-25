@@ -20,9 +20,11 @@ def generate_reference_setup(basedir, SOLUTIONFN='SFEM2-SOLUTIONS-P?.pkl'):
             if i == 0:
                 mesh, Lambda = mesh0, set(Lambda0)
             else:
-                mesh, _ = create_joint_mesh([mesh0, mesh])
+                # mesh, _ = create_joint_mesh([mesh0, mesh])
+                if mesh.num_cells() < mesh0.num_cells():
+                    mesh = mesh0
                 Lambda = Lambda.union(set(Lambda0))
-    print "=== FINAL mesh has %i cells and Lambda is %s ===" % (mesh.num_cells(), Lambda)
+    print "=== FINAL mesh has %i cells and len(Lambda) is %i ===" % (mesh.num_cells(), len(Lambda))
     return mesh, Lambda
 
 # -----------------------------------------------------------------------------

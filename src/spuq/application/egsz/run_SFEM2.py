@@ -135,7 +135,8 @@ def run_SFEM(opts, conf):
                         theta_y=CONF_theta_y, # tail bound marking bulk paramter
                         maxh=CONF_maxh, # maximal mesh width for coefficient maximum norm evaluation
                         add_maxm=CONF_add_maxm, # maximal search length for new new
-                        # residual error evaluation
+                        # error estimator evaluation
+                        estimator_type=CONF_estimator_type,
                         quadrature_degree=CONF_quadrature_degree,
                         # pcg solver
                         pcg_eps=CONF_pcg_eps, pcg_maxiter=CONF_pcg_maxiter,
