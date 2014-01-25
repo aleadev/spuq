@@ -18,7 +18,7 @@ try:
     from dolfin import (Function, FunctionSpace, cells, Constant, refine)
     from spuq.application.egsz.marking2 import Marking
     from spuq.application.egsz.residual_estimator2 import ResidualEstimator
-    from spuq.application.equilibration.global_mixed_estimator import EquilibrationEstimator
+    from spuq.application.equilibration.equilibration_estimator import GlobalEquilibrationEstimator, LocalEquilibrationEstimator
     from spuq.fem.fenics.fenics_utils import error_norm
 except:
     import traceback
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 def prepare_rhs(A, w, coeff_field, pde):
     b = 0 * w
-    assert b.keys() == w.keys()
+    assert b.active_indices() == w.active_indices()
     zero = Multiindex()
     b[zero].coeffs = pde.assemble_rhs(basis=b[zero].basis, coeff=coeff_field.mean_func,
                                       withNeumannBC=True)
