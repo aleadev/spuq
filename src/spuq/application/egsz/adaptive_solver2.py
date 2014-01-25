@@ -172,11 +172,13 @@ def AdaptiveSolver(A, coeff_field, pde,
         elif estimator_type.upper() == "EQUILIBRATION_GLOBAL":
             logger.debug("evaluating residual bound (global equilibration)")
             with timing(msg="GlobalEquilibrationEstimator.evaluateEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
-                global_eta, eta, eta_local = GlobalEquilibrationEstimator.evaluateEstimator(w, coeff_field, pde, f, quadrature_degree)
-        elif estimator_type.upper() == "EQUILIBRATION_GLOBAL":
+                global_eta, eta, eta_local, osc_global, osc_local = GlobalEquilibrationEstimator.evaluateEstimator\
+                                                                            (w, coeff_field, pde, f, quadrature_degree)
+        elif estimator_type.upper() == "EQUILIBRATION_LOCAL":
             logger.debug("evaluating residual bound (global equilibration)")
             with timing(msg="GlobalEquilibrationEstimator.evaluateEstimator", logfunc=logger.info, store_func=partial(_store_stats, key="TIME-RES", stats=stats)):
-                global_eta, eta, eta_local = LocalEquilibrationEstimator.evaluateEstimator(w, coeff_field, pde, f, quadrature_degree)
+                global_eta, eta, eta_local, osc_global, osc_local = LocalEquilibrationEstimator.evaluateEstimator\
+                                                                            (w, coeff_field, pde, f, quadrature_degree)
         else:
             raise TypeError("invalid estimator type %s" %estimator_type.upper())
 

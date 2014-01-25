@@ -8,7 +8,8 @@ import itertools as iter
 from operator import itemgetter
 from dolfin import (assemble, dot, nabla_grad, dx, avg, dS, sqrt, norm, VectorFunctionSpace, cells,
                     Constant, FunctionSpace, TestFunction, CellSize, FacetNormal, parameters, inner,
-                    TestFunctions, TrialFunctions, div, Function, solve, plot)
+                    TestFunctions, TrialFunctions, TrialFunction, div, Function, CellFunction, Measure,
+                    vertices, Vertex, FacetFunction, Cell, facets, jump, avg, project, solve, plot)
 
 from spuq.fem.fenics.fenics_vector import FEniCSVector
 from spuq.application.egsz.coefficient_field import CoefficientField
@@ -35,7 +36,7 @@ def evaluate_oscillations(f, mesh, degree, dg0, osc_quad_degree = 15):
     return osc_global, osc_local, Pf
 
 
-def evaluate_numerical_flux(w, mu, coeff_field):
+def evaluate_numerical_flux(w, mu, coeff_field, f):
     '''determine numerical flux sigma_nu with solution w'''
     Lambda = w.active_indices()
     maxm = w.max_order
@@ -119,7 +120,7 @@ class GlobalEquilibrationEstimator(object):
 #        logger.debug("residual quadrature order = " + str(quadrature_degree))
 
         # prepare numerical flux and f
-        sigma_mu, f_mu = evaluate_numerical_flux(w, mu, coeff_field)
+        sigma_mu, f_mu = evaluate_numerical_flux(w, mu, coeff_field, f)
 
         # ###################
         # ## MIXED PROBLEM ##
@@ -172,7 +173,7 @@ class GlobalEquilibrationEstimator(object):
         # evaluate global error
         eta = sqrt(sum(i**2 for i in eta_T))
         # reorder array entries for local estimators
-        eta_T = eta_T[DG0_dofs.values()]
+        eta_T = eta_T[DG0_dofs]
 
         # restore quadrature degree
 #        parameters["form_compiler"]["quadrature_degree"] = quadrature_degree_old
@@ -219,7 +220,7 @@ class LocalEquilibrationEstimator(object):
         """Evaluation of patch local equilibrated estimator."""
 
         # prepare numerical flux and f
-        sigma_mu, f_mu = evaluate_numerical_flux(w, mu, coeff_field)
+        sigma_mu, f_mu = evaluate_numerical_flux(w, mu, coeff_field, f)
 
         # ###################
         # ## MIXED PROBLEM ##
@@ -232,6 +233,7 @@ class LocalEquilibrationEstimator(object):
         degree = element_degree(w[mu]._fefunc)
 
         # data for nodal bases
+        V_dm = V.dofmap()
         V_dofs = dict([(i, V_dm.cell_dofs(i)) for i in range(mesh.num_cells())])
         V1 = FunctionSpace(mesh, 'CG', 1)   # V1 is to define nodal base functions
         phi_z = Function(V1)
@@ -301,8 +303,8 @@ class LocalEquilibrationEstimator(object):
             alpha = Constant(1 / epsilon) / h
             a = inner(tau,v) * phi_z * dx(1) + alpha * div(tau) * div(v) * dx(1) + avg(alpha) * jump(tau,n) * jump(v,n) * dS(1)\
                 + avg(alpha) * jump(xi_z * tau,n) * jump(v,n) * dS(2)
-            L = -alpha * (div(sigma) + f) * div(v) * phi_z * dx(1)\
-                - avg(alpha) * jump(sigma,n) * jump(v,n) * avg(phi_z)*dS(1)
+            L = -alpha * (div(sigma_mu) + f) * div(v) * phi_z * dx(1)\
+                - avg(alpha) * jump(sigma_mu,n) * jump(v,n) * avg(phi_z)*dS(1)
 
     #        print "L2 f + div(sigma)", assemble((f + div(sigma)) * (f + div(sigma)) * dx(0))
 
