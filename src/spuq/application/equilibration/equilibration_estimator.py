@@ -337,7 +337,7 @@ class LocalEquilibrationEstimator(object):
         global_est = np.sqrt(np.sum(eq_est))
         # eq_est_global = assemble( inner(tau_global, tau_global) * (dx(0)+dx(1)), form_compiler_parameters={'quadrature_degree': quadrature_degree} )
         # global_est2 = np.sqrt(np.sum(eq_est_global))
-        return global_est, np.sqrt(eq_est)#, tau_global
+        return global_est, FlatVector(np.sqrt(eq_est))#, tau_global
 
 
 def coo_submatrix_pull(matr, rows, cols):
